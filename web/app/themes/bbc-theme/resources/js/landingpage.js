@@ -234,6 +234,7 @@ function initContactForm() {
 
     const data = new FormData(form)
     data.append('action', 'contact_form_submit')
+    data.append('_wpnonce', form.dataset.nonce)
 
     const ajaxUrl = form.dataset.ajaxUrl
 

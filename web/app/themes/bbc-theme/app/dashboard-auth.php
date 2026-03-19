@@ -36,6 +36,14 @@ add_action('admin_post_nopriv_dashboard_login', function () {
     exit;
   }
 
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_login')
+  ) {
+    wp_redirect('/dashboard-login?error=invalid_request');
+    exit;
+  }
+
   $creds = [
     'user_login'    => sanitize_email($_POST['email']),
     'user_password' => $_POST['password'],
@@ -65,6 +73,23 @@ add_action('admin_post_nopriv_dashboard_register', function () {
 
   if (strlen($password) < 8) {
     wp_redirect('/dashboard-register?error=weak_password');
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register')
+  ) {
+    wp_redirect('/dashboard-register?error=invalid_request');
+    exit;
+  }
+
+  if (email_exists($_POST['email'])) {
+    wp_redirect('/dashboard-register?error=exists');
+    exit;
+  }
+
+  $email = sanitize_email($_POST['email']);
+
+  if (!is_email($email)) {
+    wp_redirect('/dashboard-register?error=email');
     exit;
   }
 
@@ -104,6 +129,14 @@ add_action('admin_post_dashboard_update_account', function () {
     exit;
   }
 
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_update_account')
+  ) {
+    wp_redirect('/dashboard-settings?tab=account&error=invalid_request');
+    exit;
+  }
+
   $user = wp_get_current_user();
 
   $display_name = sanitize_text_field($_POST['display_name'] ?? '');
@@ -126,6 +159,14 @@ add_action('admin_post_dashboard_update_password', function () {
 
   if (!is_user_logged_in()) {
     wp_redirect('/dashboard-login');
+    exit;
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_update_password')
+  ) {
+    wp_redirect('/dashboard-settings?tab=password&error=invalid_request');
     exit;
   }
 

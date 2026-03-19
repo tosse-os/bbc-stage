@@ -41,6 +41,7 @@ Template Name: Dashboard Login
 
     {{-- 3. Login Form (Optimiert nach Bild 15) --}}
     <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="space-y-6">
+      @php wp_nonce_field('dashboard_login', '_wpnonce'); @endphp
       @csrf
       <input type="hidden" name="action" value="dashboard_login">
 

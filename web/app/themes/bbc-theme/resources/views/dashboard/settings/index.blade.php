@@ -52,7 +52,9 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     {{-- ACCOUNT TAB --}}
     @if ($tab === 'account')
 
-    <form method="post" class="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-10">
+    <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-10">
+      <input type="hidden" name="action" value="dashboard_update_account">
+      @php wp_nonce_field('dashboard_update_account', '_wpnonce'); @endphp
 
       <div class="space-y-6">
 
@@ -147,7 +149,8 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
     <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="max-w-md space-y-6">
       @csrf
-      <input type="hidden" name="action" value="dashboard_change_password">
+      <input type="hidden" name="action" value="dashboard_update_password">
+      @php wp_nonce_field('dashboard_update_password', '_wpnonce'); @endphp
 
       <div>
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">

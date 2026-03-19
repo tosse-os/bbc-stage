@@ -59,6 +59,7 @@
           <form
             id="contactForm"
             data-ajax-url="{{ admin_url('admin-ajax.php') }}"
+            data-nonce="{{ wp_create_nonce('contact_form') }}"
             class="space-y-4"
             novalidate>
 

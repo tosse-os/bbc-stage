@@ -18,6 +18,7 @@ Template Name: Dashboard Register
     </div>
 
     <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="space-y-6">
+      @php wp_nonce_field('dashboard_register', '_wpnonce'); @endphp
       @csrf
       <input type="hidden" name="action" value="dashboard_register">
 
