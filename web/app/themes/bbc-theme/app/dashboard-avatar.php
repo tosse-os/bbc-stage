@@ -24,7 +24,9 @@ add_action('wp_ajax_dashboard_upload_avatar', function () {
   }
 
   $allowed = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!in_array($file['type'], $allowed, true)) {
+  $check = wp_check_filetype_and_ext($file['tmp_name'], $file['name']);
+
+  if (!$check['ext'] || !in_array($check['type'], $allowed, true)) {
     wp_send_json_error(['message' => 'invalid_type']);
   }
 
