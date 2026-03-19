@@ -68,11 +68,7 @@ add_action('admin_post_nopriv_dashboard_login', function () {
  */
 
 add_action('admin_post_nopriv_dashboard_register', function () {
-  $email = sanitize_email($_POST['email']);
-  $password = $_POST['password'] ?? '';
 
-  if (strlen($password) < 8) {
-    wp_redirect('/dashboard-register?error=weak_password');
   if (
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register')
@@ -81,15 +77,21 @@ add_action('admin_post_nopriv_dashboard_register', function () {
     exit;
   }
 
-  if (email_exists($_POST['email'])) {
-    wp_redirect('/dashboard-register?error=exists');
+  $email = sanitize_email($_POST['email']);
+  $password = $_POST['password'] ?? '';
+
+  if (strlen($password) < 8) {
+    wp_redirect('/dashboard-register?error=weak_password');
     exit;
   }
 
-  $email = sanitize_email($_POST['email']);
-
   if (!is_email($email)) {
     wp_redirect('/dashboard-register?error=email');
+    exit;
+  }
+
+  if (email_exists($email)) {
+    wp_redirect('/dashboard-register?error=exists');
     exit;
   }
 
@@ -119,8 +121,6 @@ add_action('wp_logout', function () {
   wp_redirect('/dashboard-login');
   exit;
 });
-
-
 
 add_action('admin_post_dashboard_update_account', function () {
 
