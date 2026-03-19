@@ -27,6 +27,14 @@ add_action('user_register', function ($user_id) {
  */
 
 add_action('admin_post_nopriv_dashboard_login', function () {
+  $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+  $key = 'login_attempts_' . md5($ip);
+  $attempts = (int) get_transient($key);
+
+  if ($attempts >= 5) {
+    wp_redirect('/dashboard-login?error=too_many_attempts');
+    exit;
+  }
 
   $creds = [
     'user_login'    => sanitize_email($_POST['email']),
@@ -37,10 +45,12 @@ add_action('admin_post_nopriv_dashboard_login', function () {
   $user = wp_signon($creds, false);
 
   if (is_wp_error($user)) {
+    set_transient($key, $attempts + 1, 15 * MINUTE_IN_SECONDS);
     wp_redirect('/dashboard-login?error=1');
     exit;
   }
 
+  delete_transient($key);
   wp_redirect('/dashboard');
   exit;
 });
@@ -50,11 +60,18 @@ add_action('admin_post_nopriv_dashboard_login', function () {
  */
 
 add_action('admin_post_nopriv_dashboard_register', function () {
+  $email = sanitize_email($_POST['email']);
+  $password = $_POST['password'] ?? '';
+
+  if (strlen($password) < 8) {
+    wp_redirect('/dashboard-register?error=weak_password');
+    exit;
+  }
 
   $user_id = wp_create_user(
-    sanitize_email($_POST['email']),
-    $_POST['password'],
-    sanitize_email($_POST['email'])
+    $email,
+    $password,
+    $email
   );
 
   wp_update_user([

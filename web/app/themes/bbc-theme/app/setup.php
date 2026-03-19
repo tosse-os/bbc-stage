@@ -237,6 +237,12 @@ add_filter('show_admin_bar', function ($show) {
 
 add_action('init', function () {
     if (isset($_GET['dashboard_logout'])) {
+        if (
+          !isset($_GET['_wpnonce']) ||
+          !wp_verify_nonce($_GET['_wpnonce'], 'dashboard_logout')
+        ) {
+            return;
+        }
 
         if (is_user_logged_in()) {
             wp_clear_auth_cookie();
