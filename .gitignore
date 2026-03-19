@@ -14,6 +14,10 @@ web/.htaccess
 
 # Logs
 *.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Dotenv
 .env
@@ -26,3 +30,68 @@ auth.json
 
 # WP-CLI
 wp-cli.local.yml
+
+# =========================================
+# DEV / LOCAL FILES
+# =========================================
+
+# Shell History (dein Wunsch)
+.history
+
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# IDEs
+.vscode/
+.idea/
+*.code-workspace
+
+# JetBrains
+*.iml
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.cache/
+*.tsbuildinfo
+
+# Vite
+public/build
+resources/js/.vite
+
+# PHPUnit / Testing
+.phpunit.result.cache
+
+# Coverage
+coverage/
+
+# Temp Files
+tmp/
+temp/
+
+# Backup Files
+*.bak
+*.backup
+*.old
+*.swp
+*.swo
+
+# =========================================
+# OPTIONAL (wenn du willst)
+# =========================================
+
+# Lockfiles (nur wenn du sie NICHT tracken willst)
+# package-lock.json
+# yarn.lock
+# composer.lock
