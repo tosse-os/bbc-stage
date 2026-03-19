@@ -57,6 +57,7 @@ add_action('pre_get_posts', function ($query) {
   if (!can_view_analysis(get_current_user_id())) {
     $query->set('post__in', [0]);
   }
+});
 
 add_action('template_redirect', function () {
 
