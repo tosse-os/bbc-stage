@@ -1,0 +1,4179 @@
+=== LANDINGPAGE EXPORT ===
+Anzahl Dateien: 54
+
+Dateistruktur:
+- app/Providers/ThemeServiceProvider.php
+- app/View/Composers/App.php
+- app/View/Composers/Comments.php
+- app/View/Composers/PageLanding.php
+- app/View/Composers/Post.php
+- app/acf-chart-image-validation.php
+- app/ajax copy.php
+- app/ajax.php
+- app/filters.php
+- app/setup.php
+- app/sql-query-admin.php
+- app/translations.php
+- resources/css/editor.css
+- resources/css/landingpage-app.css
+- resources/css/landingpage.css
+- resources/js/editor.js
+- resources/js/landingpage 12_02_js
+- resources/js/landingpage copy_js
+- resources/js/landingpage.js
+- resources/js/theme-toggle.js
+- resources/views/404.blade.php
+- resources/views/index.blade.php
+- resources/views/layouts/conversion.blade.php
+- resources/views/layouts/landingpage.blade.php
+- resources/views/page-landing.blade.php
+- resources/views/page.blade.php
+- resources/views/pages/page-trial.blade.php
+- resources/views/partials/auth/signup-form.blade.php
+- resources/views/partials/comments.blade.php
+- resources/views/partials/content-page.blade.php
+- resources/views/partials/content-search.blade.php
+- resources/views/partials/content-single.blade.php
+- resources/views/partials/content.blade.php
+- resources/views/partials/entry-meta.blade.php
+- resources/views/partials/forms/search.blade.php
+- resources/views/partials/landing/about.blade.php
+- resources/views/partials/landing/contact.blade.php
+- resources/views/partials/landing/hero.blade.php
+- resources/views/partials/landing/market-insights.blade.php
+- resources/views/partials/landing/team.blade.php
+- resources/views/partials/page-header.blade.php
+- resources/views/partials/subscription/plan-card.blade.php
+- resources/views/partials/subscription/trial-content.blade.php
+- resources/views/partials/subscription/trial-hero.blade.php
+- resources/views/search.blade.php
+- resources/views/sections/conversion-footer.blade.php
+- resources/views/sections/footer.blade.php
+- resources/views/sections/header.blade.php
+- resources/views/sections/sidebar.blade.php
+- resources/views/sections/site-header.blade.php
+- resources/views/single-analysis.blade.php
+- resources/views/single.blade.php
+- resources/views/template-custom.blade.php
+- resources/views/template-plain.blade.php
+
+==========================
+
+===== app/Providers/ThemeServiceProvider.php =====
+
+<?php
+
+namespace App\Providers;
+
+use Roots\Acorn\Sage\SageServiceProvider;
+
+class ThemeServiceProvider extends SageServiceProvider
+{
+    /**
+     * Register any application services.
+     *
+     * @return void
+     */
+    public function register()
+    {
+        parent::register();
+    }
+
+    /**
+     * Bootstrap any application services.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        parent::boot();
+    }
+}
+
+
+===== app/View/Composers/App.php =====
+
+<?php
+
+namespace App\View\Composers;
+
+use Roots\Acorn\View\Composer;
+
+class App extends Composer
+{
+    /**
+     * List of views served by this composer.
+     *
+     * @var array
+     */
+    protected static $views = [
+        '*',
+    ];
+
+    /**
+     * Retrieve the site name.
+     */
+    public function siteName(): string
+    {
+        return get_bloginfo('name', 'display');
+    }
+}
+
+
+===== app/View/Composers/Comments.php =====
+
+<?php
+
+namespace App\View\Composers;
+
+use Roots\Acorn\View\Composer;
+
+class Comments extends Composer
+{
+    /**
+     * List of views served by this composer.
+     *
+     * @var array
+     */
+    protected static $views = [
+        'partials.comments',
+    ];
+
+    /**
+     * The comment title.
+     */
+    public function title(): string
+    {
+        return sprintf(
+            /* translators: %1$s is replaced with the number of comments and %2$s with the post title */
+            _nx('%1$s response to &ldquo;%2$s&rdquo;', '%1$s responses to &ldquo;%2$s&rdquo;', get_comments_number(), 'comments title', 'sage'),
+            get_comments_number() === 1 ? _x('One', 'comments title', 'sage') : number_format_i18n(get_comments_number()),
+            get_the_title()
+        );
+    }
+
+    /**
+     * Retrieve the comments.
+     */
+    public function responses(): ?string
+    {
+        if (! have_comments()) {
+            return null;
+        }
+
+        return wp_list_comments([
+            'style' => 'ol',
+            'short_ping' => true,
+            'echo' => false,
+        ]);
+    }
+
+    /**
+     * The previous comments link.
+     */
+    public function previous(): ?string
+    {
+        if (! get_previous_comments_link()) {
+            return null;
+        }
+
+        return get_previous_comments_link(
+            __('&larr; Older comments', 'sage')
+        );
+    }
+
+    /**
+     * The next comments link.
+     */
+    public function next(): ?string
+    {
+        if (! get_next_comments_link()) {
+            return null;
+        }
+
+        return get_next_comments_link(
+            __('Newer comments &rarr;', 'sage')
+        );
+    }
+
+    /**
+     * Determine if the comments are paginated.
+     */
+    public function paginated(): bool
+    {
+        return get_comment_pages_count() > 1 && get_option('page_comments');
+    }
+
+    /**
+     * Determine if the comments are closed.
+     */
+    public function closed(): bool
+    {
+        return ! comments_open() && get_comments_number() != '0' && post_type_supports(get_post_type(), 'comments');
+    }
+}
+
+
+===== app/View/Composers/PageLanding.php =====
+
+<?php
+
+namespace App\View\Composers;
+
+use Roots\Acorn\View\Composer;
+
+class PageLanding extends Composer
+{
+  protected static $views = [
+    'page-landing'
+  ];
+
+  public function with()
+  {
+    return [
+      'hero' => [
+        'headline' => get_field('hero_headline'),
+        'subline' => get_field('hero_subline'),
+        'cta_text' => get_field('hero_cta_text'),
+        'cta_link' => get_field('hero_cta_link'),
+        'visual' => get_field('hero_visual')
+      ]
+    ];
+  }
+}
+
+
+===== app/View/Composers/Post.php =====
+
+<?php
+
+namespace App\View\Composers;
+
+use Roots\Acorn\View\Composer;
+
+class Post extends Composer
+{
+    /**
+     * List of views served by this composer.
+     *
+     * @var array
+     */
+    protected static $views = [
+        'partials.page-header',
+        'partials.content',
+        'partials.content-*',
+    ];
+
+    /**
+     * Retrieve the post title.
+     */
+    public function title(): string
+    {
+        if ($this->view->name() !== 'partials.page-header') {
+            return get_the_title();
+        }
+
+        if (is_home()) {
+            if ($home = get_option('page_for_posts', true)) {
+                return get_the_title($home);
+            }
+
+            return __('Latest Posts', 'sage');
+        }
+
+        if (is_archive()) {
+            return get_the_archive_title();
+        }
+
+        if (is_search()) {
+            return sprintf(
+                /* translators: %s is replaced with the search query */
+                __('Search Results for %s', 'sage'),
+                get_search_query()
+            );
+        }
+
+        if (is_404()) {
+            return __('Not Found', 'sage');
+        }
+
+        return get_the_title();
+    }
+
+    /**
+     * Retrieve the pagination links.
+     */
+    public function pagination(): string
+    {
+        return wp_link_pages([
+            'echo' => 0,
+            'before' => '<p>'.__('Pages:', 'sage'),
+            'after' => '</p>',
+        ]);
+    }
+}
+
+
+===== app/acf-chart-image-validation.php =====
+
+<?php
+
+/**
+ * Validiert das Chart-Bild für Analysen.
+ * Erzwingt Mindestgröße und Querformat (Aspect Ratio).
+ */
+
+add_filter('acf/validate_value/name=chart_image', function ($valid, $value, $field, $input) {
+
+  if ($valid !== true) {
+    return $valid;
+  }
+
+  if (empty($value)) {
+    return $valid;
+  }
+
+  if (is_array($value) && isset($value['ID'])) {
+    $attachment_id = (int) $value['ID'];
+  } elseif (is_numeric($value)) {
+    $attachment_id = (int) $value;
+  } else {
+    return 'Ungültiges Bildformat.';
+  }
+
+  $meta = wp_get_attachment_metadata($attachment_id);
+
+  if (empty($meta['width']) || empty($meta['height'])) {
+    return 'Das Bild konnte nicht geprüft werden.';
+  }
+
+  $width  = (int) $meta['width'];
+  $height = (int) $meta['height'];
+
+  if ($width < 2400 || $height < 1000) {
+    return 'Das Chart-Bild ist zu klein. Mindestgröße: 2400 × 1000 Pixel.';
+  }
+
+  if (($width / $height) < 2.2) {
+    return 'Das Chart-Bild muss im Querformat vorliegen.';
+  }
+
+  return true;
+
+}, 10, 4);
+
+
+===== app/ajax copy.php =====
+
+<?php
+
+/**
+ * AJAX Endpoints für das Dashboard
+ * Aktuell: Dark / Light Mode Speicherung im User-Meta.
+ */
+
+add_action('wp_ajax_set_dashboard_theme', function () {
+  if (!is_user_logged_in()) {
+    wp_send_json_error();
+  }
+
+  $theme = $_POST['theme'] === 'dark' ? 'dark' : 'light';
+  update_user_meta(get_current_user_id(), USER_META_THEME, $theme);
+
+  wp_send_json_success();
+});
+
+
+/**
+ * AJAX-Handler für das Kontaktformular.
+ * Validiert E-Mail und Nachricht serverseitig und versendet die Anfrage an den Admin.
+ */
+
+add_action('wp_ajax_contact_form_submit', __NAMESPACE__ . '\\contact_form_submit');
+add_action('wp_ajax_nopriv_contact_form_submit', __NAMESPACE__ . '\\contact_form_submit');
+
+function contact_form_submit()
+{
+
+  $email = trim($_POST['email'] ?? '');
+  $message = trim($_POST['message'] ?? '');
+
+  if (!$email || !\is_email($email)) {
+    \wp_send_json_error([
+      'field' => 'email'
+    ]);
+  }
+
+  if (!$message || \mb_strlen($message) < 5) {
+    \wp_send_json_error([
+      'field' => 'message'
+    ]);
+  }
+
+  \wp_mail(
+    \get_option('admin_email'),
+    'Kontaktanfrage',
+    "E-Mail: {$email}\n\n{$message}"
+  );
+
+  \wp_send_json_success();
+}
+
+require_once __DIR__ . '/dashboard-sidebar-state.php';
+
+
+/**
+ * Speichert das Dashboard-Theme (Light/Dark) im User-Meta.
+ * Wird per AJAX vom Theme-Toggle ausgelöst.
+ */
+add_action('wp_ajax_set_dashboard_theme', function () {
+
+  if (!is_user_logged_in()) {
+    wp_send_json_error();
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_theme_toggle')
+  ) {
+    wp_send_json_error();
+  }
+
+  $theme = ($_POST['theme'] ?? '') === 'dark' ? 'dark' : 'light';
+
+  update_user_meta(
+    get_current_user_id(),
+    USER_META_THEME,
+    $theme
+  );
+
+  wp_send_json_success();
+});
+
+
+===== app/ajax.php =====
+
+<?php
+
+/**
+ * Dashboard AJAX Endpoints
+ */
+
+/*
+|--------------------------------------------------------------------------
+| Theme (Light / Dark)
+|--------------------------------------------------------------------------
+*/
+
+add_action('wp_ajax_set_dashboard_theme', function () {
+
+  if (!is_user_logged_in()) {
+    wp_send_json_error();
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_theme_toggle')
+  ) {
+    wp_send_json_error();
+  }
+
+  $theme = ($_POST['theme'] ?? '') === 'dark' ? 'dark' : 'light';
+
+  update_user_meta(
+    get_current_user_id(),
+    'dashboard_theme',
+    $theme
+  );
+
+  wp_send_json_success();
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Sidebar Collapse State
+|--------------------------------------------------------------------------
+*/
+
+add_action('wp_ajax_set_dashboard_sidebar', function () {
+
+  if (!is_user_logged_in()) {
+    wp_send_json_error();
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_sidebar_toggle')
+  ) {
+    wp_send_json_error();
+  }
+
+  $collapsed = ($_POST['collapsed'] ?? '') === '1' ? '1' : '0';
+
+  update_user_meta(
+    get_current_user_id(),
+    'dashboard_sidebar_collapsed',
+    $collapsed
+  );
+
+  wp_send_json_success();
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Kontaktformular
+|--------------------------------------------------------------------------
+*/
+
+add_action('wp_ajax_contact_form_submit', __NAMESPACE__ . '\\contact_form_submit');
+add_action('wp_ajax_nopriv_contact_form_submit', __NAMESPACE__ . '\\contact_form_submit');
+
+function contact_form_submit()
+{
+  $email = trim($_POST['email'] ?? '');
+  $message = trim($_POST['message'] ?? '');
+
+  if (!$email || !\is_email($email)) {
+    \wp_send_json_error(['field' => 'email']);
+  }
+
+  if (!$message || \mb_strlen($message) < 5) {
+    \wp_send_json_error(['field' => 'message']);
+  }
+
+  \wp_mail(
+    \get_option('admin_email'),
+    'Kontaktanfrage',
+    "E-Mail: {$email}\n\n{$message}"
+  );
+
+  \wp_send_json_success();
+}
+
+
+===== app/filters.php =====
+
+<?php
+
+/**
+ * Theme filters.
+ */
+
+namespace App;
+
+/**
+ * Add "… Continued" to the excerpt.
+ *
+ * @return string
+ */
+add_filter('excerpt_more', function () {
+    return sprintf(' &hellip; <a href="%s">%s</a>', get_permalink(), __('Continued', 'sage'));
+});
+
+
+===== app/setup.php =====
+
+<?php
+
+/**
+ * Theme setup.
+ */
+
+namespace App;
+
+use Illuminate\Support\Facades\Vite;
+
+/**
+ * Inject styles into the block editor.
+ *
+ * @return array
+ */
+// add_filter('block_editor_settings_all', function ($settings) {
+//     $style = Vite::asset('resources/css/editor.css');
+
+//     $settings['styles'][] = [
+//         'css' => "@import url('{$style}')",
+//     ];
+
+//     return $settings;
+// });
+
+add_action('enqueue_block_editor_assets', function () {
+    echo \Illuminate\Support\Facades\Vite::withEntryPoints([
+        'resources/css/editor.css',
+    ])->toHtml();
+});
+
+
+/**
+ * Inject scripts into the block editor.
+ *
+ * @return void
+ */
+add_filter('admin_head', function () {
+    if (! get_current_screen()?->is_block_editor()) {
+        return;
+    }
+
+    $dependencies = json_decode(Vite::content('editor.deps.json'));
+
+    foreach ($dependencies as $dependency) {
+        if (! wp_script_is($dependency)) {
+            wp_enqueue_script($dependency);
+        }
+    }
+
+    echo Vite::withEntryPoints([
+        'resources/js/editor.js',
+    ])->toHtml();
+});
+
+/**
+ * Use the generated theme.json file.
+ *
+ * @return string
+ */
+add_filter('theme_file_path', function ($path, $file) {
+    return $file === 'theme.json'
+        ? public_path('build/assets/theme.json')
+        : $path;
+}, 10, 2);
+
+/**
+ * Register the initial theme setup.
+ *
+ * @return void
+ */
+add_action('after_setup_theme', function () {
+    /**
+     * Disable full-site editing support.
+     *
+     * @link https://wptavern.com/gutenberg-10-5-embeds-pdfs-adds-verse-block-color-options-and-introduces-new-patterns
+     */
+    remove_theme_support('block-templates');
+
+    /**
+     * Register the navigation menus.
+     *
+     * @link https://developer.wordpress.org/reference/functions/register_nav_menus/
+     */
+    register_nav_menus([
+        'primary_navigation' => __('Primary Navigation', 'sage'),
+        'footer_navigation' => __('Footer Navigation', 'sage'),
+    ]);
+
+    /**
+     * Disable the default block patterns.
+     *
+     * @link https://developer.wordpress.org/block-editor/developers/themes/theme-support/#disabling-the-default-block-patterns
+     */
+    remove_theme_support('core-block-patterns');
+
+    /**
+     * Enable plugins to manage the document title.
+     *
+     * @link https://developer.wordpress.org/reference/functions/add_theme_support/#title-tag
+     */
+    add_theme_support('title-tag');
+
+    /**
+     * Enable post thumbnail support.
+     *
+     * @link https://developer.wordpress.org/themes/functionality/featured-images-post-thumbnails/
+     */
+    add_theme_support('post-thumbnails');
+
+    /**
+     * Enable responsive embed support.
+     *
+     * @link https://developer.wordpress.org/block-editor/how-to-guides/themes/theme-support/#responsive-embedded-content
+     */
+    add_theme_support('responsive-embeds');
+
+    /**
+     * Enable HTML5 markup support.
+     *
+     * @link https://developer.wordpress.org/reference/functions/add_theme_support/#html5
+     */
+    add_theme_support('html5', [
+        'caption',
+        'comment-form',
+        'comment-list',
+        'gallery',
+        'search-form',
+        'script',
+        'style',
+    ]);
+
+    /**
+     * Enable selective refresh for widgets in customizer.
+     *
+     * @link https://developer.wordpress.org/reference/functions/add_theme_support/#customize-selective-refresh-widgets
+     */
+    add_theme_support('customize-selective-refresh-widgets');
+}, 20);
+
+/**
+ * Register the theme sidebars.
+ *
+ * @return void
+ */
+add_action('widgets_init', function () {
+    $config = [
+        'before_widget' => '<section class="widget %1$s %2$s">',
+        'after_widget' => '</section>',
+        'before_title' => '<h3>',
+        'after_title' => '</h3>',
+    ];
+
+    register_sidebar([
+        'name' => __('Primary', 'sage'),
+        'id' => 'sidebar-primary',
+    ] + $config);
+
+    register_sidebar([
+        'name' => __('Footer', 'sage'),
+        'id' => 'sidebar-footer',
+    ] + $config);
+});
+
+/**
+ * Clean up internal links - remove domain - make relative
+ */
+add_filter('the_content', function ($content) {
+    $home = preg_quote(home_url(), '/');
+
+    return preg_replace(
+        '/href=(["\'])' . $home . '(\/[^"\']*)?\1/i',
+        'href="$2"',
+        $content
+    );
+});
+
+
+/**
+ * Dashboard
+ */
+require_once __DIR__ . '/analysis.php';
+require_once __DIR__ . '/analysis-market-admin.php';
+require_once __DIR__ . '/analysis-market-import.php';
+require_once __DIR__ . '/analysis-access.php';
+
+require_once __DIR__ . '/dashboard-auth.php';
+require_once __DIR__ . '/dashboard-avatar.php';
+require_once __DIR__ . '/dashboard-access.php';
+require_once __DIR__ . '/dashboard-gate.php';
+require_once __DIR__ . '/dashboard-controller.php';
+
+require_once __DIR__ . '/ajax.php';
+require_once __DIR__ . '/filters.php';
+require_once __DIR__ . '/translations.php';
+
+require_once __DIR__ . '/helper/dashboard.php';
+require_once __DIR__ . '/dashboard-subscription.php';
+
+require_once __DIR__ . '/acf-chart-image-validation.php';
+
+require_once __DIR__ . '/sql-query-admin.php';
+
+
+/**
+ * Dashboard - Permissions
+ */
+
+add_filter('show_admin_bar', function ($show) {
+    if (!is_user_logged_in()) {
+        return false;
+    }
+
+    return current_user_can('administrator');
+});
+
+
+
+
+/**
+ * Harter Dashboard-Logout
+ * - zerstört Session & Cookies
+ * - verhindert Auto-Reauth
+ * - Redirect auf Login-Seite
+ */
+
+add_action('init', function () {
+    if (isset($_GET['dashboard_logout'])) {
+
+        if (is_user_logged_in()) {
+            wp_clear_auth_cookie();
+            wp_logout();
+        }
+
+        // Cache & Session hart trennen
+        nocache_headers();
+
+        wp_safe_redirect('/dashboard-login?logged_out=1');
+        exit;
+    }
+});
+
+
+
+/* Admin Backend */
+
+/* extend admin view */
+add_filter('manage_pages_columns', function ($columns) {
+  $columns['page_template'] = 'Template';
+  return $columns;
+});
+
+add_action('manage_pages_custom_column', function ($column, $post_id) {
+  if ($column !== 'page_template') {
+    return;
+  }
+
+  $template = get_page_template_slug($post_id);
+
+  if (!$template) {
+    echo 'Standard';
+    return;
+  }
+
+  $theme = wp_get_theme();
+  $templates = $theme->get_page_templates();
+  $label = array_search($template, $templates, true);
+
+  echo $label ?: $template;
+}, 10, 2);
+
+add_action('admin_enqueue_scripts', function () {
+  wp_add_inline_style('wp-admin', '
+    .wp-list-table .column-page_template {
+      width: 220px;
+      white-space: nowrap;
+    }
+  ');
+});
+
+
+===== app/sql-query-admin.php =====
+
+<?php
+
+add_action('admin_menu', function () {
+  add_submenu_page(
+    'tools.php',
+    'SQL Query Runner',
+    'SQL Query Runner',
+    'manage_options',
+    'sql-query-runner',
+    'sql_query_runner_view'
+  );
+});
+
+function sql_query_runner_view() {
+  global $wpdb;
+  ?>
+
+  <div class="wrap">
+    <h1>SQL Query Runner</h1>
+
+    <form method="post">
+      <textarea name="sql_query" style="width:100%;height:150px;"><?php echo isset($_POST['sql_query']) ? esc_textarea($_POST['sql_query']) : ''; ?></textarea>
+      <p><input type="submit" class="button button-primary" value="Ausführen"></p>
+    </form>
+
+    <?php
+    if (!empty($_POST['sql_query'])) {
+      $sql = wp_unslash($_POST['sql_query']);
+      echo '<h2>Ergebnis</h2>';
+      $results = $wpdb->get_results($sql, ARRAY_A);
+      if ($results === null) {
+        echo '<div class="notice notice-error"><p>Fehler oder kein Ergebnis.</p></div>';
+      } else {
+        echo '<table class="widefat fixed striped"><thead><tr>';
+        foreach (array_keys($results[0] ?? []) as $col) {
+          echo '<th>' . esc_html($col) . '</th>';
+        }
+        echo '</tr></thead><tbody>';
+        foreach ($results as $row) {
+          echo '<tr>';
+          foreach ($row as $cell) {
+            echo '<td>' . esc_html($cell) . '</td>';
+          }
+          echo '</tr>';
+        }
+        echo '</tbody></table>';
+      }
+    }
+    ?>
+  </div>
+  <?php
+}
+
+
+===== app/translations.php =====
+
+<?php
+
+/**
+* Registriert Footer-Texte für Polylang.
+*/
+add_action('init', function () {
+pll_register_string('footer_follow', 'Follow Us', 'Footer');
+pll_register_string('footer_about', 'About', 'Footer');
+pll_register_string('footer_services', 'Services', 'Footer');
+pll_register_string('footer_contact', 'Contact', 'Footer');
+pll_register_string('footer_privacy', 'Privacy policy', 'Footer');
+pll_register_string('footer_imprint', 'Imprint', 'Footer');
+});
+
+
+===== resources/css/editor.css =====
+
+@import "tailwindcss";
+
+.acf-postbox .postbox-header {
+  background: #acdbe5!important;
+}
+
+/* 1. Den Standard-Zustand erzwingen */
+.postbox .inside {
+  display: block !important;
+  /* Verhindert das harte Ausblenden durch WP */
+  overflow: hidden !important;
+  max-height: 2000px;
+  opacity: 1;
+  transition: max-height 0.4s ease-in-out, opacity 0.3s ease, padding 0.4s ease !important;
+}
+
+/* 2. Den geschlossenen Zustand erzwingen */
+.postbox.closed .inside {
+  display: block !important;
+  /* Bleibt im DOM für die Animation */
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* 3. Verhindert das "Springen" von Inhalten */
+.postbox .inside>* {
+  min-height: 0;
+}
+
+
+/* fix hover bug */
+.edit-post-meta-boxes-area .postbox .handlediv {
+  height: auto!important;
+  width: 44px;
+}
+
+
+/* Admin Backend */
+
+.wp-list-table .column-page_template {
+  width: 220px;
+  white-space: nowrap;
+}
+
+
+===== resources/css/landingpage-app.css =====
+
+@config "../../tailwind.config.js";
+
+@import "tailwindcss";
+
+@source "../views/";
+@source "../../app/";
+
+@import "./landingpage.css";/* customizing */
+
+/*@import "./responsive.css";*/
+
+@layer base {
+  body {
+    @apply font-sans;
+  }
+}
+
+@layer utilities {
+  .container-content {
+    @apply mx-auto w-full max-w-content px-6;
+  }
+}
+
+/* base setup and reset */
+.sr-only:not(:focus):not(:active) {
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  position: absolute;
+  overflow: hidden;
+}
+
+/* layout */
+body {
+  overflow-x: clip;
+}
+
+.full-bleed {
+  width: 99.45vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}
+
+
+===== resources/css/landingpage.css =====
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-300.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-800.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* sections */
+#about {
+  background: #f8f6f7;
+}
+
+/* contact */
+
+/* .bg-contact {
+  background:
+    radial-gradient(ellipse at 60% 65%,
+      rgba(230, 245, 248, 0.9) 0%,
+      rgba(210, 232, 239, 0.95) 40%,
+      rgba(190, 220, 230, 1) 70%,
+      rgba(165, 205, 218, 1) 100%),
+    linear-gradient(180deg,
+      rgba(140, 190, 205, 1) 0%,
+      rgba(170, 210, 222, 1) 35%,
+      rgba(205, 230, 238, 1) 100%);
+} */
+
+/* .bg-contact {
+  background: linear-gradient(180deg,
+      #8cbecd 0%,
+      #9fc9d6 18%,
+      #b6d8e2 42%,
+      #cfe6ed 70%,
+      #b5d5de 100%);
+} */
+
+.bg-contact {
+  width: 100%;
+    height: 100%;
+    background:
+      radial-gradient(ellipse at center,
+        rgba(223, 239, 243, 0.85) 0%,
+        rgba(225, 242, 247, 0.95) 35%,
+        rgba(198, 224, 232, 1) 70%,
+        rgba(170, 205, 216, 1) 100%);
+}
+
+.contact-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.contact-card-soft {
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(244, 250, 252, 0.70) 40%,
+      rgba(233, 244, 248, 0.68) 70%,
+      rgba(227, 240, 245, 0.36) 100%);
+  /* backdrop-filter: blur(2px); */
+}
+
+/* contact form */
+
+.input-focus-premium {
+  @apply transition-all duration-300 outline-none;
+}
+
+.input-focus-premium:hover {
+  @apply border-[#5fa6bb];
+}
+
+.input-focus-premium:focus {
+  /* Intensivere Markenfarbe für den Rahmen */
+  border-color: #35788b !important;
+  /* Kräftigerer Glow-Ring (20% Deckkraft für mehr Intensität) */
+  box-shadow: 0 0 0 4px rgba(63, 135, 156, 0.25);
+}
+
+
+/* team */
+
+.bg-team {
+  background: linear-gradient(180deg,
+      #d7e9ee 0%,
+      #c4dee6 45%,
+      #80afbf 100%);
+}
+
+.team-pattern {
+  width: 100%;
+    height: 100%;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    background-size: 48px 48px;
+}
+
+.team-photo-wrapper {
+  position: relative;
+  width: 220px;
+  margin: 0 auto;
+  border-radius: 26px;
+  overflow: hidden;
+  transition: transform 300ms ease, box-shadow 300ms ease;
+  box-shadow: 0 18px 45px rgba(15, 70, 85, 0.22);
+}
+
+.group:hover .team-photo-wrapper {
+  transform: translateY(-4px);
+  box-shadow: 0 32px 80px rgba(15, 70, 85, 0.35);
+}
+
+.team-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 300ms ease;
+}
+
+.group:hover .team-photo {
+  transform: scale(1.06);
+}
+
+
+/* market insights */
+.bg-market-insights {
+  background: linear-gradient(180deg,
+      #d7e9ee 0%,
+      #eaf4f6 100%);
+}
+
+.market-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.market-insights-bg {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at center,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(225, 242, 247, 0.95) 35%,
+      rgba(198, 224, 232, 1) 70%,
+      rgba(170, 205, 216, 1) 100%);
+}
+
+.market-insight--premium {
+  position: relative;
+}
+
+/* meine gute alte */
+ .market-insight--premium .premium-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  background: linear-gradient(to right,
+      rgba(20, 120, 160, 0.15),
+      rgba(20, 120, 160, 0.55),
+      rgba(20, 120, 160, 0.15));
+
+  backdrop-filter: blur(6px);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  pointer-events: none;
+
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* gülden */
+/* .market-insight--premium .premium-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 60px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  background:
+    radial-gradient(ellipse at center,
+      rgba(255, 225, 150, 0.64) 0%,
+      rgba(195, 155, 80, 0.48) 40%,
+      rgba(120, 95, 50, 0.32) 75%,
+      rgba(120, 95, 50, 0.26) 100%);
+
+  backdrop-filter: blur(18px) saturate(1.32) brightness(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.32) brightness(1.05);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.26);
+
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+
+  pointer-events: none;
+} */
+
+.market-insight--premium .premium-banner svg {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+  width: 35px;
+  height: 35px;
+  fill: currentColor;
+}
+
+.crown {
+  background: linear-gradient(180deg,
+      #fff1b8 0%,
+      #e6c36a 35%,
+      #cfa23f 65%,
+      #a97c1f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* all pattern sections */
+.pattern-section {
+  position: relative;
+  mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+}
+
+/* standard pages */
+.page-template-template-plain #siteHeader {
+  background-color: rgba(2, 6, 23, 0.75);
+}
+
+.bg-standard {
+  background: linear-gradient(180deg,
+      #d7e9ee 0%,
+      #c4dee6 45%,
+      #80afbf 100%);
+}
+
+.standard-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+
+/* content */
+body {
+  color: #323232;
+}
+
+a {
+  text-decoration: none;
+}
+
+.nav-link.is-active {
+  @apply text-brand-primary;
+}
+
+.nav-link {
+  @apply transition-colors duration-200 ease-in-out;
+}
+
+.nav-link:hover {
+  @apply text-slate-400;
+}
+
+/* effects */
+:root {
+  --glow-color: 72, 146, 168;
+  --glow-opacity-strong: 0.55;
+  --glow-opacity-mid: 0.35;
+  --glow-opacity-soft: 0.15;
+}
+
+.glow-icon {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glow-icon::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at center,
+      rgba(var(--glow-color), var(--glow-opacity-strong)) 0%,
+      rgba(var(--glow-color), var(--glow-opacity-mid)) 35%,
+      rgba(var(--glow-color), var(--glow-opacity-soft)) 55%,
+      transparent 70%);
+  filter: blur(6px);
+  opacity: 0.75;
+  z-index: 0;
+}
+
+.glow-icon svg {
+  position: relative;
+  z-index: 1;
+}
+
+.glow-icon::before {
+  transition:
+    opacity 220ms ease,
+    filter 220ms ease,
+    inset 220ms ease;
+}
+
+.glow-icon:hover::before {
+  opacity: 1;
+  filter: blur(8px);
+  inset: -8px;
+}
+
+
+/* top navbar effects */
+#siteHeader {
+  background-color: rgba(2, 6, 23, 0.35);
+}
+
+#siteHeader.is-scrolled {
+  background-color: rgba(2, 6, 23, 0.75);
+}
+
+.reveal-text {
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.reveal-media {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 600ms ease,
+    transform 600ms ease;
+}
+
+.reveal-text.is-visible {
+  opacity: 1;
+}
+
+.reveal-media.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+@keyframes reveal-float-once {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.reveal-float-once {
+  animation: reveal-float-once 1.2s ease-out 1;
+}
+
+
+
+/* footer */
+
+ul.footer-nav {
+  display: flex !important;
+  flex-direction: row !important;
+  /* Von Spalte auf Reihe umschalten */
+  flex-wrap: wrap !important;
+  /* WICHTIG: Erlaubt den Umbruch in neue Zeilen */
+  justify-content: flex-end;
+  /* Alles bleibt rechtsbündig */
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.footer-nav li.footer-main {
+  width: 100%;
+  /* 100% Breite erzwingt, dass der nächste Link darunter landet */
+  text-align: right;
+  margin-bottom: 13px;
+}
+
+.footer-nav li.footer-main a {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgb(226 232 240);
+  transition: color 0.2s ease;
+}
+
+.footer-nav li.footer-legal {
+  display: inline-flex;
+  /* Erlaubt horizontales Nebeneinanderstehen */
+  align-items: center;
+  /* Zentriert den Inhalt (Link und Punkt) vertikal */
+  height: auto;
+  /* Verhindert eine erzwungene Höhe */
+  vertical-align: middle;
+  /* Zusätzliche Absicherung für Inline-Elemente */
+  margin-top: 20px;
+}
+
+.footer-nav li.footer-legal a {
+  font-size: 12px;
+  color: rgb(148 163 184);
+  white-space: nowrap;
+}
+
+.footer-nav li.footer-legal a:hover {
+  color:#fff;
+}
+
+/* 4. DER TRENNPUNKT: Nur zwischen den Legal-Links */
+.footer-nav li.footer-legal+li.footer-legal::before {
+  content: "·";
+  margin: 0 8px;
+  /* Der Punkt bekommt links und rechts Platz */
+  color: rgb(148 163 184);
+}
+
+
+===== resources/js/editor.js =====
+
+import domReady from '@wordpress/dom-ready';
+
+domReady(() => {
+  //
+});
+
+document.addEventListener('click', function (event) {
+  const toggle = event.target.closest('.handlediv') || event.target.closest('.hndle');
+  if (!toggle) return;
+
+  const current = toggle.closest('.postbox');
+  const container = current.closest('.meta-box-sortables');
+
+  setTimeout(() => {
+    // Nur wenn die geklickte Box jetzt offen ist, schließen wir die anderen
+    if (!current.classList.contains('closed')) {
+      const siblings = container.querySelectorAll('.postbox');
+      siblings.forEach(box => {
+        if (box !== current) {
+          box.classList.add('closed');
+          // Aria-Status für Screenreader korrigieren
+          const btn = box.querySelector('.handlediv');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  }, 100);
+});
+
+
+===== resources/js/landingpage 12_02_js =====
+
+import.meta.glob([
+  '../images/**',
+  '../fonts/**',
+]);
+
+/**
+ * Initialisiert weiches Scrollen mit stabilem Offset pro Zielsektion.
+ * Unterstützt data-scroll-offset auf dem Ziel-Element.
+ * initSmoothScroll/initScrollToTop
+ */
+function initSmoothScroll(duration = 700) {
+  const header = document.getElementById('siteHeader')
+  const headerHeight = header ? header.offsetHeight : 0
+  const isHome = window.location.pathname === '/' || window.location.pathname === ''
+
+  document.querySelectorAll('a[href*="#"]').forEach(link => {
+    link.addEventListener('click', e => {
+      if (!isHome) return
+
+      const url = new URL(link.href)
+      if (url.pathname !== '/' || !url.hash) return
+
+      const id = url.hash.replace('#', '')
+      if (!id) return
+
+      const target = document.getElementById(id)
+      if (!target) return
+
+      e.preventDefault()
+
+      const customOffset = target.dataset.scrollOffset
+        ? parseInt(target.dataset.scrollOffset, 10)
+        : 0
+
+      const targetY =
+        target.getBoundingClientRect().top +
+        window.pageYOffset -
+        headerHeight -
+        customOffset
+
+      smoothScrollTo(targetY, duration)
+    })
+  })
+
+  function smoothScrollTo(targetY, duration) {
+    const startY = window.pageYOffset
+    const diff = targetY - startY
+    let startTime = null
+
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp
+      const time = timestamp - startTime
+      const percent = Math.min(time / duration, 1)
+
+      window.scrollTo(0, startY + diff * ease(percent))
+
+      if (percent < 1) requestAnimationFrame(step)
+    }
+
+    function ease(t) {
+      return t < 0.5
+        ? 2 * t * t
+        : -1 + (4 - 2 * t) * t
+    }
+
+    requestAnimationFrame(step)
+  }
+}
+function initScrollToTop() {
+  const scrollBtn = document.getElementById('scrollToTopBtn');
+  if (!scrollBtn) return;
+
+  window.addEventListener('scroll', () => {
+    const isVisible = window.scrollY > 200;
+    scrollBtn.style.opacity = isVisible ? '1' : '0';
+    scrollBtn.style.pointerEvents = isVisible ? 'auto' : 'none';
+  });
+
+  scrollBtn.addEventListener('click', () => {
+    smoothScrollTo(0, 900);
+  });
+
+  function smoothScrollTo(targetY, duration) {
+    const startY = window.scrollY;
+    const diff = targetY - startY;
+    let startTime;
+
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const time = timestamp - startTime;
+      const percent = Math.min(time / duration, 1);
+      window.scrollTo(0, startY + diff * easeInOutQuad(percent));
+      if (time < duration) requestAnimationFrame(step);
+    }
+
+    function easeInOutQuad(t) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    requestAnimationFrame(step);
+  }
+}
+
+function initApp() {
+  initSmoothScroll(900);
+  initScrollToTop();
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+
+/* mobile menu */
+function initMobileMenu() {
+  const toggle = document.getElementById('mobileMenuToggle');
+  const close = document.getElementById('mobileMenuClose');
+  const menu = document.getElementById('mobileMenu');
+  const links = menu?.querySelectorAll('.mobile-link');
+
+  if (!toggle || !menu) return;
+
+  function openMenu() {
+    menu.classList.remove('translate-x-full');
+    document.body.classList.add('overflow-hidden');
+  }
+
+  function closeMenu() {
+    menu.classList.add('translate-x-full');
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  toggle.addEventListener('click', openMenu);
+  close?.addEventListener('click', closeMenu);
+
+  links?.forEach(link => {
+    link.addEventListener('click', closeMenu);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeMenu();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initMobileMenu);
+
+function initStickyHeader() {
+  const header = document.getElementById('siteHeader');
+  if (!header) return;
+
+  function update() {
+    if (window.scrollY > 40) {
+      header.classList.add('is-scrolled');
+    } else {
+      header.classList.remove('is-scrolled');
+    }
+  }
+
+  update();
+  window.addEventListener('scroll', update, { passive: true });
+}
+
+document.addEventListener('DOMContentLoaded', initStickyHeader);
+
+/**
+ * Initialisiert Validierung und AJAX-Submit für das Kontaktformular.
+ * Zeigt mehrsprachige Inline-Fehlermeldungen und sendet gültige Daten per AJAX.
+ */
+function initContactForm() {
+  const form = document.getElementById('contactForm');
+  if (!form) return;
+
+  const successBox = document.getElementById('contactSuccess');
+  const lang = document.documentElement.lang?.startsWith('de') ? 'de' : 'en';
+
+  const messages = {
+    en: {
+      email_required: 'Please enter your email address.',
+      email_invalid: 'Please enter a valid email address.',
+      message_required: 'Please enter a message.',
+      message_too_short: 'Your message must contain at least 5 characters.'
+    },
+    de: {
+      email_required: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
+      email_invalid: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+      message_required: 'Bitte geben Sie eine Nachricht ein.',
+      message_too_short: 'Die Nachricht muss mindestens 5 Zeichen enthalten.'
+    }
+  };
+
+  const t = key => messages[lang][key] || messages.en[key];
+
+  const emailField = form.querySelector('[name="email"]');
+  const messageField = form.querySelector('[name="message"]');
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function showError(field, message) {
+    const el = form.querySelector('.error-' + field.name);
+    el.textContent = message;
+    el.style.maxHeight = '40px';
+    el.style.opacity = '1';
+    field.setAttribute('aria-invalid', 'true');
+  }
+
+  function clearError(field) {
+    const el = form.querySelector('.error-' + field.name);
+    el.style.maxHeight = '0';
+    el.style.opacity = '0';
+    field.removeAttribute('aria-invalid');
+
+    el.addEventListener(
+      'transitionend',
+      () => {
+        el.textContent = '';
+      },
+      { once: true }
+    );
+  }
+
+  function validateEmail() {
+    const value = emailField.value.trim();
+
+    if (!value) {
+      showError(emailField, t('email_required'));
+      return false;
+    }
+
+    if (!emailRegex.test(value)) {
+      showError(emailField, t('email_invalid'));
+      return false;
+    }
+
+    clearError(emailField);
+    return true;
+  }
+
+  function validateMessage() {
+    const value = messageField.value.trim();
+
+    if (!value) {
+      showError(messageField, t('message_required'));
+      return false;
+    }
+
+    if (value.length < 5) {
+      showError(messageField, t('message_too_short'));
+      return false;
+    }
+
+    clearError(messageField);
+    return true;
+  }
+
+  emailField.addEventListener('input', validateEmail);
+  messageField.addEventListener('input', validateMessage);
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const emailValid = validateEmail();
+    const messageValid = validateMessage();
+
+    if (!emailValid || !messageValid) return;
+
+    const data = new FormData(form);
+    data.append('action', 'contact_form_submit');
+
+    const ajaxUrl = form.dataset.ajaxUrl;
+
+    const response = await fetch(ajaxUrl, {
+      method: 'POST',
+      body: data
+    });
+
+    const json = await response.json();
+
+    if (!json.success && json.data?.field) {
+      const field =
+        json.data.field === 'email' ? emailField : messageField;
+      showError(field, '');
+      return;
+    }
+
+    clearError(emailField);
+    clearError(messageField);
+
+    successBox.style.maxHeight = '40px';
+    successBox.style.opacity = '1';
+
+    setTimeout(() => {
+      successBox.style.maxHeight = '0';
+      successBox.style.opacity = '0';
+    }, 5000);
+
+    form.reset();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initContactForm);
+
+/**
+ * Aktiviert Reveal-Animationen für Text- und Medien-Elemente beim Eintritt in den Viewport.
+ * Staggering erfolgt lokal pro Eintrittsgruppe, mit einmaliger Zusatzbewegung.
+ */
+function initRevealOnScroll() {
+  const elements = document.querySelectorAll('.reveal-text, .reveal-media');
+  if (!elements.length) return;
+
+  const observer = new IntersectionObserver(
+    entries => {
+      const visibleEntries = entries.filter(entry => entry.isIntersecting);
+
+      visibleEntries.forEach((entry, localIndex) => {
+        const el = entry.target;
+        const delay = Number(el.dataset.revealDelay ?? localIndex * 250);
+
+        setTimeout(() => {
+          el.classList.add('is-visible');
+
+          if (el.classList.contains('reveal-media')) {
+            el.classList.add('reveal-float-once');
+          }
+        }, delay);
+
+        observer.unobserve(el);
+      });
+    },
+    { threshold: 0.15 }
+  );
+
+  elements.forEach(el => observer.observe(el));
+}
+
+document.addEventListener('DOMContentLoaded', initRevealOnScroll);
+
+/**
+ *
+ * @returns Hero image effect / moving
+ */
+function initHeroFloat() {
+  const el = document.querySelector('.hero-phone-float');
+  if (!el) return;
+
+  function update() {
+    const y = Math.min(window.scrollY / 12, 12);
+    el.style.transform = `translateY(${-y}px)`;
+  }
+
+  update();
+  window.addEventListener('scroll', update, { passive: true });
+}
+
+document.addEventListener('DOMContentLoaded', initHeroFloat);
+
+/* classes/colors for navigation links */
+function initScrollSpy() {
+  const navLinks = Array.from(document.querySelectorAll('.nav-link'));
+  if (!navLinks.length) return;
+
+  const sections = navLinks
+    .map(link => {
+      const href = link.getAttribute('href')
+      if (!href || !href.includes('#')) return null
+
+      const id = href.split('#')[1]
+      if (!id) return null
+
+      return document.getElementById(id)
+    })
+    .filter(Boolean)
+
+  function updateActiveNav() {
+    const triggerPoint = window.innerHeight * 0.5;
+    let activeSection = null;
+
+    for (const section of sections) {
+      const rect = section.getBoundingClientRect();
+      if (rect.top <= triggerPoint && rect.bottom >= triggerPoint) {
+        activeSection = section;
+        break;
+      }
+    }
+
+    navLinks.forEach(link => {
+      const href = link.getAttribute('href')
+      if (!href || !href.includes('#')) return
+
+      const id = href.split('#')[1]
+      const isActive = activeSection && id === activeSection.id
+
+      link.classList.toggle('is-active', isActive)
+    })
+
+  }
+
+  updateActiveNav();
+  window.addEventListener('scroll', updateActiveNav, { passive: true });
+}
+
+document.addEventListener('DOMContentLoaded', initScrollSpy);
+
+
+===== resources/js/landingpage copy_js =====
+
+import.meta.glob([
+  '../images/**',
+  '../fonts/**',
+]);
+
+function initSmoothScroll(duration = 700) {
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', function (e) {
+      const id = this.getAttribute('href');
+      if (!id || id === '#') return;
+
+      const target = document.querySelector(id);
+      if (!target) return;
+
+      e.preventDefault();
+
+      const rectTop = target.getBoundingClientRect().top;
+      const absoluteY = window.scrollY + rectTop;
+
+      const DEFAULT_OFFSET = 80;
+      const customOffset = target.dataset.scrollOffset
+        ? parseInt(target.dataset.scrollOffset, 10)
+        : DEFAULT_OFFSET;
+
+      const targetY = absoluteY - customOffset;
+
+      smoothScrollTo(targetY, duration);
+    });
+  });
+
+  function smoothScrollTo(targetY, duration) {
+    const startY = window.scrollY;
+    const diff = targetY - startY;
+    let startTime = null;
+
+    function step(ts) {
+      if (!startTime) startTime = ts;
+
+      const time = ts - startTime;
+      const percent = Math.min(time / duration, 1);
+
+      window.scrollTo(0, startY + diff * ease(percent));
+
+      if (percent < 1) requestAnimationFrame(step);
+    }
+
+    function ease(t) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    requestAnimationFrame(step);
+  }
+}
+
+
+function initScrollToTop() {
+  const scrollBtn = document.getElementById('scrollToTopBtn');
+  if (!scrollBtn) return;
+  window.addEventListener('scroll', () => {
+    const isVisible = window.scrollY > 200;
+    scrollBtn.style.opacity = isVisible ? '1' : '0';
+    scrollBtn.style.pointerEvents = isVisible ? 'auto' : 'none';
+  });
+  scrollBtn.addEventListener('click', () => {
+    smoothScrollTo(0, 900);
+  });
+  function smoothScrollTo(targetY, duration) {
+    const startY = window.scrollY;
+    const diff = targetY - startY;
+    let startTime;
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const time = timestamp - startTime;
+      const percent = Math.min(time / duration, 1);
+      window.scrollTo(0, startY + diff * easeInOutQuad(percent));
+      if (time < duration) requestAnimationFrame(step);
+    }
+    function easeInOutQuad(t) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+    requestAnimationFrame(step);
+  }
+}
+
+function initApp() {
+  initSmoothScroll(900);
+  initScrollToTop();
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+
+/* mobile menu */
+function initMobileMenu() {
+  const toggle = document.getElementById('mobileMenuToggle');
+  const close = document.getElementById('mobileMenuClose');
+  const menu = document.getElementById('mobileMenu');
+  const links = menu?.querySelectorAll('.mobile-link');
+
+  if (!toggle || !menu) return;
+
+  function openMenu() {
+    menu.classList.remove('translate-x-full');
+    document.body.classList.add('overflow-hidden');
+  }
+
+  function closeMenu() {
+    menu.classList.add('translate-x-full');
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  toggle.addEventListener('click', openMenu);
+  close?.addEventListener('click', closeMenu);
+
+  links?.forEach(link => {
+    link.addEventListener('click', closeMenu);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeMenu();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMobileMenu();
+});
+
+
+
+
+
+function initStickyHeader() {
+  const header = document.getElementById('siteHeader')
+  if (!header) return
+
+  function update() {
+    if (window.scrollY > 40) {
+      header.classList.add('is-scrolled')
+    } else {
+      header.classList.remove('is-scrolled')
+    }
+  }
+
+  update()
+  window.addEventListener('scroll', update, { passive: true })
+}
+
+document.addEventListener('DOMContentLoaded', initStickyHeader)
+
+
+
+
+/**
+ * Initialisiert Validierung und AJAX-Submit für das Kontaktformular.
+ * Zeigt mehrsprachige Inline-Fehlermeldungen und sendet gültige Daten per AJAX.
+ */
+
+function initContactForm() {
+  const form = document.getElementById('contactForm')
+  if (!form) return
+  const successBox = document.getElementById('contactSuccess')
+  const lang =
+    document.documentElement.lang?.startsWith('de') ? 'de' : 'en'
+
+  const messages = {
+    en: {
+      email_required: 'Please enter your email address.',
+      email_invalid: 'Please enter a valid email address.',
+      message_required: 'Please enter a message.',
+      message_too_short: 'Your message must contain at least 5 characters.'
+    },
+    de: {
+      email_required: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
+      email_invalid: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+      message_required: 'Bitte geben Sie eine Nachricht ein.',
+      message_too_short: 'Die Nachricht muss mindestens 5 Zeichen enthalten.'
+    }
+  }
+
+  const t = key => messages[lang][key] || messages.en[key]
+
+  const emailField = form.querySelector('[name="email"]')
+  const messageField = form.querySelector('[name="message"]')
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  function showError(field, message) {
+    const el = form.querySelector('.error-' + field.name)
+    el.textContent = message
+    el.style.maxHeight = '40px'
+    el.style.opacity = '1'
+    field.setAttribute('aria-invalid', 'true')
+  }
+
+  function clearError(field) {
+    const el = form.querySelector('.error-' + field.name)
+
+    el.style.maxHeight = '0'
+    el.style.opacity = '0'
+    field.removeAttribute('aria-invalid')
+
+    el.addEventListener(
+      'transitionend',
+      () => {
+        el.textContent = ''
+      },
+      { once: true }
+    )
+  }
+
+  function validateEmail() {
+    const value = emailField.value.trim()
+
+    if (!value) {
+      showError(emailField, t('email_required'))
+      return false
+    }
+
+    if (!emailRegex.test(value)) {
+      showError(emailField, t('email_invalid'))
+      return false
+    }
+
+    clearError(emailField)
+    return true
+  }
+
+  function validateMessage() {
+    const value = messageField.value.trim()
+
+    if (!value) {
+      showError(messageField, t('message_required'))
+      return false
+    }
+
+    if (value.length < 5) {
+      showError(messageField, t('message_too_short'))
+      return false
+    }
+
+    clearError(messageField)
+    return true
+  }
+
+  emailField.addEventListener('input', validateEmail)
+  messageField.addEventListener('input', validateMessage)
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault()
+
+    const emailValid = validateEmail()
+    const messageValid = validateMessage()
+
+    if (!emailValid || !messageValid) return
+
+    const data = new FormData(form)
+    data.append('action', 'contact_form_submit')
+
+    const ajaxUrl = form.dataset.ajaxUrl
+
+    const response = await fetch(ajaxUrl, {
+      method: 'POST',
+      body: data
+    })
+
+    const json = await response.json()
+
+    if (!json.success && json.data?.field) {
+      const field =
+        json.data.field === 'email' ? emailField : messageField
+      showError(field, '')
+      return
+    }
+
+    clearError(emailField)
+    clearError(messageField)
+
+    successBox.style.maxHeight = '40px'
+    successBox.style.opacity = '1'
+
+    setTimeout(() => {
+      successBox.style.maxHeight = '0'
+      successBox.style.opacity = '0'
+    }, 5000)
+
+    form.reset()
+  })
+}
+
+document.addEventListener('DOMContentLoaded', initContactForm)
+
+/**
+ * Aktiviert Reveal-Animationen für Text- und Medien-Elemente beim Eintritt in den Viewport.
+ * Staggering erfolgt lokal pro Eintrittsgruppe, mit einmaliger Zusatzbewegung.
+ */
+function initRevealOnScroll() {
+  const elements = document.querySelectorAll('.reveal-text, .reveal-media')
+  if (!elements.length) return
+
+  const observer = new IntersectionObserver(
+    entries => {
+      const visibleEntries = entries.filter(entry => entry.isIntersecting)
+
+      visibleEntries.forEach((entry, localIndex) => {
+        const el = entry.target
+        const delay = Number(el.dataset.revealDelay ?? localIndex * 250)
+
+        setTimeout(() => {
+          el.classList.add('is-visible')
+
+          if (el.classList.contains('reveal-media')) {
+            el.classList.add('reveal-float-once')
+          }
+        }, delay)
+
+        observer.unobserve(el)
+      })
+    },
+    { threshold: 0.15 }
+  )
+
+  elements.forEach(el => observer.observe(el))
+}
+
+document.addEventListener('DOMContentLoaded', initRevealOnScroll)
+
+/**
+ *
+ * @returns Hero image effect
+ */
+
+function initHeroFloat() {
+  const el = document.querySelector('.hero-phone-float')
+  if (!el) return
+
+  function update() {
+    const y = Math.min(window.scrollY / 12, 12)
+    el.style.transform = `translateY(${-y}px)`
+  }
+
+  update()
+  window.addEventListener('scroll', update, { passive: true })
+}
+
+document.addEventListener('DOMContentLoaded', initHeroFloat)
+
+
+/* Scroll-Spy für Landingpage Navigation mit Debug-Ausgaben */
+
+const navLinks = Array.from(document.querySelectorAll('.nav-link'));
+
+console.log('[ScrollSpy] navLinks gefunden:', navLinks.length);
+
+if (!navLinks.length) {
+  console.warn('[ScrollSpy] Keine .nav-link gefunden – Abbruch');
+} else {
+  const sections = navLinks
+    .map(link => {
+      const target = link.getAttribute('href');
+      const section = document.querySelector(target);
+
+      console.log('[ScrollSpy] Link → Section', target, section ? 'OK' : 'NICHT GEFUNDEN');
+
+      return section;
+    })
+    .filter(Boolean);
+
+  console.log('[ScrollSpy] Gültige Sections:', sections.map(s => s.id));
+
+  const updateActiveNav = () => {
+    const triggerPoint = window.innerHeight * 0.5;
+
+    console.log('--- Scroll ---');
+    console.log('[ScrollSpy] TriggerPoint:', triggerPoint);
+
+    let activeSection = null;
+
+    for (const section of sections) {
+      const rect = section.getBoundingClientRect();
+
+      console.log(
+        `[ScrollSpy] Section #${section.id}`,
+        'top:', Math.round(rect.top),
+        'bottom:', Math.round(rect.bottom)
+      );
+
+      if (rect.top <= triggerPoint && rect.bottom >= triggerPoint) {
+        activeSection = section;
+        break;
+      }
+    }
+
+    console.log(
+      '[ScrollSpy] Aktive Section:',
+      activeSection ? `#${activeSection.id}` : 'KEINE'
+    );
+
+    navLinks.forEach(link => {
+      const href = link.getAttribute('href');
+      const isActive = activeSection && href === `#${activeSection.id}`;
+
+      link.classList.toggle('is-active', isActive);
+
+      if (isActive) {
+        console.log('[ScrollSpy] Aktiv gesetzt:', href);
+      }
+    });
+  };
+
+  updateActiveNav();
+  window.addEventListener('scroll', updateActiveNav, { passive: true });
+}
+
+
+===== resources/js/landingpage.js =====
+
+import.meta.glob([
+  '../images/**',
+  '../fonts/**',
+])
+
+/**
+ * Globales Smooth Scroll Utility
+ */
+function smoothScrollTo(targetY, duration = 700) {
+  const startY = window.scrollY
+  const diff = targetY - startY
+  let startTime = null
+
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp
+    const time = timestamp - startTime
+    const percent = Math.min(time / duration, 1)
+
+    window.scrollTo(0, startY + diff * ease(percent))
+
+    if (percent < 1) requestAnimationFrame(step)
+  }
+
+  function ease(t) {
+    return t < 0.5
+      ? 2 * t * t
+      : -1 + (4 - 2 * t) * t
+  }
+
+  requestAnimationFrame(step)
+}
+
+/**
+ * Initialisiert weiches Scrollen mit stabilem Offset pro Zielsektion.
+ * Unterstützt data-scroll-offset auf dem Ziel-Element.
+ * initSmoothScroll/initScrollToTop
+ */
+function initSmoothScroll(duration = 700) {
+  const isHome = window.location.pathname === '/' || window.location.pathname === ''
+
+  document.querySelectorAll('a[href*="#"]').forEach(link => {
+    link.addEventListener('click', e => {
+      if (!isHome) return
+
+      const url = new URL(link.href)
+      if (url.pathname !== '/' || !url.hash) return
+
+      const id = url.hash.replace('#', '')
+      if (!id) return
+
+      const target = document.getElementById(id)
+      if (!target) return
+
+      e.preventDefault()
+
+      const header = document.getElementById('siteHeader')
+      const headerHeight = header ? header.offsetHeight : 0
+
+      const customOffset = target.dataset.scrollOffset
+        ? parseInt(target.dataset.scrollOffset, 10)
+        : 0
+
+      const targetY =
+        target.getBoundingClientRect().top +
+        window.pageYOffset -
+        headerHeight -
+        customOffset
+
+      smoothScrollTo(targetY, duration)
+    })
+  })
+}
+
+function initScrollToTop() {
+  const scrollBtn = document.getElementById('scrollToTopBtn')
+  if (!scrollBtn) return
+
+  window.addEventListener('scroll', () => {
+    const isVisible = window.scrollY > 200
+    scrollBtn.style.opacity = isVisible ? '1' : '0'
+    scrollBtn.style.pointerEvents = isVisible ? 'auto' : 'none'
+  }, { passive: true })
+
+  scrollBtn.addEventListener('click', () => {
+    smoothScrollTo(0, 900)
+  })
+}
+
+/* mobile menu */
+function initMobileMenu() {
+  const toggle = document.getElementById('mobileMenuToggle')
+  const close = document.getElementById('mobileMenuClose')
+  const menu = document.getElementById('mobileMenu')
+  const links = menu?.querySelectorAll('.mobile-link')
+
+  if (!toggle || !menu) return
+
+  function openMenu() {
+    menu.classList.remove('translate-x-full')
+    document.body.classList.add('overflow-hidden')
+  }
+
+  function closeMenu() {
+    menu.classList.add('translate-x-full')
+    document.body.classList.remove('overflow-hidden')
+  }
+
+  toggle.addEventListener('click', openMenu)
+  close?.addEventListener('click', closeMenu)
+
+  links?.forEach(link => {
+    link.addEventListener('click', closeMenu)
+  })
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeMenu()
+  })
+}
+
+function initStickyHeader() {
+  const header = document.getElementById('siteHeader')
+  if (!header) return
+
+  function update() {
+    if (window.scrollY > 40) {
+      header.classList.add('is-scrolled')
+    } else {
+      header.classList.remove('is-scrolled')
+    }
+  }
+
+  update()
+  window.addEventListener('scroll', update, { passive: true })
+}
+
+/**
+ * Initialisiert Validierung und AJAX-Submit für das Kontaktformular.
+ * Zeigt mehrsprachige Inline-Fehlermeldungen und sendet gültige Daten per AJAX.
+ */
+function initContactForm() {
+  const form = document.getElementById('contactForm')
+  if (!form) return
+
+  const successBox = document.getElementById('contactSuccess')
+  const lang = document.documentElement.lang?.startsWith('de') ? 'de' : 'en'
+
+  const messages = {
+    en: {
+      email_required: 'Please enter your email address.',
+      email_invalid: 'Please enter a valid email address.',
+      message_required: 'Please enter a message.',
+      message_too_short: 'Your message must contain at least 5 characters.'
+    },
+    de: {
+      email_required: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
+      email_invalid: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+      message_required: 'Bitte geben Sie eine Nachricht ein.',
+      message_too_short: 'Die Nachricht muss mindestens 5 Zeichen enthalten.'
+    }
+  }
+
+  const t = key => messages[lang][key] || messages.en[key]
+
+  const emailField = form.querySelector('[name="email"]')
+  const messageField = form.querySelector('[name="message"]')
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  function showError(field, message) {
+    const el = form.querySelector('.error-' + field.name)
+    if (!el) return
+    el.textContent = message
+    el.style.maxHeight = '40px'
+    el.style.opacity = '1'
+    field.setAttribute('aria-invalid', 'true')
+  }
+
+  function clearError(field) {
+    const el = form.querySelector('.error-' + field.name)
+    if (!el) return
+    el.style.maxHeight = '0'
+    el.style.opacity = '0'
+    field.removeAttribute('aria-invalid')
+
+    el.addEventListener('transitionend', () => {
+      el.textContent = ''
+    }, { once: true })
+  }
+
+  function validateEmail() {
+    const value = emailField.value.trim()
+
+    if (!value) {
+      showError(emailField, t('email_required'))
+      return false
+    }
+
+    if (!emailRegex.test(value)) {
+      showError(emailField, t('email_invalid'))
+      return false
+    }
+
+    clearError(emailField)
+    return true
+  }
+
+  function validateMessage() {
+    const value = messageField.value.trim()
+
+    if (!value) {
+      showError(messageField, t('message_required'))
+      return false
+    }
+
+    if (value.length < 5) {
+      showError(messageField, t('message_too_short'))
+      return false
+    }
+
+    clearError(messageField)
+    return true
+  }
+
+  emailField.addEventListener('input', validateEmail)
+  messageField.addEventListener('input', validateMessage)
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault()
+
+    const emailValid = validateEmail()
+    const messageValid = validateMessage()
+
+    if (!emailValid || !messageValid) return
+
+    const data = new FormData(form)
+    data.append('action', 'contact_form_submit')
+
+    const ajaxUrl = form.dataset.ajaxUrl
+
+    try {
+      const response = await fetch(ajaxUrl, {
+        method: 'POST',
+        body: data
+      })
+
+      if (!response.ok) throw new Error()
+
+      const json = await response.json()
+
+      if (!json.success && json.data?.field) {
+        const field = json.data.field === 'email' ? emailField : messageField
+        showError(field, '')
+        return
+      }
+
+      clearError(emailField)
+      clearError(messageField)
+
+      successBox.style.maxHeight = '40px'
+      successBox.style.opacity = '1'
+
+      setTimeout(() => {
+        successBox.style.maxHeight = '0'
+        successBox.style.opacity = '0'
+      }, 5000)
+
+      form.reset()
+    } catch {
+      console.error('Contact form submission failed')
+    }
+  })
+}
+
+/**
+ * Aktiviert Reveal-Animationen für Text- und Medien-Elemente beim Eintritt in den Viewport.
+ * Staggering erfolgt lokal pro Eintrittsgruppe, mit einmaliger Zusatzbewegung.
+ */
+function initRevealOnScroll() {
+  const elements = document.querySelectorAll('.reveal-text, .reveal-media');
+  if (!elements.length) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      // Wir gruppieren die Einträge nach dem Moment des Sichtbarwerdens
+      entries.forEach((entry, index) => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+
+          // PRIORITÄT 1: Manuelles Delay aus Blade (für exakte Reihenfolge)
+          // PRIORITÄT 2: Automatisches lokales Staggering (falls im Blade nichts steht)
+          const delay = el.dataset.revealDelay
+            ? Number(el.dataset.revealDelay)
+            : index * 150; // Index basiert hier auf den aktuell sichtbar werdenden Elementen
+
+          setTimeout(() => {
+            el.classList.add('is-visible');
+            if (el.classList.contains('reveal-media')) {
+              el.classList.add('reveal-float-once');
+            }
+          }, delay);
+
+          observer.unobserve(el);
+        }
+      });
+    },
+    {
+      threshold: 0.15,
+      rootMargin: '0px 0px -50px 0px' // Startet kurz bevor es ganz da ist
+    }
+  );
+
+  elements.forEach(el => observer.observe(el));
+}
+
+/**
+ *
+ * @returns Hero image - and other elements - effect / moving
+ */
+function initHeroFloat() {
+  const elements = document.querySelectorAll('.element-float');
+  if (!elements.length) return;
+
+  function update() {
+    elements.forEach(el => {
+      // Prüfen, wo das Element gerade im Fenster steht
+      const rect = el.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+
+      // Nur berechnen, wenn das Element im Sichtfeld ist
+      if (rect.top < windowHeight && rect.bottom > 0) {
+        // Wir berechnen den Fortschritt des Elements durch den Viewport (0 bis 1)
+        // 0 = Element kommt unten gerade rein, 1 = Element verschwindet oben
+        const scrollPercent = (windowHeight - rect.top) / (windowHeight + rect.height);
+
+        // Sanfter Schwung: von -15px bis +15px
+        const movementRange = 30;
+        const offset = 15;
+        const y = (scrollPercent * movementRange) - offset;
+
+        el.style.transform = `translateY(${-y}px)`;
+      }
+    });
+  }
+
+  update();
+  window.addEventListener('scroll', update, { passive: true });
+}
+
+/* classes/colors for navigation links */
+function initScrollSpy() {
+  const navLinks = Array.from(document.querySelectorAll('.nav-link'))
+  if (!navLinks.length) return
+
+  const sections = navLinks
+    .map(link => {
+      const href = link.getAttribute('href')
+      if (!href || !href.includes('#')) return null
+      const id = href.split('#')[1]
+      if (!id) return null
+      return document.getElementById(id)
+    })
+    .filter(Boolean)
+
+  let ticking = false
+
+  function updateActiveNav() {
+    const triggerPoint = window.innerHeight * 0.5
+    let activeSection = null
+
+    for (const section of sections) {
+      const rect = section.getBoundingClientRect()
+      if (rect.top <= triggerPoint && rect.bottom >= triggerPoint) {
+        activeSection = section
+        break
+      }
+    }
+
+    navLinks.forEach(link => {
+      const href = link.getAttribute('href')
+      if (!href || !href.includes('#')) return
+      const id = href.split('#')[1]
+      const isActive = activeSection && id === activeSection.id
+      link.classList.toggle('is-active', isActive)
+    })
+
+    ticking = false
+  }
+
+  function onScroll() {
+    if (!ticking) {
+      requestAnimationFrame(updateActiveNav)
+      ticking = true
+    }
+  }
+
+  updateActiveNav()
+  window.addEventListener('scroll', onScroll, { passive: true })
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initSmoothScroll(900)
+  initScrollToTop()
+  initMobileMenu()
+  initStickyHeader()
+  initContactForm()
+  initRevealOnScroll()
+  initHeroFloat()
+  initScrollSpy()
+})
+
+
+===== resources/js/theme-toggle.js =====
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  const html = document.documentElement
+  const buttons = document.querySelectorAll('[data-theme-toggle]')
+
+  if (!buttons.length) return
+
+  buttons.forEach(btn => {
+
+    btn.addEventListener('click', async () => {
+
+      const current = html.dataset.theme === 'dark' ? 'dark' : 'light'
+      const next = current === 'dark' ? 'light' : 'dark'
+
+      html.dataset.theme = next
+
+      const form = new FormData()
+      form.append('action', 'set_dashboard_theme')
+      form.append('theme', next)
+      form.append('_wpnonce', btn.dataset.nonce)
+
+      await fetch(btn.dataset.ajax, {
+        method: 'POST',
+        body: form
+      })
+
+    })
+
+  })
+
+})
+
+
+===== resources/views/404.blade.php =====
+
+@extends('layouts.landingpage')
+
+@section('content')
+  @include('partials.page-header')
+
+  @if (! have_posts())
+    <x-alert type="warning">
+      {!! __('Sorry, but the page you are trying to view does not exist.', 'sage') !!}
+    </x-alert>
+
+    {!! get_search_form(false) !!}
+  @endif
+@endsection
+
+
+===== resources/views/index.blade.php =====
+
+@extends('layouts.landingpage')
+
+@section('content')
+  @include('partials.page-header')
+
+  @if (! have_posts())
+    <x-alert type="warning">
+      {!! __('Sorry, no results were found.', 'sage') !!}
+    </x-alert>
+
+    {!! get_search_form(false) !!}
+  @endif
+
+  @while(have_posts()) @php(the_post())
+    @includeFirst(['partials.content-' . get_post_type(), 'partials.content'])
+  @endwhile
+
+  {!! get_the_posts_navigation() !!}
+@endsection
+
+@section('sidebar')
+  @include('sections.sidebar')
+@endsection
+
+
+===== resources/views/layouts/conversion.blade.php =====
+
+<!doctype html>
+<html @php(language_attributes())>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  @php(do_action('get_header'))
+  @php(wp_head())
+
+  @vite(['resources/css/landingpage-app.css', 'resources/js/landingpage.js'])
+</head>
+
+<body @php(body_class())>
+  <div id="top"></div>
+  @php(wp_body_open())
+
+  <div id="app">
+    <a class="sr-only focus:not-sr-only" href="#main">
+      {{ __('Skip to content', 'sage') }}
+    </a>
+
+    @include('sections.site-header')
+
+    <main id="main" class="main">
+
+      @yield('content')
+
+    </main>
+
+    @hasSection('sidebar')
+    <aside class="sidebar">
+      @yield('sidebar')
+    </aside>
+    @endif
+
+  </div>
+
+
+</body>
+
+</html>
+
+
+===== resources/views/layouts/landingpage.blade.php =====
+
+<!doctype html>
+<html @php(language_attributes())>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  @php(do_action('get_header'))
+  @php(wp_head())
+
+  @vite(['resources/css/landingpage-app.css', 'resources/js/landingpage.js'])
+</head>
+
+<body @php(body_class())>
+  <div id="top"></div>
+  @php(wp_body_open())
+
+  <div id="app">
+    <a class="sr-only focus:not-sr-only" href="#main">
+      {{ __('Skip to content', 'sage') }}
+    </a>
+
+    @include('sections.site-header')
+
+    <main id="main" class="main">
+      @yield('content')
+    </main>
+
+    @hasSection('sidebar')
+    <aside class="sidebar">
+      @yield('sidebar')
+    </aside>
+    @endif
+
+    @include('sections.footer')
+  </div>
+
+  @php(do_action('get_footer'))
+  @php(wp_footer())
+</body>
+
+</html>
+
+
+===== resources/views/page-landing.blade.php =====
+
+{{--
+Template Name: Landing Page
+--}}
+@extends('layouts.landingpage')
+
+@section('content')
+@include('partials.landing.hero')
+@include('partials.landing.about')
+@include('partials.landing.contact')
+@include('partials.landing.team')
+@include('partials.landing.market-insights')
+@endsection
+
+
+===== resources/views/page.blade.php =====
+
+@extends('layouts.landingpage')
+
+@section('content')
+  @while(have_posts()) @php(the_post())
+    @include('partials.page-header')
+    @includeFirst(['partials.content-page', 'partials.content'])
+  @endwhile
+@endsection
+
+
+===== resources/views/pages/page-trial.blade.php =====
+
+{{--
+Template Name: Conversion – Trial
+--}}
+
+@extends('layouts.conversion')
+
+@section('content')
+
+<section class="relative min-h-screen overflow-hidden">
+
+  <div class="absolute inset-0">
+    <img
+      src="{{ Vite::asset('resources/images/hero-bg.jpg') }}"
+      alt=""
+      class="h-full w-full object-cover">
+    <div class="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-slate-950/30 to-slate-950/10"></div>
+  </div>
+
+  <div class="relative">
+    <div class="container-content pt-32 pb-40">
+
+      <div class="grid grid-cols-1 gap-x-16 gap-y-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+
+        {{-- LEFT · HEADLINE --}}
+        <div>
+          <h1 class="text-4xl font-semibold tracking-tight text-white lg:text-5xl">
+            Start Your <span class="text-brand-primary">Free Trial</span>
+          </h1>
+
+          <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-300">
+            Sign up to access advanced trading signals and structured market analyses.
+            Cancel anytime during your free trial.
+          </p>
+        </div>
+
+        {{-- RIGHT · FORM --}}
+        <div class="lg:row-span-2">
+          @include('partials.auth.signup-form')
+        </div>
+
+        {{-- LEFT · PLAN CARD --}}
+        <div class="max-w-md">
+          @include('partials.subscription.plan-card')
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <div class="relative">
+    @include('sections.conversion-footer')
+  </div>
+
+</section>
+
+@endsection
+
+
+===== resources/views/partials/auth/signup-form.blade.php =====
+
+<div class="rounded-2xl bg-white p-10 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+
+  <div class="mb-6 grid grid-cols-2 gap-4">
+    <button type="button" class="flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+      <img src="{{ Vite::asset('resources/images/google.svg') }}" alt="" class="h-4 w-4">
+      Sign up with Google
+    </button>
+
+    <button type="button" class="flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+      <img src="{{ Vite::asset('resources/images/apple.svg') }}" alt="" class="h-4 w-4">
+      Sign up with Apple
+    </button>
+  </div>
+
+  <h2 class="text-xl font-semibold text-slate-900">
+    Create Your <span class="text-brand-primary">Bloombridge Capital</span> Account
+  </h2>
+
+
+  <form class="mt-6 space-y-5">
+
+    <div>
+      <input type="text" placeholder="Full Name" class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none">
+    </div>
+
+    <div>
+      <input type="email" placeholder="Email Address" class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none">
+    </div>
+
+    <div>
+      <input type="password" placeholder="Password" class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none">
+    </div>
+
+    <button type="submit" class="mt-4 w-full rounded-md bg-brand-primary py-3 text-base font-medium text-white transition hover:bg-brand-primaryHover">
+      Start Free Now
+    </button>
+
+    <ul class="mt-6 space-y-3 text-base font-base text-slate-700">
+      <li class="flex items-start gap-3">
+        @include('icons.check')
+        <span>7 Tage <strong>kostenlos</strong> testen</span>
+      </li>
+
+      <li class="flex items-start gap-3">
+        @include('icons.check')
+        <span>Keine Zahlungsdaten beim Start</span>
+      </li>
+
+      <li class="flex items-start gap-3">
+        @include('icons.check')
+        <span>Kündigung jederzeit mit einem Klick</span>
+      </li>
+    </ul>
+
+
+    {{--
+    <div class="mt-6 text-xs text-slate-400">
+      Zahlungsabwicklung später über Stripe.
+    </div>
+--}}
+
+    {{--
+    <div class="mt-3 flex items-center gap-4 text-xs text-slate-400">
+      <span>stripe</span>
+      <span>VISA</span>
+      <span>Mastercard</span>
+      <span>SEPA</span>
+    </div>
+--}}
+
+    {{--
+    <div class="mt-6 border-t border-slate-200 pt-4">
+      <div class="flex items-center justify-center gap-5 opacity-60">
+        <img src="{{ asset('images/payments/stripe.svg') }}" alt="Stripe" class="h-4">
+    <img src="{{ asset('images/payments/visa.svg') }}" alt="Visa" class="h-4">
+    <img src="{{ asset('images/payments/mastercard.svg') }}" alt="Mastercard" class="h-4">
+    <img src="{{ asset('images/payments/sepa.svg') }}" alt="SEPA" class="h-4">
+</div>
+</div>
+--}}
+
+
+<p class="mt-5 text-center text-xs text-slate-400">
+  By clicking “Start Free Now”, you agree to our Terms & Privacy Policy.
+</p>
+
+<div class="mt-2 pt-2 flex justify-center">
+  <img
+    src="{{ asset('resources/images/trustline.png') }}"
+    alt="Payment methods"
+    class="h-7 opacity-70">
+</div>
+
+{{--
+<div class="mt-6 pt-4 flex justify-center">
+  <img
+    src="{{ asset('resources/images/trustline-2.png') }}"
+    alt="Payment methods"
+    class="h-7 opacity-60">
+</div>
+--}}
+
+
+</form>
+</div>
+
+
+===== resources/views/partials/comments.blade.php =====
+
+@if (! post_password_required())
+  <section id="comments" class="comments">
+    @if ($responses())
+      <h2>
+        {!! $title !!}
+      </h2>
+
+      <ol class="comment-list">
+        {!! $responses !!}
+      </ol>
+
+      @if ($paginated())
+        <nav aria-label="Comment">
+          <ul class="pager">
+            @if ($previous())
+              <li class="previous">
+                {!! $previous !!}
+              </li>
+            @endif
+
+            @if ($next())
+              <li class="next">
+                {!! $next !!}
+              </li>
+            @endif
+          </ul>
+        </nav>
+      @endif
+    @endif
+
+    @if ($closed())
+      <x-alert type="warning">
+        {!! __('Comments are closed.', 'sage') !!}
+      </x-alert>
+    @endif
+
+    @php(comment_form())
+  </section>
+@endif
+
+
+===== resources/views/partials/content-page.blade.php =====
+
+@php(the_content())
+
+@if ($pagination())
+  <nav class="page-nav" aria-label="Page">
+    {!! $pagination !!}
+  </nav>
+@endif
+
+
+===== resources/views/partials/content-search.blade.php =====
+
+<article @php(post_class())>
+  <header>
+    <h2 class="entry-title">
+      <a href="{{ get_permalink() }}">
+        {!! $title !!}
+      </a>
+    </h2>
+
+    @includeWhen(get_post_type() === 'post', 'partials.entry-meta')
+  </header>
+
+  <div class="entry-summary">
+    @php(the_excerpt())
+  </div>
+</article>
+
+
+===== resources/views/partials/content-single.blade.php =====
+
+<article @php(post_class('h-entry'))>
+  <header>
+    <h1 class="p-name">
+      {!! $title !!}
+    </h1>
+
+    @include('partials.entry-meta')
+  </header>
+
+  <div class="e-content">
+    @php(the_content())
+  </div>
+
+  @if ($pagination())
+    <footer>
+      <nav class="page-nav" aria-label="Page">
+        {!! $pagination !!}
+      </nav>
+    </footer>
+  @endif
+
+  @php(comments_template())
+</article>
+
+
+===== resources/views/partials/content.blade.php =====
+
+<article @php(post_class())>
+  <header>
+    <h2 class="entry-title">
+      <a href="{{ get_permalink() }}">
+        {!! $title !!}
+      </a>
+    </h2>
+
+    @include('partials.entry-meta')
+  </header>
+
+  <div class="entry-summary">
+    @php(the_excerpt())
+  </div>
+</article>
+
+
+===== resources/views/partials/entry-meta.blade.php =====
+
+<time class="dt-published" datetime="{{ get_post_time('c', true) }}">
+  {{ get_the_date() }}
+</time>
+
+<p>
+  <span>{{ __('By', 'sage') }}</span>
+  <a href="{{ get_author_posts_url(get_the_author_meta('ID')) }}" class="p-author h-card">
+    {{ get_the_author() }}
+  </a>
+</p>
+
+
+===== resources/views/partials/forms/search.blade.php =====
+
+<form role="search" method="get" class="search-form" action="{{ home_url('/') }}">
+  <label>
+    <span class="sr-only">
+      {{ _x('Search for:', 'label', 'sage') }}
+    </span>
+
+    <input
+      type="search"
+      placeholder="{!! esc_attr_x('Search &hellip;', 'placeholder', 'sage') !!}"
+      value="{{ get_search_query() }}"
+      name="s"
+    >
+  </label>
+
+  <button>{{ _x('Search', 'submit button', 'sage') }}</button>
+</form>
+
+
+===== resources/views/partials/landing/about.blade.php =====
+
+<section id="about" class="bg-[#F8F7F7] py-24" {{-- data-scroll-offset="80" --}}>
+  <div class="container-content">
+    @php
+    $headline = get_field('about_section_headline');
+    $intro = get_field('about_intro');
+    $visual = get_field('about_visual');
+    @endphp
+
+    <div class="grid grid-cols-1 items-start gap-16 lg:grid-cols-[2fr_3fr]">
+
+      <div>
+        @if($visual)
+        <img
+          src="{{ $visual['url'] }}"
+          alt="{{ $visual['alt'] ?? '' }}"
+          class="reveal-media w-full max-w-md">
+        @endif
+      </div>
+
+      <div>
+        @if($headline)
+        <h2 class="reveal-text text-4xl font-semibold tracking-tight text-slate-900" data-reveal-delay="0">
+          {!! $headline !!}
+        </h2>
+        @endif
+
+        @if($intro)
+        <p class="reveal-text mt-6 text-lg text-slate-600" data-reveal-delay="150">
+          {!! $intro !!}
+        </p>
+        @endif
+
+        <div class="mt-12 grid grid-cols-1 gap-x-10 gap-y-12 md:grid-cols-2" data-reveal-delay="300">
+          @for($i = 1; $i <= 4; $i++)
+            @php
+            $label=get_field("about_feature_{$i}_label");
+            $headlineFeature=get_field("about_feature_{$i}_headline");
+            $text=get_field("about_feature_{$i}_text");
+            @endphp
+
+            @if($label || $headlineFeature || $text)
+            @php $itemDelay = 450 + (($i - 1) * 150); @endphp
+            <div class="reveal-text flex gap-4" data-reveal-delay="{{ $itemDelay }}">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-200 text-lg font-medium text-brand-primary shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+              {{ str_pad($i, 2, '0', STR_PAD_LEFT) }}
+            </div>
+
+            <div>
+              @if($label)
+              <div class="text-base font-semibold text-slate-900">
+                {!! $label !!}
+              </div>
+              @endif
+
+              @if($headlineFeature)
+              <div class="mt-1 text-base font-semibold text-slate-700">
+                {!! $headlineFeature !!}
+              </div>
+              @endif
+
+              @if($text)
+              <div class="mt-2 text-base leading-relaxed text-slate-500">
+                {!! nl2br(e($text)) !!}
+              </div>
+              @endif
+            </div>
+        </div>
+        @endif
+        @endfor
+      </div>
+    </div>
+
+  </div>
+  </div>
+</section>
+
+
+===== resources/views/partials/landing/contact.blade.php =====
+
+<section id="contact" class="relative overflow-hidden py-16 lg:py-28">
+  <div class="absolute inset-0 -z-10">
+    <div class="absolute inset-0 bg-contact"></div>
+    <div class="absolute inset-0 contact-pattern  pattern-section"></div>
+  </div>
+
+  <div class="relative container-content">
+    <div class="grid grid-cols-1 lg:grid-cols-[1.6fr_1.1fr] gap-12 lg:gap-x-20 lg:gap-y-24 items-start">
+
+      {{-- LEFT --}}
+      <div class="text-center lg:text-left">
+        <h2 class="reveal-text text-3xl lg:text-4xl font-semibold tracking-tight text-brand-primaryFontDark" data-reveal-delay="0">
+          Need help or have questions?
+        </h2>
+
+        <p class="reveal-text mt-5 mx-auto lg:mx-0 max-w-[440px] text-base lg:text-lg leading-relaxed text-slate-500" data-reveal-delay="120">
+          Our platform is designed to be self-explanatory.
+          If you need support, have technical questions or want to discuss enterprise access,
+          we’re here to help.
+        </p>
+
+        <div class="mt-10 lg:mt-14 space-y-6 lg:space-y-9">
+          <div class="reveal-text group flex flex-col lg:flex-row items-center lg:items-center gap-4 lg:gap-8" data-reveal-delay="150">
+            <div class="flex h-12 w-12 lg:h-13 lg:w-13 items-center justify-center rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,70,85,0.16)] text-brand-primary transition-all duration-300 group-hover:scale-105 group-hover:bg-white group-hover:shadow-xl">
+              @include('icons.message')
+            </div>
+            <span class="text-lg lg:text-xl font-medium text-brand-primaryFontDark">
+              Technical questions
+            </span>
+          </div>
+
+          <div class="reveal-text group flex flex-col lg:flex-row items-center lg:items-center gap-4 lg:gap-8" data-reveal-delay="300">
+            <div class="flex h-12 w-12 lg:h-13 lg:w-13 items-center justify-center rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,70,85,0.16)] text-brand-primary transition-all duration-300 group-hover:scale-105 group-hover:bg-white group-hover:shadow-xl">
+              @include('icons.enterprise')
+            </div>
+            <span class="text-lg lg:text-xl font-medium text-brand-primaryFontDark">
+              Enterprise / institutional access
+            </span>
+          </div>
+
+          <div class="reveal-text group flex flex-col lg:flex-row items-center lg:items-center gap-4 lg:gap-8" data-reveal-delay="450">
+            <div class="flex h-12 w-12 lg:h-13 lg:w-13 items-center justify-center rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,70,85,0.16)] text-brand-primary transition-all duration-300 group-hover:scale-105 group-hover:bg-white group-hover:shadow-xl">
+              @include('icons.api')
+            </div>
+            <span class="text-lg lg:text-xl font-medium text-brand-primaryFontDark">
+              Data & API inquiries
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {{-- RIGHT --}}
+      <div class="mt-4 lg:mt-16">
+        <div class="reveal-media contact-card-soft rounded-[22px] lg:rounded-[26px] bg-white/85 px-6 py-8 lg:px-9 shadow-[0_22px_55px_rgba(15,70,85,0.28)]" data-reveal-delay="0">
+          <h3 class="mb-6 text-[17px] font-semibold text-brand-primaryFontDark text-center lg:text-left">
+            Get in touch
+          </h3>
+
+          <form
+            id="contactForm"
+            data-ajax-url="{{ admin_url('admin-ajax.php') }}"
+            class="space-y-4"
+            novalidate>
+
+            <div
+              id="contactSuccess"
+              class="overflow-hidden max-h-0 opacity-0 transition-all duration-600 ease-out text-base text-green-700">
+              Your message has been sent successfully.
+            </div>
+
+            <div class="space-y-1 transition-all duration-300">
+              <input
+                type="email"
+                name="email"
+                required
+                placeholder="Your e-mail"
+                class="w-full rounded-md border border-[#c9dbe2] bg-white px-4 py-2.5 text-[14px] text-[#3f5f6b] placeholder-[#8fa7b1] input-focus-premium">
+
+              <p
+                class="error-email overflow-hidden max-h-0 opacity-0 transition-all duration-300 text-sm text-red-600"></p>
+            </div>
+
+            <div class="space-y-1 transition-all duration-300">
+              <textarea
+                name="message"
+                rows="5"
+                required
+                placeholder="How can we assist you?"
+                class="w-full resize-none rounded-md border border-[#c9dbe2] bg-white px-4 py-3 text-[14px] text-[#3f5f6b] placeholder-[#8fa7b1] input-focus-premium"></textarea>
+
+              <p
+                class="error-message overflow-hidden max-h-0 opacity-0 transition-all duration-300 text-sm text-red-600"></p>
+            </div>
+
+            <button
+              type="submit"
+              class="mt-4 w-full rounded-md bg-gradient-to-b from-[#4a97ad] to-[#3f879c] py-3 text-[14px] font-medium text-white shadow-[0_8px_22px_rgba(63,135,156,0.45)] transition-all duration-300 hover:from-[#3f879c] hover:to-[#35788b] hover:shadow-[0_12px_28px_rgba(63,135,156,0.45)] active:scale-[0.98] cursor-pointer">
+              Send message
+            </button>
+
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+===== resources/views/partials/landing/hero.blade.php =====
+
+<section class="relative overflow-hidden bg-slate-950">
+  <div class="absolute inset-0">
+    <img
+      src="{{ Vite::asset('resources/images/hero-bg.jpg') }}"
+      alt=""
+      class="h-full w-full object-cover opacity-80">
+    <div class="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/20 to-transparent"></div>
+  </div>
+
+  <div class="relative">
+    <div class="container-content pt-28 pb-28 sm:pt-32 lg:pt-40 lg:pb-32">
+      <div class="grid grid-cols-1 items-center gap-16 lg:grid-cols-2">
+
+        <div>
+          <h1 class="reveal-text text-4xl font-semibold tracking-tight text-white lg:text-5xl" data-reveal-delay="0">
+            {{ $hero['headline'] }}
+          </h1>
+
+          <p class="reveal-text mt-6 max-w-xl text-lg text-slate-300" data-reveal-delay="150">
+            {{ $hero['subline'] }}
+          </p>
+
+          <div class="reveal-text mt-10">
+            <a
+              href="{{ $hero['cta_link']['url'] }}"
+              target="{{ $hero['cta_link']['target'] ?: '_self' }}"
+              class="inline-flex items-center rounded-xl bg-brand-primary px-6 py-3 text-base font-medium text-white transition hover:bg-brand-primaryHover" data-reveal-delay="300">
+              {{ $hero['cta_text'] }}
+            </a>
+          </div>
+        </div>
+
+        @if($hero['visual'])
+        <div class="relative reveal-media element-float" data-reveal-delay="450">
+          <img
+            src="{{ $hero['visual']['url'] }}"
+            alt="{{ $hero['visual']['alt'] }}">
+        </div>
+        @endif
+
+      </div>
+
+      <div class="reveal-text mt-20 text-center text-sm text-slate-400" data-reveal-delay="600">
+        45 Börsenplätze · permanente Updates · tägliche Analysen
+      </div>
+    </div>
+  </div>
+</section>
+
+
+===== resources/views/partials/landing/market-insights.blade.php =====
+
+{{-- resources/views/partials/landing/market-insights.blade.php --}}
+
+@php
+$platformIcons = [
+'youtube' => Vite::asset('resources/images/platforms/youtube.svg'),
+'x' => Vite::asset('resources/images/platforms/x.svg'),
+'shorts' => Vite::asset('resources/images/platforms/shorts.svg'),
+];
+
+$headline = get_field('market_insights_headline') ?: 'Market Insights – live from our analysts';
+$subline = get_field('market_insights_subline') ?: 'Meet our team of experienced professionals ready to support your financial journey';
+
+$normalizedHeadline = str_replace(['–', '—'], '-', $headline);
+$headlineParts = explode(' - ', $normalizedHeadline, 2);
+@endphp
+
+<section
+  id="market-insights"
+  class="relative overflow-hidden py-28 {{-- data-scroll-offset="80" --}}">
+
+  {{-- Background --}}
+  <div class="absolute inset-0 -z-10">
+    <div class="absolute inset-0 market-insights-bg"></div>
+    <div class="absolute inset-0 market-pattern pattern-section"></div>
+  </div>
+
+
+  <div class="relative container-content text-center">
+
+    {{-- Headline --}}
+    <h2 class="text-4xl font-semibold tracking-tight text-slate-900">
+      @if(count($headlineParts) === 2)
+      {{ $headlineParts[0] }}
+      <span class="text-brand-primary">– {{ $headlineParts[1] }}</span>
+      @else
+      {{ $headline }}
+      @endif
+    </h2>
+
+    {{-- Subline --}}
+    <p class="mt-4 text-lg text-slate-600">
+      {{ $subline }}
+    </p>
+
+    {{-- Cards --}}
+    <div class="mt-16 grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
+      @for ($i = 1; $i <= 3; $i++)
+        @php
+        $image=get_field("market_insight_{$i}_image");
+        $title=get_field("market_insight_{$i}_title");
+        $link=get_field("market_insight_{$i}_link");
+        $duration=get_field("market_insight_{$i}_duration");
+        $platform=get_field("market_insight_{$i}_platform");
+        @endphp
+
+        @if ($image && $link)
+        <div class="reveal-media">
+        <a
+          href="{{ $link }}"
+          target="_blank"
+          class="group block overflow-hidden rounded-2xl bg-white shadow-[0_16px_40px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:-translate-y-2 {{ $i === 2 ? 'market-insight--premium' : '' }}">
+
+          <div class="relative aspect-video overflow-hidden">
+            <img
+              src="{{ $image['url'] }}"
+              alt="{{ $image['alt'] ?? '' }}"
+              class="h-full w-full object-cover">
+
+            @if ($i === 2)
+            <span class="premium-banner">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#fff1b8" />
+                    <stop offset="35%" stop-color="#e6c36a" />
+                    <stop offset="65%" stop-color="#cfa23f" />
+                    <stop offset="100%" stop-color="#9a741c" />
+                  </linearGradient>
+                </defs>
+                <path d="M5 19H19V17H5V19ZM19 15L21 7L16 10L12 4L8 10L3 7L5 15H19Z"
+                  fill="url(#goldGradient)" />
+              </svg>
+              {{--
+            <svg class="crown" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M5 19H19V17H5V19ZM19 15L21 7L16 10L12 4L8 10L3 7L5 15H19Z"
+                fill="currentColor" />
+            </svg>
+--}}
+              Premium Content
+            </span>
+            @endif
+
+            @if (!empty($platformIcons[$platform]))
+            <div class="absolute left-4 top-4">
+              <img
+                src="{{ $platformIcons[$platform] }}"
+                alt=""
+                aria-hidden="true"
+                class="min-w-[35px] max-h-[35px] w-auto">
+            </div>
+            @endif
+
+            @if ($duration)
+            <div class="absolute bottom-3 right-3 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white">
+              {{ $duration }}
+            </div>
+            @endif
+          </div>
+
+          <div class="px-6 pt-4 pb-5 text-left">
+            <h3 class="text-[17px] leading-tight font-semibold tracking-tight text-brand-primary">
+              {{ $title }}
+            </h3>
+          </div>
+
+        </a>
+    </div>
+    @endif
+    @endfor
+  </div>
+
+
+  <div class="mt-16 text-sm text-brand-primary">
+    Independent market analysis. Updated daily.
+  </div>
+
+  </div>
+</section>
+
+
+===== resources/views/partials/landing/team.blade.php =====
+
+<section id="team" class="relative overflow-hidden py-20 lg:py-28 scroll-mt-15">
+  <div class="absolute inset-0 -z-10">
+    <div class="absolute inset-0 bg-team"></div>
+    <div class="absolute inset-0 team-pattern pattern-section"></div>
+  </div>
+
+  <div class="relative container-content">
+
+    <div class="mb-16 text-center">
+      <h2 class="reveal-text text-3xl lg:text-4xl font-semibold tracking-tight text-brand-primaryFontDark">
+        Dedicated <span class="text-brand-primary">Expert</span> Consultants
+      </h2>
+      <p class="reveal-text mt-4 mx-auto max-w-xl text-sm lg:text-base text-slate-600">
+        Meet our team of experienced professionals ready to support your financial journey
+      </p>
+    </div>
+
+    @php
+    $team = [
+    ['name' => 'Jennifer', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
+    ['name' => 'Sarah', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
+    ['name' => 'Markus', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
+    ['name' => 'Thomas', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
+    ['name' => 'Michael', 'role' => 'Senior Consultant', 'image' => 'team/markus.jpg'],
+    ];
+    @endphp
+
+    {{--
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-14 mb-14">
+    --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-14 mb-14">
+      @foreach (array_slice($team, 0, 3) as $member)
+      <div class="reveal-media text-center group">
+        <div class="team-photo-wrapper">
+          <img
+            src="{{ Vite::asset('resources/images/' . $member['image']) }}"
+            alt="{{ $member['name'] }}"
+            class="team-photo">
+        </div>
+
+        <p class="mt-4 text-lg font-semibold text-brand-primaryFontDark">
+          {{ $member['name'] }}
+        </p>
+        <p class="mt-0.5 text-sm text-slate-500">
+          {{ $member['role'] }}
+        </p>
+      </div>
+      @endforeach
+    </div>
+
+    {{--
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-10 lg:gap-14 max-w-3xl mx-auto">
+    --}}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 max-w-3xl mx-auto">
+      @foreach (array_slice($team, 3, 2) as $member)
+      <div class="reveal-media text-center group">
+        <div class="team-photo-wrapper">
+          <img
+            src="{{ Vite::asset('resources/images/' . $member['image']) }}"
+            alt="{{ $member['name'] }}"
+            class="team-photo">
+        </div>
+
+        <p class="mt-4 text-lg font-semibold text-brand-primaryFontDark">
+          {{ $member['name'] }}
+        </p>
+        <p class="mt-0.5 text-sm text-slate-500">
+          {{ $member['role'] }}
+        </p>
+
+      </div>
+
+      @endforeach
+    </div>
+
+  </div>
+</section>
+
+
+===== resources/views/partials/page-header.blade.php =====
+
+<div class="page-header">
+  <h1>{!! $title !!}</h1>
+</div>
+
+
+===== resources/views/partials/subscription/plan-card.blade.php =====
+
+<div class="rounded-2xl bg-white/10 p-8 text-slate-200 backdrop-blur shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+  <div class="text-xs font-semibold uppercase tracking-wide text-brand-primary/80">
+    Free 7-Day Trial
+  </div>
+
+  <div class="mt-3 text-2xl font-semibold text-white">
+    Full Access Plan
+  </div>
+
+  <div class="mt-4 flex items-end gap-2">
+    <div class="text-4xl font-semibold text-brand-primary">
+      €59
+    </div>
+    <div class="pb-1 text-sm text-slate-300">
+      / Monat
+    </div>
+  </div>
+
+  <div class="mt-1 text-sm text-slate-300">
+    danach €59 pro Monat
+  </div>
+
+  <ul class="mt-6 space-y-3 text-sm">
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> Echtzeit Marktanalysen</li>
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> Strukturierte Handelssignale</li>
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> Aktien, Krypto & Forex</li>
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> 45 Börsenplätze weltweit</li>
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> Tägliche Updates & Alerts</li>
+  </ul>
+
+  <div class="mt-6 text-xs text-slate-400">
+    Jederzeit kündbar. Keine Gebühren während des Testzeitraums.
+  </div>
+</div>
+
+
+===== resources/views/partials/subscription/trial-content.blade.php =====
+
+<section class="relative">
+  <div class="container-content pb-40">
+    <div class="grid grid-cols-1 items-start gap-16 lg:grid-cols-[1.1fr_0.9fr]">
+      @include('partials.subscription.plan-card')
+      @include('partials.auth.signup-form')
+    </div>
+  </div>
+</section>
+
+
+===== resources/views/partials/subscription/trial-hero.blade.php =====
+
+<section class="relative overflow-hidden">
+  <div class="absolute inset-0">
+    <img
+      src="{{ Vite::asset('resources/images/hero-bg.jpg') }}"
+      alt=""
+      class="h-full w-full object-cover opacity-80">
+    <div class="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/70 to-slate-950/90"></div>
+  </div>
+
+  <div class="relative container-content pt-32 pb-24">
+    <h1 class="text-4xl font-semibold tracking-tight text-white lg:text-5xl">
+      Start Your <span class="text-brand-primary">Free Trial</span>
+    </h1>
+
+    <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-300">
+      Sign up to access advanced trading signals and structured market analyses.
+      Cancel anytime during your free trial.
+    </p>
+  </div>
+</section>
+
+
+===== resources/views/search.blade.php =====
+
+@extends('layouts.app')
+
+@section('content')
+  @include('partials.page-header')
+
+  @if (! have_posts())
+    <x-alert type="warning">
+      {!! __('Sorry, no results were found.', 'sage') !!}
+    </x-alert>
+
+    {!! get_search_form(false) !!}
+  @endif
+
+  @while(have_posts()) @php(the_post())
+    @include('partials.content-search')
+  @endwhile
+
+  {!! get_the_posts_navigation() !!}
+@endsection
+
+
+===== resources/views/sections/conversion-footer.blade.php =====
+
+<footer class="py-8">
+  <div class="container-content flex flex-col items-center gap-4 text-sm text-slate-400 lg:flex-row lg:justify-between">
+
+    <div>
+      © {{ date('Y') }} Bloombridge Capital
+    </div>
+
+    <div class="flex gap-6">
+      <a href="/imprint" class="transition hover:text-brand-primary">Imprint</a>
+      <a href="/privacy-policy" class="transition hover:text-brand-primary">Privacy</a>
+    </div>
+
+  </div>
+</footer>
+
+
+===== resources/views/sections/footer.blade.php =====
+
+<footer class="relative overflow-hidden bg-slate-950 text-slate-300">
+  <div class="absolute inset-0">
+    <img
+      src="{{ Vite::asset('resources/images/footer-bg.jpg') }}"
+      alt=""
+      class="h-full w-full object-cover opacity-60">
+    <div class="absolute inset-0 bg-gradient-to-r from-slate-950/20 via-slate-950/10 to-slate-950/30"></div>
+  </div>
+
+  <div class="relative">
+    <div class="container-content py-20">
+      <div class="grid grid-cols-1 gap-16 lg:grid-cols-2">
+
+        <div>
+          <div class="mb-8 flex items-center gap-3">
+            <img
+              src="{{ Vite::asset('resources/images/bridge-free.png') }}"
+              alt="Bloombridge Capital"
+              class="h-12">
+          </div>
+
+          <div class="text-sm text-slate-500">
+            Follow Us
+          </div>
+
+          <div class="mt-5 flex gap-4">
+            <a href="#" class="glow-icon flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:border-slate-600 hover:text-slate-100 transition">
+              @include('icons.x')
+            </a>
+            <a href="#" class="glow-icon flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:border-slate-600 hover:text-slate-100 transition">
+              @include('icons.instagram')
+            </a>
+            <a href="#" class="glow-icon flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:border-slate-600 hover:text-slate-100 transition">
+              @include('icons.youtube')
+            </a>
+            <a href="#" class="glow-icon flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:border-slate-600 hover:text-slate-100 transition">
+              @include('icons.web')
+            </a>
+          </div>
+
+          <div class="mt-12 text-xs text-slate-500">
+            © {{ date('Y') }} Bloombridge Capital. All Rights Reserved
+          </div>
+        </div>
+
+        <div class="flex flex-col items-end text-sm">
+
+          {!! wp_nav_menu([
+          'theme_location' => 'footer_navigation',
+          'container' => false,
+          'menu_class' => 'footer-nav',
+          'fallback_cb' => false,
+          'echo' => false,
+          ]) !!}
+
+        </div>
+
+      </div>
+    </div>
+
+    <button
+      id="scrollToTopBtn"
+      class="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-primary text-white shadow-[0_2px_6px_rgba(0,0,0,0.15)] opacity-0 transition-[opacity,background-color] duration-300 hover:bg-brand-primaryHover cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+      </svg>
+    </button>
+  </div>
+</footer>
+
+
+===== resources/views/sections/header.blade.php =====
+
+<header class="banner">
+  <a class="brand" href="{{ home_url('/') }}">
+    {!! $siteName !!}
+  </a>
+
+  @if (has_nav_menu('primary_navigation'))
+    <nav class="nav-primary" aria-label="{{ wp_get_nav_menu_name('primary_navigation') }}">
+      {!! wp_nav_menu(['theme_location' => 'primary_navigation', 'menu_class' => 'nav', 'echo' => false]) !!}
+    </nav>
+  @endif
+</header>
+
+
+===== resources/views/sections/sidebar.blade.php =====
+
+@php(dynamic_sidebar('sidebar-primary'))
+
+
+===== resources/views/sections/site-header.blade.php =====
+
+<header
+  id="siteHeader"
+  class="fixed inset-x-0 top-0 z-50 backdrop-blur_off transition-[background-color] duration-300">
+
+  <div class="container-content">
+    <div class="flex h-16 items-center justify-between">
+
+      {{-- Logo --}}
+      <div class="flex items-center">
+        <a href="{{ home_url('/') }}#top">
+          <img
+            src="{{ Vite::asset('resources/images/bridge-free.png') }}"
+            alt="Bloombridge Capital"
+            class="h-10 lg:h-13">
+        </a>
+      </div>
+
+      {{-- Desktop Navigation --}}
+      <nav class="hidden flex-1 justify-center gap-8 text-base text-slate-300 lg:flex">
+        <a class="nav-link" href="{{ home_url('/') }}#top">Home</a>
+        <a class="nav-link" href="{{ home_url('/') }}#about">About</a>
+        <a class="nav-link" href="{{ home_url('/') }}#contact">Contact & Support</a>
+        <a class="nav-link" href="{{ home_url('/') }}#team">Team</a>
+        <a class="nav-link" href="{{ home_url('/') }}#market-insights">Insights</a>
+      </nav>
+
+      {{-- Right Side Actions --}}
+      <div class="flex items-center gap-4">
+
+        {{-- Language Selector (Desktop) --}}
+        <div class="hidden rounded-md bg-white/5 p-0.5 text-xs font-medium uppercase tracking-wide text-white lg:flex">
+          @php($langs = pll_the_languages(['raw' => 1]))
+          @foreach($langs as $lang)
+          <a
+            href="{{ $lang['url'] }}"
+            class="px-2.5 py-1 rounded-sm transition
+                {{ $lang['current_lang']
+                  ? 'bg-white/15 text-white'
+                  : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1] hover:text-white' }}">
+            {{ strtoupper($lang['slug']) }}
+          </a>
+          @endforeach
+        </div>
+
+        {{-- Login Desktop --}}
+        <a
+          href="/login"
+          class="hidden rounded-md bg-brand-primary px-6 py-2 text-sm font-medium text-white transition hover:bg-brand-primaryHover lg:inline-flex">
+          Log in
+        </a>
+
+        {{-- Hamburger Mobile --}}
+        <button
+          id="mobileMenuToggle"
+          class="flex h-10 w-10 items-center justify-center text-white lg:hidden"
+          aria-label="Open menu">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+      </div>
+    </div>
+  </div>
+</header>
+
+{{-- Off-Canvas Mobile Menu --}}
+<div
+  id="mobileMenu"
+  class="fixed inset-y-0 right-0 z-50 w-[300px] translate-x-full bg-slate-950/85 text-slate-200 transition-transform duration-300">
+
+  {{-- Off-Canvas Header --}}
+  <div class="flex h-16 items-center justify-between px-6">
+    <span class="text-sm font-semibold uppercase tracking-wide">Menu</span>
+    <button id="mobileMenuClose" class="h-10 w-10 text-white" aria-label="Close menu">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  {{-- Language Selector Mobile --}}
+  <div class="px-6 pt-2">
+    <div class="inline-flex rounded-md bg-white/5 p-0.5 text-[11px] font-medium uppercase tracking-wide text-white">
+      @foreach($langs as $lang)
+      <a
+        href="{{ $lang['url'] }}"
+        class="px-2 py-1 rounded-sm transition
+            {{ $lang['current_lang']
+              ? 'bg-white/15 text-white'
+              : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1] hover:text-white' }}">
+        {{ strtoupper($lang['slug']) }}
+      </a>
+      @endforeach
+    </div>
+  </div>
+
+  {{-- Mobile Navigation --}}
+  <nav class="mt-10 flex flex-col gap-6 px-6 text-lg">
+    <a href="#top" class="mobile-link">Home</a>
+    <a href="#about" class="mobile-link">About</a>
+    <a href="#contact" class="mobile-link">Contact & Support</a>
+    <a href="#team" class="mobile-link">Team</a>
+    <a href="#market-insights" class="mobile-link">Insights</a>
+  </nav>
+
+  {{-- Login Mobile --}}
+  <div class="mt-10 px-6">
+    <a
+      href="/login"
+      class="flex w-full items-center justify-center rounded-md bg-brand-primary px-4 py-2 text-base font-medium text-white">
+      Log in
+    </a>
+  </div>
+</div>
+
+
+===== resources/views/single-analysis.blade.php =====
+
+@extends('dashboard.analyses.single')
+
+
+===== resources/views/single.blade.php =====
+
+@extends('layouts.app')
+
+@section('content')
+  @while(have_posts()) @php(the_post())
+    @includeFirst(['partials.content-single-' . get_post_type(), 'partials.content-single'])
+  @endwhile
+@endsection
+
+
+===== resources/views/template-custom.blade.php =====
+
+{{--
+  Template Name: Custom Template
+--}}
+
+@extends('layouts.app')
+
+@section('content')
+  @while(have_posts()) @php(the_post())
+    @include('partials.page-header')
+    @include('partials.content-page')
+  @endwhile
+@endsection
+
+
+===== resources/views/template-plain.blade.php =====
+
+{{--
+Template Name: Standard Page (Legal Pages)
+--}}
+
+@extends('layouts.landingpage')
+
+@section('content')
+<section class="relative overflow-hidden py-24 scroll-mt-20">
+
+  {{-- Background --}}
+  <div class="absolute inset-0 -z-10">
+    <div class="absolute inset-0 bg-standard"></div>
+    <div class="absolute inset-0 standard-pattern pattern-section"></div>
+  </div>
+
+  {{-- Content --}}
+  <div class="relative container-content max-w-3xl">
+
+    {{-- Page Title --}}
+    <header class="mb-10">
+      <h1 class="text-3xl font-semibold tracking-tight text-brand-primaryFontDark">
+        {!! get_the_title() !!}
+      </h1>
+    </header>
+
+    {{-- Page Content --}}
+    <article class="prose prose-slate max-w-none">
+      {!! the_content() !!}
+    </article>
+
+  </div>
+
+</section>
+@endsection
+

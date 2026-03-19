@@ -1,0 +1,16 @@
+@config "../../tailwind.config.js";
+
+@import "tailwindcss";
+
+@source "../views/";
+@source "../../app/";
+
+a {
+  text-decoration: none;
+}
+
+a.sr-only {
+  position: fixed !important;
+  top: -1000px !important;
+  left: -1000px !important;
+}

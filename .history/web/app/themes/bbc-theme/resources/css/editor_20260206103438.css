@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+.acf-postbox .postbox-header {
+  background: #acdbe5!important;
+}
+
+/* 1. Den Standard-Zustand erzwingen */
+.postbox .inside {
+  display: block !important;
+  /* Verhindert das harte Ausblenden durch WP */
+  overflow: hidden !important;
+  max-height: 2000px;
+  opacity: 1;
+  transition: max-height 0.4s ease-in-out, opacity 0.3s ease, padding 0.4s ease !important;
+}
+
+/* 2. Den geschlossenen Zustand erzwingen */
+.postbox.closed .inside {
+  display: block !important;
+  /* Bleibt im DOM für die Animation */
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* 3. Verhindert das "Springen" von Inhalten */
+.postbox .inside>* {
+  min-height: 0;
+}
+
+
+/* fix hover bug */
+.edit-post-meta-boxes-area .postbox .handlediv {
+  height: auto!important;
+  width: 44px;
+}
+
+
+/* Admin Backend */
+
+.wp-list-table .column-page_template {
+  width: 220px;
+  white-space: nowrap;
+}

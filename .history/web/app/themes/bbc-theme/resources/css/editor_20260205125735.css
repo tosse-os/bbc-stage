@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Container der Postbox */
+.postbox .inside {
+  /* Wir erzwingen display: block, damit WordPress' display: none ignoriert wird */
+  display: block !important;
+  overflow: hidden;
+  max-height: 2000px;
+  /* Hoher Wert als Sicherheitsnetz */
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.5s ease,
+    opacity 0.4s ease,
+    margin 0.5s ease;
+  opacity: 1;
+}
+
+/* Wenn die Box geschlossen ist */
+.postbox.closed .inside {
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+  /* Verhindert Interaktion im geschlossenen Zustand */
+}

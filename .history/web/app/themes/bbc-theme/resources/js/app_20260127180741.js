@@ -1,0 +1,90 @@
+import.meta.glob([
+  '../images/**',
+  '../fonts/**',
+]);
+
+function initSmoothScroll(duration = 700) {
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', function (e) {
+      const id = this.getAttribute('href');
+      if (!id || id === '#') return;
+
+      const target = document.querySelector(id);
+      if (!target) return;
+
+      e.preventDefault();
+
+      const rectTop = target.getBoundingClientRect().top;
+      const absoluteY = window.scrollY + rectTop;
+
+      const styles = window.getComputedStyle(target);
+      const smt = parseInt(styles.scrollMarginTop) || 0;
+
+      const targetY = absoluteY - smt;
+
+      smoothScrollTo(targetY, duration);
+    });
+  });
+
+  function smoothScrollTo(targetY, duration) {
+    const startY = window.scrollY;
+    const diff = targetY - startY;
+    let startTime = null;
+
+    function step(ts) {
+      if (!startTime) startTime = ts;
+
+      const time = ts - startTime;
+      const percent = Math.min(time / duration, 1);
+
+      window.scrollTo(0, startY + diff * ease(percent));
+
+      if (percent < 1) requestAnimationFrame(step);
+    }
+
+    function ease(t) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    requestAnimationFrame(step);
+  }
+}
+
+
+function initScrollToTop() {
+  const scrollBtn = document.getElementById('scrollToTopBtn');
+  if (!scrollBtn) return;
+  window.addEventListener('scroll', () => {
+    const isVisible = window.scrollY > 200;
+    scrollBtn.style.opacity = isVisible ? '1' : '0';
+    scrollBtn.style.pointerEvents = isVisible ? 'auto' : 'none';
+  });
+  scrollBtn.addEventListener('click', () => {
+    smoothScrollTo(0, 900);
+  });
+  function smoothScrollTo(targetY, duration) {
+    const startY = window.scrollY;
+    const diff = targetY - startY;
+    let startTime;
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const time = timestamp - startTime;
+      const percent = Math.min(time / duration, 1);
+      window.scrollTo(0, startY + diff * easeInOutQuad(percent));
+      if (time < duration) requestAnimationFrame(step);
+    }
+    function easeInOutQuad(t) {
+      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+    requestAnimationFrame(step);
+  }
+}
+
+function initApp() {
+  initSmoothScroll(900);
+  initScrollToTop();
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+
+

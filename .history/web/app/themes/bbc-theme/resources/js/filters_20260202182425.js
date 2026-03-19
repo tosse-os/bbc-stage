@@ -1,0 +1,112 @@
+(function () {
+  function init() {
+    if (!window.AnalysisFilters) return false;
+
+    const assets = window.AnalysisFilters.assets || [];
+
+    const form = document.getElementById('analysis-filters');
+    const input = document.getElementById('asset-search');
+    const hidden = document.getElementById('asset-slug');
+    const box = document.getElementById('asset-suggestions');
+    const category = document.getElementById('market-select') || form?.querySelector('select[name="market"]');
+    const clearBtn = document.getElementById('asset-clear');
+
+    if (!form || !input || !hidden || !box || !category || !clearBtn) return false;
+    if (form.dataset.filtersInit === '1') return true;
+    form.dataset.filtersInit = '1';
+
+    function syncClear() {
+      clearBtn.classList.toggle('hidden', !(hidden.value || input.value));
+    }
+
+    function clearAsset(submit) {
+      input.value = '';
+      hidden.value = '';
+      box.innerHTML = '';
+      box.classList.add('hidden');
+      syncClear();
+      if (submit) form.submit();
+    }
+
+    function render(matches) {
+      box.innerHTML = '';
+      matches.forEach(asset => {
+        const item = document.createElement('div');
+        item.textContent = asset.name;
+        item.className = 'px-4 py-2 text-sm cursor-pointer hover:bg-slate-100';
+        item.addEventListener('click', () => {
+          input.value = asset.name;
+          hidden.value = asset.slug;
+          category.value = '';
+          box.classList.add('hidden');
+          syncClear();
+          form.submit();
+        });
+        box.appendChild(item);
+      });
+      box.classList.remove('hidden');
+    }
+
+    clearBtn.addEventListener('click', () => clearAsset(true));
+
+    input.addEventListener('input', function () {
+      const q = this.value.trim().toLowerCase();
+      box.innerHTML = '';
+
+      if (q.length < 2) {
+        hidden.value = '';
+        box.classList.add('hidden');
+        syncClear();
+        return;
+      }
+
+      const matches = assets.filter(a => a.name.toLowerCase().includes(q));
+      if (!matches.length) {
+        hidden.value = '';
+        box.classList.add('hidden');
+        syncClear();
+        return;
+      }
+
+      hidden.value = '';
+      syncClear();
+      render(matches);
+    });
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#asset-search') && !e.target.closest('#asset-suggestions')) {
+        box.classList.add('hidden');
+      }
+    });
+
+    category.addEventListener('change', () => {
+      if (hidden.value || input.value) {
+        clearAsset(false);
+      }
+      form.submit();
+    });
+
+    form.querySelectorAll('input[type="date"]').forEach(el => {
+      el.addEventListener('change', () => form.submit());
+    });
+
+    syncClear();
+    return true;
+  }
+
+  function boot() {
+    if (init()) return;
+
+    let tries = 0;
+    const t = setInterval(() => {
+      tries += 1;
+      if (init() || tries >= 50) clearInterval(t);
+    }, 100);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();

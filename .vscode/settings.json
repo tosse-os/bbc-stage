@@ -1,0 +1,7 @@
+{
+  "less.compile": {
+    "out": "${workspaceFolder}\\wp-content\\themes\\understrap-child\\css\\",
+    "sourceMap": true,
+    "compress": false
+  }
+}

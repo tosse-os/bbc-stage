@@ -1,0 +1,170 @@
+
+
+/* sections */
+#about {
+  background: #f8f6f7;
+}
+
+/* market insights */
+.bg-market-insights {
+  background: linear-gradient(180deg,
+      #d7e9ee 0%,
+      #eaf4f6 100%);
+}
+
+.market-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.market-insights-bg {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at center,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(225, 242, 247, 0.95) 35%,
+      rgba(198, 224, 232, 1) 70%,
+      rgba(170, 205, 216, 1) 100%);
+}
+
+.market-insight--premium {
+  position: relative;
+}
+
+/* .market-insight--premium .premium-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  background: linear-gradient(to right,
+      rgba(20, 120, 160, 0.15),
+      rgba(20, 120, 160, 0.55),
+      rgba(20, 120, 160, 0.15));
+
+  backdrop-filter: blur(6px);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  pointer-events: none;
+} */
+
+.market-insight--premium .premium-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 64px;
+  /* Etwas höher für mehr Eleganz */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  /* Edlerer Metallic-Gradient statt einfachem Gelb-Gold */
+  background: linear-gradient(90deg,
+      rgba(184, 138, 68, 0) 0%,
+      rgba(184, 138, 68, 0.45) 15%,
+      rgba(255, 235, 180, 0.6) 50%,
+      rgba(184, 138, 68, 0.45) 85%,
+      rgba(184, 138, 68, 0) 100%);
+
+  /* Glassmorphism & Lichtbrechung */
+  backdrop-filter: blur(25px) saturate(1.5) brightness(1.1);
+  -webkit-backdrop-filter: blur(25px) saturate(1.5) brightness(1.1);
+
+  /* Feine Rahmenlinien oben und unten für den High-End Look */
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+
+  /* Typography & Schatten */
+  color: #ffffff;
+  font-size: 11px;
+  /* Etwas kleiner & mehr Spacing wirkt teurer */
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+
+  /* Subtiler äußerer Glow */
+  box-shadow: 0 0 30px rgba(184, 138, 68, 0.2);
+}
+
+/* Das neue Kronen-Icon im Banner */
+.market-insight--premium .premium-banner svg {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 0 8px rgba(255, 235, 180, 0.8));
+}
+
+/* content */
+a {
+  text-decoration: none;
+}
+
+
+/* effects */
+:root {
+  --glow-color: 72, 146, 168;
+  --glow-opacity-strong: 0.55;
+  --glow-opacity-mid: 0.35;
+  --glow-opacity-soft: 0.15;
+}
+
+.glow-icon {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glow-icon::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at center,
+      rgba(var(--glow-color), var(--glow-opacity-strong)) 0%,
+      rgba(var(--glow-color), var(--glow-opacity-mid)) 35%,
+      rgba(var(--glow-color), var(--glow-opacity-soft)) 55%,
+      transparent 70%);
+  filter: blur(6px);
+  opacity: 0.75;
+  z-index: 0;
+}
+
+.glow-icon svg {
+  position: relative;
+  z-index: 1;
+}
+
+.glow-icon::before {
+  transition:
+    opacity 220ms ease,
+    filter 220ms ease,
+    inset 220ms ease;
+}
+
+.glow-icon:hover::before {
+  opacity: 1;
+  filter: blur(8px);
+  inset: -8px;
+}

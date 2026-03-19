@@ -1,0 +1,49 @@
+<?php
+
+/**
+ * Zentrales Dashboard Zugriffsgate
+ * Schützt alle dashboard-* Seiten systemisch.
+ */
+add_action('template_redirect', function () {
+
+  if (!is_page()) {
+    return;
+  }
+
+  $post = get_queried_object();
+  if (!$post) {
+    return;
+  }
+
+  $slug = $post->post_name;
+
+  $isDashboardArea =
+    $slug === 'dashboard' ||
+    str_starts_with($slug, 'dashboard-');
+
+  if (!$isDashboardArea) {
+    return;
+  }
+
+  $isLoginPage =
+    $slug === 'dashboard-login' ||
+    $slug === 'dashboard-register' ||
+    $slug === 'dashboard-password';
+
+  if (is_user_logged_in() && $isLoginPage) {
+    wp_redirect('/dashboard');
+    exit;
+  }
+
+  if (!is_user_logged_in() && !$isLoginPage) {
+    wp_redirect('/dashboard-login');
+    exit;
+  }
+
+  $state = dashboard_access_state(get_current_user_id());
+
+  if ($state === 'payment_required' && !$isLoginPage) {
+    wp_redirect('/dashboard-payment-required');
+    exit;
+  }
+}, 99);

@@ -1,0 +1,19 @@
+{{--
+Template Name: Standard Page
+--}}
+
+@extends('layouts.app')
+
+@section('content')
+<main class="py-24">
+  <div class="container-content max-w-3xl">
+
+    {{-- Page Title --}}
+    <header class="mb-10">
+      <h1 class="text-3xl font-semibold tracking-tight text-brand-primaryFontDark">
+        {!! get_the_title() !!}
+      </h1>
+    </header>
+
+    {{-- Page Content --}}
+    <article class

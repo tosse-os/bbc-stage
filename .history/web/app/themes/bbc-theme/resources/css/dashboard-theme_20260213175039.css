@@ -1,0 +1,237 @@
+:root {
+  --bg-main: #eef3f6;
+
+  --surface-card: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+
+  --border-color: #e2e8f0;
+
+  /* =========================
+     HIERARCHY TOKENS (LIGHT)
+  ========================= */
+
+  --text-heading: #0f172a;
+  --text-strong: #1e293b;
+  --text-muted: #64748b;
+  --text-meta: #94a3b8;
+
+  --btn-secondary-bg: #f1f5f9;
+  --btn-secondary-text: #334155;
+  --btn-secondary-hover: #e2e8f0;
+
+  --tooltip-bg: #0f172a;
+  --tooltip-text: #ffffff;
+
+  --copy-success: #16a34a;
+}
+
+html[data-theme="dark"] {
+  --bg-main: #0b1c2d;
+
+  --surface-card: rgba(17, 34, 51, 0.75);
+  --surface-glass: rgba(15, 25, 35, 0.65);
+
+  --text-primary: #e6edf3;
+  --text-secondary: #9fb3c8;
+
+  --border-color: rgba(255, 255, 255, 0.08);
+
+  /* =========================
+     HIERARCHY TOKENS (DARK)
+  ========================= */
+
+  --text-heading: #f1f5f9;
+  --text-strong: #e2e8f0;
+  --text-muted: #9fb3c8;
+  --text-meta: #64748b;
+
+  --btn-secondary-bg: rgba(100, 116, 139, 0.15);
+  --btn-secondary-text: #e2e8f0;
+  --btn-secondary-hover: rgba(148, 163, 184, 0.25);
+
+  --tooltip-bg: rgba(15, 25, 35, 0.95);
+  --tooltip-text: #e6edf3;
+
+  --copy-success: #22c55e;
+}
+
+/* =========================
+   BASE
+========================= */
+
+body.dashboard {
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.dashboard-content {
+  color: var(--text-primary);
+}
+
+.dashboard-sidebar {
+  color: var(--text-primary);
+}
+
+/* =========================
+   CARDS
+========================= */
+
+.dashboard-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+/* =========================
+   TEXT HELPERS
+========================= */
+
+.dashboard-text-muted {
+  color: var(--text-secondary);
+}
+
+.text-heading {
+  color: var(--text-heading);
+}
+
+.text-strong {
+  color: var(--text-strong);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-meta {
+  color: var(--text-meta);
+}
+
+/* =========================
+   BUTTON SYSTEM
+========================= */
+
+.btn-secondary {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+}
+
+.btn-secondary:hover {
+  background: var(--btn-secondary-hover);
+}
+
+/* =========================
+   TOOLTIP SYSTEM
+========================= */
+
+.tooltip {
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
+}
+
+.copy-success {
+  color: var(--copy-success);
+}
+
+/* =========================
+   TABLES
+========================= */
+
+.dashboard-table {
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  border-color: var(--border-color);
+}
+
+/* =========================================================
+   DARK FIX – VIEW SWITCH
+========================================================= */
+
+html[data-theme="dark"] .inline-flex.rounded-xl.border.border-brand-primary\/30.bg-white\/70 {
+  background: rgba(17, 34, 51, 0.85) !important;
+  backdrop-filter: none !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html[data-theme="dark"] .inline-flex.rounded-xl.border.border-brand-primary\/30.bg-white\/70 a {
+  color: #9fb3c8 !important;
+}
+
+html[data-theme="dark"] .inline-flex.rounded-xl.border.border-brand-primary\/30.bg-white\/70 a:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .inline-flex.rounded-xl.border.border-brand-primary\/30.bg-white\/70 a.bg-brand-primary {
+  background: rgb(64, 136, 158) !important;
+  color: #ffffff !important;
+}
+
+/* =========================================================
+   DARK FIX – FILTER CONTAINER
+========================================================= */
+
+html[data-theme="dark"] .dashboard-filter-bar form {
+  background: rgba(17, 34, 51, 0.85) !important;
+  backdrop-filter: none !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* =========================================================
+   DARK FIX – INPUTS
+========================================================= */
+
+html[data-theme="dark"] .dashboard-filter-bar input,
+html[data-theme="dark"] .dashboard-filter-bar select,
+html[data-theme="dark"] .dashboard-filter-bar .bg-white\/50 {
+  background: rgba(15, 26, 36, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #e6edf3 !important;
+}
+
+html[data-theme="dark"] .dashboard-filter-bar input::placeholder {
+  color: #9fb3c8 !important;
+}
+
+html[data-theme="dark"] .dashboard-filter-bar input:focus,
+html[data-theme="dark"] .dashboard-filter-bar select:focus {
+  border-color: rgb(64, 136, 158) !important;
+  box-shadow: 0 0 0 2px rgba(64, 136, 158, 0.25) !important;
+}
+
+/* =========================================================
+   DARK FIX – REPORT ROW HOVER
+========================================================= */
+
+html[data-theme="dark"] .hover\:bg-slate-50\/80:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+html[data-theme="dark"] .element-border-t {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme="dark"] .bg-white.rounded-xl.shadow-sm {
+  background: rgba(17, 34, 51, 0.85) !important;
+}
+
+/* =========================
+   DATE INPUT ICON FIX
+   ========================= */
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+html[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.9;
+}

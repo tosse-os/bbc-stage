@@ -1,0 +1,37 @@
+@config "../../tailwind.config.js";
+
+@import "tailwindcss";
+
+@source "../views/";
+@source "../../app/";
+
+a {
+  text-decoration: none;
+}
+
+/* base setup and reset */
+.sr-only:not(:focus):not(:active) {
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  position: absolute;
+  overflow: hidden;
+}
+
+/* layout */
+body {
+  overflow-x: clip;
+}
+
+.full-bleed {
+  width: 99.45vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}

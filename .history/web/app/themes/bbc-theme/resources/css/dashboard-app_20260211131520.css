@@ -1,0 +1,9 @@
+@config "../../tailwind.config.js";
+
+@import "tailwindcss";
+
+@source "../views/";
+@source "../../app/";
+
+@import "./dashboard.css"; /* customizing */
+@import "./dashboard-theme.css";

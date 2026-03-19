@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Container der Postbox (der Teil, der ein/ausklappt) */
+.postbox .inside {
+  display: grid !important;
+  /* Überschreibt display: block/none */
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.3s ease-in-out, padding 0.3s ease;
+  overflow: hidden;
+  visibility: visible;
+}
+
+/* Wenn die Box geschlossen ist */
+.postbox.closed .inside {
+  display: grid !important;
+  grid-template-rows: 0fr;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border: none;
+}
+
+/* Inhalt innerhalb des Grids, um das Springen zu verhindern */
+.postbox .inside>* {
+  min-height: 0;
+}

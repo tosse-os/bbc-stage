@@ -1,0 +1,58 @@
+@layer base {
+  body.dashboard {
+    background-color: #eef3f6;
+  }
+}
+
+@layer components {
+  .dashboard-layout {
+    @apply flex min-h-screen;
+  }
+
+  .dashboard-sidebar {
+    background-image: url("../images/dashboard/bg-left.jpg");
+    background-size: cover;
+    background-position: center;
+  }
+
+  .dashboard-content {
+    background-image: url("../images/dashboard/background.jpg");
+    background-size: cover;
+    background-position: top center;
+    background-repeat: no-repeat;
+  }
+}
+
+
+/* login */
+.dashboard-login {
+  background-image: url("../images/dashboard/forms-bg.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-4px);
+  }
+
+  50% {
+    transform: translateX(4px);
+  }
+
+  75% {
+    transform: translateX(-4px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.35s ease-in-out;
+}

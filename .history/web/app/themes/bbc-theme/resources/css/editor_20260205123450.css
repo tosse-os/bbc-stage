@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+
+/* ----------------------------------------
+   ACF Accordion – Header Styling (CI Blau)
+---------------------------------------- */
+
+.acf-postbox>.postbox-header {
+  background-color: #3f879c;
+  color: #ffffff;
+  transition: background-color 200ms ease;
+}
+
+.acf-postbox.closed>.postbox-header {
+  background-color: #e6f1f4;
+  color: #1f3f4a;
+}
+
+.acf-postbox>.postbox-header h2 {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* ----------------------------------------
+   Accordion Transition
+---------------------------------------- */
+
+.acf-postbox .postbox-body {
+  overflow: hidden;
+  transition:
+    max-height 320ms ease,
+    opacity 200ms ease;
+}
+
+.acf-postbox.closed .postbox-body {
+  max-height: 0;
+  opacity: 0;
+}
+
+.acf-postbox:not(.closed) .postbox-body {
+  max-height: 5000px;
+  opacity: 1;
+}

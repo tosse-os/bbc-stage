@@ -1,0 +1,24 @@
+@layer base {
+  body.dashboard {
+    background-color: #eef3f6;
+  }
+}
+
+@layer components {
+  .dashboard-layout {
+    @apply flex min-h-screen;
+  }
+
+  .dashboard-sidebar {
+    background-image: url("../images/dashboard/bg-left.jpg");
+    background-size: cover;
+    background-position: center;
+  }
+
+  .dashboard-content {
+    background-image: url("../images/dashboard/background.jpg");
+    background-size: cover;
+    background-position: top center;
+    background-repeat: no-repeat;
+  }
+}

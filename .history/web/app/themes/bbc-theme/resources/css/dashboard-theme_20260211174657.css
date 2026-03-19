@@ -1,0 +1,112 @@
+:root {
+  --bg-main: #eef3f6;
+
+  --surface-card: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+
+  --surface-hover: #f1f5f9;
+  --surface-active: #e2e8f0;
+
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+
+  --border-color: #e2e8f0;
+}
+
+html[data-theme="dark"] {
+  --bg-main: #0b1c2d;
+
+  --surface-card: rgba(17, 34, 51, 0.75);
+  --surface-glass: rgba(15, 25, 35, 0.65);
+
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --surface-active: rgba(255, 255, 255, 0.12);
+
+  --text-primary: #e6edf3;
+  --text-secondary: #9fb3c8;
+
+  --border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.dashboard {
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.dashboard-content {
+  color: var(--text-primary);
+}
+
+.dashboard-sidebar {
+  color: var(--text-primary);
+}
+
+/* =========================
+   CARDS
+   ========================= */
+
+.dashboard-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+/* =========================
+   TEXT HELPERS
+   ========================= */
+
+.dashboard-text-muted {
+  color: var(--text-secondary);
+}
+
+/* =========================
+   TABLES
+   ========================= */
+
+.dashboard-table {
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  border-color: var(--border-color);
+}
+
+/* Hover & Active Rows */
+.dashboard-table tbody tr {
+  transition: background 160ms ease;
+}
+
+.dashboard-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.dashboard-table tbody tr:active {
+  background: var(--surface-active);
+}
+
+/* =========================
+   INPUTS
+   ========================= */
+
+.dashboard-input {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  transition: background 150ms ease, border 150ms ease, box-shadow 150ms ease;
+}
+
+.dashboard-input:hover {
+  background: var(--surface-hover);
+}
+
+.dashboard-input:focus {
+  outline: none;
+  border-color: rgba(64, 136, 158, 0.7);
+  box-shadow: 0 0 0 2px rgba(64, 136, 158, 0.25);
+}
+
+.dashboard-input::placeholder {
+  color: var(--text-secondary);
+}
