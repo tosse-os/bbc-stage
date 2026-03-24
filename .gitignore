@@ -95,3 +95,4 @@ temp/
 # package-lock.json
 # yarn.lock
 # composer.lock
+*:Zone.Identifier

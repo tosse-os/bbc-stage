@@ -237,12 +237,6 @@ add_filter('show_admin_bar', function ($show) {
 
 add_action('init', function () {
     if (isset($_GET['dashboard_logout'])) {
-        if (
-          !isset($_GET['_wpnonce']) ||
-          !wp_verify_nonce($_GET['_wpnonce'], 'dashboard_logout')
-        ) {
-            return;
-        }
 
         if (is_user_logged_in()) {
             wp_clear_auth_cookie();
@@ -293,4 +287,22 @@ add_action('admin_enqueue_scripts', function () {
       white-space: nowrap;
     }
   ');
+});
+
+
+
+
+
+
+
+add_action('init', function() {
+    remove_post_type_support('page', 'editor');
+    remove_post_type_support('page', 'thumbnail');
+    remove_post_type_support('page', 'author');
+    remove_post_type_support('page', 'page-attributes');
+});
+
+add_action('admin_menu', function() {
+    remove_meta_box('authordiv', 'page', 'normal');
+    remove_meta_box('commentstatusdiv', 'page', 'normal');
 });
