@@ -1,5 +1,5 @@
 === LANDINGPAGE EXPORT ===
-Anzahl Dateien: 54
+Anzahl Dateien: 57
 
 Dateistruktur:
 - app/Providers/ThemeServiceProvider.php
@@ -8,21 +8,24 @@ Dateistruktur:
 - app/View/Composers/PageLanding.php
 - app/View/Composers/Post.php
 - app/acf-chart-image-validation.php
-- app/ajax copy.php
 - app/ajax.php
+- app/export-landing.md
+- app/export-landing.php
 - app/filters.php
+- app/import-landing-admin.php
+- app/media-entry-access.php
+- app/media-entry.php
 - app/setup.php
 - app/sql-query-admin.php
 - app/translations.php
+- resources/css/admin.css
 - resources/css/editor.css
 - resources/css/landingpage-app.css
 - resources/css/landingpage.css
 - resources/js/editor.js
-- resources/js/landingpage 12_02_js
-- resources/js/landingpage copy_js
+- resources/js/landingpage-admin.js
 - resources/js/landingpage.js
 - resources/js/theme-toggle.js
-- resources/views/404.blade.php
 - resources/views/index.blade.php
 - resources/views/layouts/conversion.blade.php
 - resources/views/layouts/landingpage.blade.php
@@ -39,13 +42,13 @@ Dateistruktur:
 - resources/views/partials/forms/search.blade.php
 - resources/views/partials/landing/about.blade.php
 - resources/views/partials/landing/contact.blade.php
+- resources/views/partials/landing/cta.blade.php
 - resources/views/partials/landing/hero.blade.php
 - resources/views/partials/landing/market-insights.blade.php
 - resources/views/partials/landing/team.blade.php
 - resources/views/partials/page-header.blade.php
 - resources/views/partials/subscription/plan-card.blade.php
 - resources/views/partials/subscription/trial-content.blade.php
-- resources/views/partials/subscription/trial-hero.blade.php
 - resources/views/search.blade.php
 - resources/views/sections/conversion-footer.blade.php
 - resources/views/sections/footer.blade.php
@@ -59,6 +62,48 @@ Dateistruktur:
 
 ==========================
 
+Projekt:
+WordPress Theme (Sage/Acorn) mit Blade Templates, ACF, Vite, Tailwind.
+Fokus: Landingpage + Dashboard getrennt. Daten über Composer in Views.
+
+Technik:
+PHP (WordPress + Acorn), Blade, ACF, JS (Vanilla), Tailwind, Vite.
+
+Verhalten ChatGPT:
+
+1. Anweisungen:
+- IMMER exakt befolgen, - KEINE Erweiterungen, - KEINE Interpretation, - KEINE zusätzlichen Optimierungen
+
+2. Änderungen:
+- NUR das ändern, was explizit verlangt ist, - minimal-invasiv arbeiten, - KEINE Refactorings ohne Auftrag
+
+3. Kommentare:
+- NIEMALS entfernen
+- vorhandene Kommentare bleiben 1:1 erhalten
+
+4. Code-Struktur:
+- bestehende Struktur strikt beibehalten
+- KEINE Umstrukturierung
+- KEINE neuen Patterns einführen
+
+5. Blade / ACF:
+- nur get_field → Variablen ersetzen wenn verlangt
+- KEINE zusätzliche Logik einbauen
+
+6. Output:
+- nur die angeforderten Dateien liefern
+- vollständig, aber ohne zusätzliche Änderungen
+- keine “Verbesserungen” außerhalb des Scopes
+
+7. Grundregel:
+- User entscheidet alles
+- ChatGPT denkt nicht mit, erweitert nicht, optimiert nicht
+- ChatGPT setzt exakt um
+
+Ziel:
+100% deterministisches Verhalten ohne Abweichung vom Auftrag.
+
+==========================
 ===== app/Providers/ThemeServiceProvider.php =====
 
 <?php
@@ -234,10 +279,47 @@ class PageLanding extends Composer
       'hero' => [
         'headline' => get_field('hero_headline'),
         'subline' => get_field('hero_subline'),
+        'additional_text' => get_field('hero_additional_text'),
         'cta_text' => get_field('hero_cta_text'),
         'cta_link' => get_field('hero_cta_link'),
         'visual' => get_field('hero_visual')
-      ]
+      ],
+
+      'about' => [
+        'headline' => get_field('about_section_headline'),
+        'intro' => get_field('about_intro'),
+        'visual' => get_field('about_visual'),
+        'features' => array_map(function ($i) {
+          return get_field("feature_{$i}");
+        }, range(1, 4))
+      ],
+
+      'contact' => [
+        'headline' => get_field('contact_headline'),
+        'text' => get_field('contact_text'),
+      ],
+
+      'team' => [
+        'headline' => get_field('team_headline'),
+        'subheadline' => get_field('team_subheadline'),
+        'members' => get_field('team_members') ?: [],
+      ],
+
+      'marketInsights' => [
+        'headline' => get_field('market_insights_headline'),
+        'subline' => get_field('market_insights_subline'),
+        'additional' => get_field('market_insights_additional_text'),
+        'items' => array_map(function ($i) {
+          return [
+            'image' => get_field("market_insight_{$i}_image"),
+            'title' => get_field("market_insight_{$i}_title"),
+            'link' => get_field("market_insight_{$i}_link"),
+            'duration' => get_field("market_insight_{$i}_duration"),
+            'platform' => get_field("market_insight_{$i}_platform"),
+            'premium' => get_field("market_insight_{$i}_premium"),
+          ];
+        }, range(1, 3))
+      ],
     ];
   }
 }
@@ -363,94 +445,6 @@ add_filter('acf/validate_value/name=chart_image', function ($valid, $value, $fie
 }, 10, 4);
 
 
-===== app/ajax copy.php =====
-
-<?php
-
-/**
- * AJAX Endpoints für das Dashboard
- * Aktuell: Dark / Light Mode Speicherung im User-Meta.
- */
-
-add_action('wp_ajax_set_dashboard_theme', function () {
-  if (!is_user_logged_in()) {
-    wp_send_json_error();
-  }
-
-  $theme = $_POST['theme'] === 'dark' ? 'dark' : 'light';
-  update_user_meta(get_current_user_id(), USER_META_THEME, $theme);
-
-  wp_send_json_success();
-});
-
-
-/**
- * AJAX-Handler für das Kontaktformular.
- * Validiert E-Mail und Nachricht serverseitig und versendet die Anfrage an den Admin.
- */
-
-add_action('wp_ajax_contact_form_submit', __NAMESPACE__ . '\\contact_form_submit');
-add_action('wp_ajax_nopriv_contact_form_submit', __NAMESPACE__ . '\\contact_form_submit');
-
-function contact_form_submit()
-{
-
-  $email = trim($_POST['email'] ?? '');
-  $message = trim($_POST['message'] ?? '');
-
-  if (!$email || !\is_email($email)) {
-    \wp_send_json_error([
-      'field' => 'email'
-    ]);
-  }
-
-  if (!$message || \mb_strlen($message) < 5) {
-    \wp_send_json_error([
-      'field' => 'message'
-    ]);
-  }
-
-  \wp_mail(
-    \get_option('admin_email'),
-    'Kontaktanfrage',
-    "E-Mail: {$email}\n\n{$message}"
-  );
-
-  \wp_send_json_success();
-}
-
-require_once __DIR__ . '/dashboard-sidebar-state.php';
-
-
-/**
- * Speichert das Dashboard-Theme (Light/Dark) im User-Meta.
- * Wird per AJAX vom Theme-Toggle ausgelöst.
- */
-add_action('wp_ajax_set_dashboard_theme', function () {
-
-  if (!is_user_logged_in()) {
-    wp_send_json_error();
-  }
-
-  if (
-    !isset($_POST['_wpnonce']) ||
-    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_theme_toggle')
-  ) {
-    wp_send_json_error();
-  }
-
-  $theme = ($_POST['theme'] ?? '') === 'dark' ? 'dark' : 'light';
-
-  update_user_meta(
-    get_current_user_id(),
-    USER_META_THEME,
-    $theme
-  );
-
-  wp_send_json_success();
-});
-
-
 ===== app/ajax.php =====
 
 <?php
@@ -532,6 +526,22 @@ add_action('wp_ajax_nopriv_contact_form_submit', __NAMESPACE__ . '\\contact_form
 
 function contact_form_submit()
 {
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'contact_form')
+  ) {
+    wp_send_json_error();
+  }
+
+  $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+  $key = 'contact_form_' . md5($ip);
+
+  if (get_transient($key)) {
+    wp_send_json_error(['message' => 'Rate limit']);
+  }
+
+  set_transient($key, 1, 60);
+
   $email = trim($_POST['email'] ?? '');
   $message = trim($_POST['message'] ?? '');
 
@@ -553,6 +563,65 @@ function contact_form_submit()
 }
 
 
+===== app/export-landing.md =====
+
+https://dev.bbc.devel-web.de/wp/wp-admin/admin-post.php?action=export_landing&post_id=7
+
+
+===== app/export-landing.php =====
+
+<?php
+
+namespace App;
+
+add_action('admin_post_export_landing', function () {
+
+  if (!current_user_can('administrator')) {
+    exit;
+  }
+
+  $post_id = (int) ($_GET['post_id'] ?? 0);
+  if (!$post_id) exit;
+
+  $data = [
+    'hero_headline' => get_field('hero_headline', $post_id),
+    'hero_subline' => get_field('hero_subline', $post_id),
+    'hero_additional_text' => get_field('hero_additional_text', $post_id),
+
+    'about' => [
+      'headline' => get_field('about_section_headline', $post_id),
+      'intro' => get_field('about_intro', $post_id),
+      'features' => [
+        get_field('feature_1', $post_id),
+        get_field('feature_2', $post_id),
+        get_field('feature_3', $post_id),
+        get_field('feature_4', $post_id),
+      ],
+    ],
+
+    'contact_text' => get_field('contact_text', $post_id),
+
+    'market_insights' => [
+      'headline' => get_field('market_insights_headline', $post_id),
+      'subline' => get_field('market_insights_subline', $post_id),
+      'additional' => get_field('market_insights_additional_text', $post_id),
+      'items' => [
+        get_field('market_insight_1_title', $post_id),
+        get_field('market_insight_2_title', $post_id),
+        get_field('market_insight_3_title', $post_id),
+      ],
+    ],
+  ];
+
+  header('Content-Type: application/json; charset=utf-8');
+  header('Content-Disposition: attachment; filename=landing-export.json');
+
+  echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+  exit;
+});
+
+
 ===== app/filters.php =====
 
 <?php
@@ -571,6 +640,162 @@ namespace App;
 add_filter('excerpt_more', function () {
     return sprintf(' &hellip; <a href="%s">%s</a>', get_permalink(), __('Continued', 'sage'));
 });
+
+
+===== app/import-landing-admin.php =====
+
+<?php
+
+namespace App;
+
+add_action('admin_menu', function () {
+  add_submenu_page(
+    'tools.php',
+    'Landing Import',
+    'Landing Import',
+    'manage_options',
+    'landing-import',
+    function () {
+?>
+    <div class="wrap">
+      <h1>Landing Import</h1>
+
+      <form method="post" enctype="multipart/form-data" action="<?php echo admin_url('admin-post.php'); ?>">
+        <input type="hidden" name="action" value="import_landing">
+
+        <p>
+          <label>Post ID (EN Seite)</label><br>
+          <input type="number" name="post_id" required>
+        </p>
+
+        <p>
+          <input type="file" name="file" accept="application/json" required>
+        </p>
+
+        <p>
+          <button class="button button-primary">Import JSON</button>
+        </p>
+      </form>
+    </div>
+<?php
+    }
+  );
+});
+
+
+===== app/media-entry-access.php =====
+
+<?php
+
+function can_view_media_entry($user_id)
+{
+  $state = dashboard_access_state($user_id);
+  return in_array($state, ['trial', 'active'], true);
+}
+
+add_action('template_redirect', function () {
+
+  if (get_post_type() === 'media_entry') {
+    if (!can_view_media_entry(get_current_user_id())) {
+      wp_safe_redirect(home_url('/dashboard-payment-required'));
+      exit;
+    }
+  }
+});
+
+
+===== app/media-entry.php =====
+
+<?php
+
+add_action('init', function () {
+
+  register_post_type('media_entry', [
+    'labels' => [
+      'name' => __('Media Entries'),
+      'singular_name' => __('Media Entry'),
+    ],
+    'public' => false,
+    'show_ui' => true,
+    'show_in_menu' => true,
+    'supports' => ['title'],
+    'has_archive' => false,
+    'rewrite' => false,
+  ]);
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Auto-Title from Media File (Stable Fallback)
+|--------------------------------------------------------------------------
+| Setzt beim Speichern eines Media Entry automatisch den Dateinamen
+| als Titel, wenn kein Titel gesetzt ist.
+|--------------------------------------------------------------------------
+*/
+
+add_action('acf/save_post', function ($post_id) {
+  if (get_post_type($post_id) !== 'media_entry' || wp_is_post_revision($post_id)) {
+    return;
+  }
+
+  $currentTitle = get_post_field('post_title', $post_id);
+  // Falls das JS im Browser mal blockiert wird, greift dieser Check:
+  if (!empty(trim($currentTitle)) && $currentTitle !== 'Auto Draft' && $currentTitle !== 'Titel hinzufügen') {
+    return;
+  }
+
+  $audio = get_field('audio_file', $post_id);
+  if (empty($audio['filename'])) {
+    return;
+  }
+
+  // Deine bewährte Bereinigungs-Logik
+  $filename = $audio['filename'];
+  $title = pathinfo($filename, PATHINFO_FILENAME);
+  $title = html_entity_decode($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+  $title = str_replace(['-', '_'], ' ', $title);
+  $title = ucwords(trim(preg_replace('/\s+/', ' ', $title)));
+
+  remove_action('acf/save_post', __FUNCTION__, 20);
+  wp_update_post([
+    'ID'         => $post_id,
+    'post_title' => $title,
+    'post_name'  => sanitize_title($title) // Erstellt auch die passende URL
+  ]);
+  add_action('acf/save_post', __FUNCTION__, 20);
+}, 20);
+
+
+/*
+|--------------------------------------------------------------------------
+| Default Publish Date (Smart)
+|--------------------------------------------------------------------------
+| Setzt beim Anlegen eines neuen Media Entry automatisch das aktuelle
+| Datum, lässt bestehende Werte beim Bearbeiten aber unverändert.
+|--------------------------------------------------------------------------
+*/
+
+add_filter('acf/load_value/name=publish_date', function ($value, $post_id) {
+
+  // 1. Wenn bereits ein Wert in der Datenbank steht, diesen behalten
+  if (!empty($value)) {
+    return $value;
+  }
+
+  // 2. Prüfen, ob wir uns im Backend befinden und es ein media_entry ist
+  if (is_admin() && get_post_type($post_id) === 'media_entry') {
+
+    // 3. Nur wenn der Post brandneu ist (Status 'auto-draft' oder gar kein Status)
+    $post_status = get_post_status($post_id);
+
+    if (!$post_status || $post_status === 'auto-draft') {
+      return current_time('Y-m-d');
+    }
+  }
+
+  return $value;
+}, 10, 2);
 
 
 ===== app/setup.php =====
@@ -613,14 +838,21 @@ add_action('enqueue_block_editor_assets', function () {
  * @return void
  */
 add_filter('admin_head', function () {
-    if (! get_current_screen()?->is_block_editor()) {
+
+    $screen = get_current_screen();
+
+    if (!$screen) {
+        return;
+    }
+
+    if (!in_array($screen->post_type, ['page', 'media_entry', 'analysis'])) {
         return;
     }
 
     $dependencies = json_decode(Vite::content('editor.deps.json'));
 
     foreach ($dependencies as $dependency) {
-        if (! wp_script_is($dependency)) {
+        if (!wp_script_is($dependency)) {
             wp_enqueue_script($dependency);
         }
     }
@@ -629,6 +861,7 @@ add_filter('admin_head', function () {
         'resources/js/editor.js',
     ])->toHtml();
 });
+
 
 /**
  * Use the generated theme.json file.
@@ -767,6 +1000,9 @@ require_once __DIR__ . '/dashboard-access.php';
 require_once __DIR__ . '/dashboard-gate.php';
 require_once __DIR__ . '/dashboard-controller.php';
 
+require_once __DIR__ . '/media-entry.php';
+require_once __DIR__ . '/media-entry-access.php';
+
 require_once __DIR__ . '/ajax.php';
 require_once __DIR__ . '/filters.php';
 require_once __DIR__ . '/translations.php';
@@ -777,6 +1013,10 @@ require_once __DIR__ . '/dashboard-subscription.php';
 require_once __DIR__ . '/acf-chart-image-validation.php';
 
 require_once __DIR__ . '/sql-query-admin.php';
+
+require_once __DIR__ . '/export-landing.php';
+#require_once __DIR__ . '/import-landing.php';
+#require_once __DIR__ . '/import-landing-admin.php';
 
 
 /**
@@ -821,39 +1061,249 @@ add_action('init', function () {
 
 /* Admin Backend */
 
-/* extend admin view */
+
+/**
+ * Fügt Template + ID Spalten NUR für Admins hinzu
+ */
 add_filter('manage_pages_columns', function ($columns) {
-  $columns['page_template'] = 'Template';
-  return $columns;
+
+    if (!current_user_can('administrator')) {
+        return $columns;
+    }
+
+    $columns['page_template'] = 'Template';
+    $columns['page_id'] = 'ID';
+
+    return $columns;
 });
 
+
+/**
+ * Befüllt Template + ID Spalten NUR für Admins
+ */
 add_action('manage_pages_custom_column', function ($column, $post_id) {
-  if ($column !== 'page_template') {
-    return;
-  }
 
-  $template = get_page_template_slug($post_id);
+    if (!current_user_can('administrator')) {
+        return;
+    }
 
-  if (!$template) {
-    echo 'Standard';
-    return;
-  }
+    if ($column === 'page_template') {
 
-  $theme = wp_get_theme();
-  $templates = $theme->get_page_templates();
-  $label = array_search($template, $templates, true);
+        $template = get_page_template_slug($post_id);
 
-  echo $label ?: $template;
+        if (!$template) {
+            echo 'Standard';
+            return;
+        }
+
+        $theme = wp_get_theme();
+        $templates = $theme->get_page_templates();
+        $label = array_search($template, $templates, true);
+
+        echo $label ?: $template;
+    }
+
+    if ($column === 'page_id') {
+        echo $post_id;
+    }
 }, 10, 2);
 
+
+/**
+ * Styling nur für Admins
+ */
 add_action('admin_enqueue_scripts', function () {
-  wp_add_inline_style('wp-admin', '
-    .wp-list-table .column-page_template {
-      width: 220px;
-      white-space: nowrap;
+
+    if (!current_user_can('administrator')) {
+        return;
     }
-  ');
+
+    $screen = get_current_screen();
+
+    if (!$screen) return;
+
+    if ($screen->post_type !== 'page') return;
+
+    echo \Illuminate\Support\Facades\Vite::withEntryPoints([
+        'resources/css/admin.css',
+    ])->toHtml();
+
+    wp_add_inline_style('wp-admin', '
+        .wp-list-table .column-page_template {
+            width: 220px;
+            white-space: nowrap;
+        }
+        .wp-list-table .column-page_id {
+            width: 80px;
+            text-align: right;
+            font-weight: 600;
+        }
+    ');
 });
+
+
+/* added for redakeur role */
+
+add_action('add_meta_boxes', function () {
+
+    global $post;
+
+    if (!$post || get_post_type($post) !== 'page') return;
+
+    $template = get_page_template_slug($post->ID);
+
+    if (!in_array($template, [
+        'page-landing.blade.php',
+        'template-plain.blade.php'
+    ])) return;
+
+    remove_meta_box('pageparentdiv', 'page', 'side');
+    remove_meta_box('authordiv', 'page', 'side');
+    remove_meta_box('authordiv', 'page', 'normal');
+    remove_meta_box('postimagediv', 'page', 'side');
+    remove_meta_box('commentstatusdiv', 'page', 'normal');
+    remove_meta_box('commentsdiv', 'page', 'normal');
+}, 99);
+
+
+
+add_filter('use_block_editor_for_post', function ($use, $post) {
+
+    if (!$post || $post->post_type !== 'page') {
+        return $use;
+    }
+
+    $template = get_page_template_slug($post->ID);
+
+    if (in_array($template, [
+        'page-landing.blade.php',
+        'template-plain.blade.php'
+    ])) {
+        return false;
+    }
+
+    return $use;
+}, 10, 2);
+
+
+
+add_action('admin_head', function () {
+
+    $screen = get_current_screen();
+    if (!$screen || $screen->post_type !== 'page') return;
+
+    global $post;
+    if (!$post) return;
+
+    $template = get_page_template_slug($post->ID);
+
+    if (!in_array($template, [
+        'page-landing.blade.php',
+        'template-plain.blade.php'
+    ])) return;
+
+    echo \Illuminate\Support\Facades\Vite::withEntryPoints([
+        'resources/js/landingpage-admin.js',
+    ])->toHtml();
+
+    echo '<style>
+        #postdivrich,
+        #postdiv,
+        #contentdiv {
+            display: none !important;
+        }
+    </style>';
+});
+
+add_action('admin_init', function () {
+
+    remove_post_type_support('page', 'author');
+});
+
+
+/* kann boxen nicht ausblenden */
+
+add_filter('hidden_meta_boxes', function ($hidden, $screen) {
+    if ($screen->id === 'page') {
+        return [];
+    }
+    return $hidden;
+}, 10, 2);
+
+
+/* kann nicht verschieben */
+
+add_action('admin_enqueue_scripts', function($hook){
+    if( $hook === "post.php" || $hook === "post-new.php" ){
+        $screen = get_current_screen();
+        if( $screen->post_type === "page" && current_user_can("editor") ){
+            wp_add_inline_script("jquery-ui-sortable", '
+                jQuery(function($){
+                    $(".meta-box-sortables").sortable("disable");
+                });
+            ');
+        }
+    }
+});
+
+
+
+/**
+ * Blendet im Admin alle Seiten ohne Template aus (außer für Admins)
+ */
+add_action('pre_get_posts', function ($query) {
+
+    if (!is_admin() || !$query->is_main_query()) {
+        return;
+    }
+
+    if (current_user_can('administrator')) {
+        return;
+    }
+
+    global $pagenow;
+
+    if ($pagenow !== 'edit.php') {
+        return;
+    }
+
+    if ($query->get('post_type') !== 'page') {
+        return;
+    }
+
+    $query->set('meta_query', [
+        [
+            'key'     => '_wp_page_template',
+            'compare' => 'EXISTS',
+        ],
+        [
+            'key'     => '_wp_page_template',
+            'value'   => '',
+            'compare' => '!=',
+        ],
+        [
+            'key'     => '_wp_page_template',
+            'value'   => 'default',
+            'compare' => '!=',
+        ],
+    ]);
+});
+
+
+
+/**
+ * Entfernt Beiträge und Kommentare aus dem Admin-Menü für Redakteure
+ */
+add_action('admin_menu', function () {
+
+    if (current_user_can('administrator')) {
+        return;
+    }
+
+    remove_menu_page('edit.php'); // Beiträge
+    remove_menu_page('edit-comments.php'); // Kommentare
+
+}, 999);
 
 
 ===== app/sql-query-admin.php =====
@@ -871,9 +1321,10 @@ add_action('admin_menu', function () {
   );
 });
 
-function sql_query_runner_view() {
+function sql_query_runner_view()
+{
   global $wpdb;
-  ?>
+?>
 
   <div class="wrap">
     <h1>SQL Query Runner</h1>
@@ -885,30 +1336,44 @@ function sql_query_runner_view() {
 
     <?php
     if (!empty($_POST['sql_query'])) {
+
       $sql = wp_unslash($_POST['sql_query']);
-      echo '<h2>Ergebnis</h2>';
-      $results = $wpdb->get_results($sql, ARRAY_A);
-      if ($results === null) {
-        echo '<div class="notice notice-error"><p>Fehler oder kein Ergebnis.</p></div>';
-      } else {
-        echo '<table class="widefat fixed striped"><thead><tr>';
-        foreach (array_keys($results[0] ?? []) as $col) {
-          echo '<th>' . esc_html($col) . '</th>';
-        }
-        echo '</tr></thead><tbody>';
-        foreach ($results as $row) {
-          echo '<tr>';
-          foreach ($row as $cell) {
-            echo '<td>' . esc_html($cell) . '</td>';
-          }
-          echo '</tr>';
-        }
-        echo '</tbody></table>';
+
+      if (!preg_match('/^\s*select/i', $sql)) {
+        echo '<div class="notice notice-error"><p>Nur SELECT Queries erlaubt.</p></div>';
+        return;
       }
+
+      echo '<h2>Ergebnis</h2>';
+
+      $results = $wpdb->get_results($sql, ARRAY_A);
+
+      if (empty($results)) {
+        echo '<div class="notice notice-warning"><p>Keine Ergebnisse.</p></div>';
+        return;
+      }
+
+      echo '<table class="widefat fixed striped"><thead><tr>';
+
+      foreach (array_keys($results[0]) as $col) {
+        echo '<th>' . esc_html($col) . '</th>';
+      }
+
+      echo '</tr></thead><tbody>';
+
+      foreach ($results as $row) {
+        echo '<tr>';
+        foreach ($row as $cell) {
+          echo '<td>' . esc_html($cell) . '</td>';
+        }
+        echo '</tr>';
+      }
+
+      echo '</tbody></table>';
     }
     ?>
   </div>
-  <?php
+<?php
 }
 
 
@@ -917,16 +1382,206 @@ function sql_query_runner_view() {
 <?php
 
 /**
-* Registriert Footer-Texte für Polylang.
-*/
+ * Registriert Footer- und Dashboard-Texte für Polylang.
+ */
 add_action('init', function () {
-pll_register_string('footer_follow', 'Follow Us', 'Footer');
-pll_register_string('footer_about', 'About', 'Footer');
-pll_register_string('footer_services', 'Services', 'Footer');
-pll_register_string('footer_contact', 'Contact', 'Footer');
-pll_register_string('footer_privacy', 'Privacy policy', 'Footer');
-pll_register_string('footer_imprint', 'Imprint', 'Footer');
+
+  /* Footer */
+  pll_register_string('footer_follow', 'Follow Us', 'Footer');
+  pll_register_string('footer_about', 'About', 'Footer');
+  pll_register_string('footer_services', 'Services', 'Footer');
+  pll_register_string('footer_contact', 'Contact', 'Footer');
+  pll_register_string('footer_privacy', 'Privacy policy', 'Footer');
+  pll_register_string('footer_imprint', 'Imprint', 'Footer');
+
+  /* Dashboard */
+  pll_register_string('dashboard_copy', 'Kopieren', 'Dashboard');
+  pll_register_string('dashboard_copied', 'Kopiert!', 'Dashboard');
 });
+
+
+===== resources/css/admin.css =====
+
+/* ACF Admin UI Redesign */
+
+.acf-postbox {
+  border: none !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08) !important;
+  margin-bottom: 28px !important;
+}
+
+/* Section Header */
+.acf-postbox .postbox-header {
+  background: linear-gradient(180deg, #eaf4f6 0%, #d7e9ee 100%) !important;
+  border-bottom: 1px solid #d0e3e8 !important;
+  padding: 16px 20px !important;
+}
+
+.acf-postbox .postbox-header h2 {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #2c5c6a !important;
+}
+
+/* Content */
+.acf-postbox .inside {
+  background: #f8fbfc !important;
+  padding: 18px !important;
+}
+
+/* Feature Cards */
+.acf-field[data-name^="feature_"] {
+  background: #ffffff !important;
+  border-radius: 14px !important;
+  padding: 16px !important;
+  margin-bottom: 16px !important;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #e4eef2 !important;
+}
+
+/* Labels */
+.acf-label label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #3f6b78 !important;
+}
+
+/* Inputs */
+.acf-input input,
+.acf-input textarea {
+  border-radius: 10px !important;
+  border: 1px solid #cfe3ea !important;
+  padding: 10px 12px !important;
+  font-size: 14px !important;
+}
+
+.acf-input input:focus,
+.acf-input textarea:focus {
+  border-color: #35788b !important;
+  box-shadow: 0 0 0 3px rgba(63, 135, 156, 0.2) !important;
+}
+
+/* Tabs */
+.acf-tab-group {
+  border-bottom: none !important;
+  margin-bottom: 10px !important;
+}
+
+.acf-tab-button {
+  border-radius: 10px !important;
+  background: #eef6f8 !important;
+  color: #3f6b78 !important;
+  padding: 6px 12px !important;
+  margin-right: 6px !important;
+}
+
+.acf-tab-button.-active {
+  background: #3f879c !important;
+  color: #fff !important;
+}
+
+/* Spacing */
+.acf-field {
+  margin-bottom: 12px !important;
+}
+
+/* Collapse animation smoother */
+.postbox .inside {
+  transition: all 0.3s ease !important;
+}
+
+/* Admin Background soften */
+#wpbody-content {
+  background: #f4f8f9;
+}
+
+
+
+/* Feature Cards (Group-Level) */
+.acf-field[data-name^="feature_"] {
+  border: 1px solid #e3e7ea;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+/* Hover */
+.acf-field[data-name^="feature_"]:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* Accordion Header */
+.acf-field[data-name^="feature_"] .acf-accordion-title {
+  background: #f4f7f9;
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid #e3e7ea;
+}
+
+/* Active */
+.acf-field[data-name^="feature_"] .acf-accordion.-open .acf-accordion-title {
+  background: #e3edf5;
+}
+
+/* Content */
+.acf-field[data-name^="feature_"] .acf-fields {
+  padding: 16px;
+  background: #fafbfc;
+}
+
+/* Labels */
+.acf-field[data-name^="feature_"] .acf-label label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #6b7c93;
+}
+
+/* Inputs */
+.acf-field[data-name^="feature_"] input,
+.acf-field[data-name^="feature_"] textarea {
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  padding: 8px 10px;
+}
+
+/* Textarea */
+.acf-field[data-name^="feature_"] textarea {
+  min-height: 120px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Sticky Publish Box */
+#postbox-container-1 {
+  position: sticky;
+  top: 20px;
+}
+
+#submitdiv {
+  position: fixed;
+  bottom: 10px;
+  z-index: 5;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
 
 
 ===== resources/css/editor.css =====
@@ -972,11 +1627,56 @@ pll_register_string('footer_imprint', 'Imprint', 'Footer');
 }
 
 
-/* Admin Backend */
+/* Admin Backend  - obsolet weil Gutenberg? */
 
 .wp-list-table .column-page_template {
   width: 220px;
   white-space: nowrap;
+}
+
+.acf-image-uploader .image-wrap img {
+  max-height: 140px !important;
+}
+
+.edit-post-sidebar {
+  background: #f8fafc;
+}
+
+.components-panel {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.components-panel__header {
+  background: #eef2f7;
+  font-weight: 600;
+}
+
+.interface-interface-skeleton__sidebar {
+  width: 320px;
+}
+
+.acf-flexible-content .layout {
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.acf-flexible-content .layout .acf-fc-layout-handle {
+  font-size: 16px;
+  font-weight: 600;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.acf-fields>.acf-field {
+  padding: 12px 16px;
+}
+
+.acf-label label {
+  font-weight: 500;
 }
 
 
@@ -1326,6 +2026,33 @@ body {
   mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
 }
 
+
+
+
+
+/* CTA Section */
+
+.bg-cta {
+background: radial-gradient(ellipse at center,
+  #eef7f9 0%,
+    #cfe3e9 30%,
+    #8fb6c3 65%,
+    #6f9eae 100%);
+}
+
+.cta-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+
+
+
+
 /* standard pages */
 .page-template-template-plain #siteHeader {
   background-color: rgba(2, 6, 23, 0.75);
@@ -1535,859 +2262,188 @@ ul.footer-nav {
 }
 
 
+
 ===== resources/js/editor.js =====
 
 import domReady from '@wordpress/dom-ready';
 
-domReady(() => {
-  //
-});
+/*
+|--------------------------------------------------------------------------
+| Collapsible Meta Boxes
+|--------------------------------------------------------------------------
+| Sorgt dafür, dass beim Öffnen einer Metabox alle anderen automatisch
+| geschlossen werden.
+|--------------------------------------------------------------------------
+*/
+function initCollapsibleMetaBoxes() {
+  document.addEventListener('click', (event) => {
 
-document.addEventListener('click', function (event) {
-  const toggle = event.target.closest('.handlediv') || event.target.closest('.hndle');
-  if (!toggle) return;
+    const toggle = event.target.closest('.handlediv, .hndle');
+    if (!toggle) return;
 
-  const current = toggle.closest('.postbox');
-  const container = current.closest('.meta-box-sortables');
+    const currentBox = toggle.closest('.postbox');
+    if (!currentBox) return;
 
-  setTimeout(() => {
-    // Nur wenn die geklickte Box jetzt offen ist, schließen wir die anderen
-    if (!current.classList.contains('closed')) {
-      const siblings = container.querySelectorAll('.postbox');
-      siblings.forEach(box => {
-        if (box !== current) {
-          box.classList.add('closed');
-          // Aria-Status für Screenreader korrigieren
-          const btn = box.querySelector('.handlediv');
-          if (btn) btn.setAttribute('aria-expanded', 'false');
-        }
-      });
-    }
-  }, 100);
-});
+    const container = currentBox.closest('.meta-box-sortables');
+    if (!container) return;
 
+    requestAnimationFrame(() => {
 
-===== resources/js/landingpage 12_02_js =====
+      if (!currentBox.classList.contains('closed')) {
 
-import.meta.glob([
-  '../images/**',
-  '../fonts/**',
-]);
+        container.querySelectorAll('.postbox').forEach((box) => {
 
-/**
- * Initialisiert weiches Scrollen mit stabilem Offset pro Zielsektion.
- * Unterstützt data-scroll-offset auf dem Ziel-Element.
- * initSmoothScroll/initScrollToTop
- */
-function initSmoothScroll(duration = 700) {
-  const header = document.getElementById('siteHeader')
-  const headerHeight = header ? header.offsetHeight : 0
-  const isHome = window.location.pathname === '/' || window.location.pathname === ''
+          if (box !== currentBox) {
 
-  document.querySelectorAll('a[href*="#"]').forEach(link => {
-    link.addEventListener('click', e => {
-      if (!isHome) return
+            box.classList.add('closed');
 
-      const url = new URL(link.href)
-      if (url.pathname !== '/' || !url.hash) return
+            const btn = box.querySelector('.handlediv');
+            if (btn) {
+              btn.setAttribute('aria-expanded', 'false');
+            }
 
-      const id = url.hash.replace('#', '')
-      if (!id) return
+          }
 
-      const target = document.getElementById(id)
-      if (!target) return
+        });
 
-      e.preventDefault()
+      }
 
-      const customOffset = target.dataset.scrollOffset
-        ? parseInt(target.dataset.scrollOffset, 10)
-        : 0
-
-      const targetY =
-        target.getBoundingClientRect().top +
-        window.pageYOffset -
-        headerHeight -
-        customOffset
-
-      smoothScrollTo(targetY, duration)
-    })
-  })
-
-  function smoothScrollTo(targetY, duration) {
-    const startY = window.pageYOffset
-    const diff = targetY - startY
-    let startTime = null
-
-    function step(timestamp) {
-      if (!startTime) startTime = timestamp
-      const time = timestamp - startTime
-      const percent = Math.min(time / duration, 1)
-
-      window.scrollTo(0, startY + diff * ease(percent))
-
-      if (percent < 1) requestAnimationFrame(step)
-    }
-
-    function ease(t) {
-      return t < 0.5
-        ? 2 * t * t
-        : -1 + (4 - 2 * t) * t
-    }
-
-    requestAnimationFrame(step)
-  }
-}
-function initScrollToTop() {
-  const scrollBtn = document.getElementById('scrollToTopBtn');
-  if (!scrollBtn) return;
-
-  window.addEventListener('scroll', () => {
-    const isVisible = window.scrollY > 200;
-    scrollBtn.style.opacity = isVisible ? '1' : '0';
-    scrollBtn.style.pointerEvents = isVisible ? 'auto' : 'none';
-  });
-
-  scrollBtn.addEventListener('click', () => {
-    smoothScrollTo(0, 900);
-  });
-
-  function smoothScrollTo(targetY, duration) {
-    const startY = window.scrollY;
-    const diff = targetY - startY;
-    let startTime;
-
-    function step(timestamp) {
-      if (!startTime) startTime = timestamp;
-      const time = timestamp - startTime;
-      const percent = Math.min(time / duration, 1);
-      window.scrollTo(0, startY + diff * easeInOutQuad(percent));
-      if (time < duration) requestAnimationFrame(step);
-    }
-
-    function easeInOutQuad(t) {
-      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-    }
-
-    requestAnimationFrame(step);
-  }
-}
-
-function initApp() {
-  initSmoothScroll(900);
-  initScrollToTop();
-}
-
-document.addEventListener('DOMContentLoaded', initApp);
-
-/* mobile menu */
-function initMobileMenu() {
-  const toggle = document.getElementById('mobileMenuToggle');
-  const close = document.getElementById('mobileMenuClose');
-  const menu = document.getElementById('mobileMenu');
-  const links = menu?.querySelectorAll('.mobile-link');
-
-  if (!toggle || !menu) return;
-
-  function openMenu() {
-    menu.classList.remove('translate-x-full');
-    document.body.classList.add('overflow-hidden');
-  }
-
-  function closeMenu() {
-    menu.classList.add('translate-x-full');
-    document.body.classList.remove('overflow-hidden');
-  }
-
-  toggle.addEventListener('click', openMenu);
-  close?.addEventListener('click', closeMenu);
-
-  links?.forEach(link => {
-    link.addEventListener('click', closeMenu);
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeMenu();
-  });
-}
-
-document.addEventListener('DOMContentLoaded', initMobileMenu);
-
-function initStickyHeader() {
-  const header = document.getElementById('siteHeader');
-  if (!header) return;
-
-  function update() {
-    if (window.scrollY > 40) {
-      header.classList.add('is-scrolled');
-    } else {
-      header.classList.remove('is-scrolled');
-    }
-  }
-
-  update();
-  window.addEventListener('scroll', update, { passive: true });
-}
-
-document.addEventListener('DOMContentLoaded', initStickyHeader);
-
-/**
- * Initialisiert Validierung und AJAX-Submit für das Kontaktformular.
- * Zeigt mehrsprachige Inline-Fehlermeldungen und sendet gültige Daten per AJAX.
- */
-function initContactForm() {
-  const form = document.getElementById('contactForm');
-  if (!form) return;
-
-  const successBox = document.getElementById('contactSuccess');
-  const lang = document.documentElement.lang?.startsWith('de') ? 'de' : 'en';
-
-  const messages = {
-    en: {
-      email_required: 'Please enter your email address.',
-      email_invalid: 'Please enter a valid email address.',
-      message_required: 'Please enter a message.',
-      message_too_short: 'Your message must contain at least 5 characters.'
-    },
-    de: {
-      email_required: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
-      email_invalid: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
-      message_required: 'Bitte geben Sie eine Nachricht ein.',
-      message_too_short: 'Die Nachricht muss mindestens 5 Zeichen enthalten.'
-    }
-  };
-
-  const t = key => messages[lang][key] || messages.en[key];
-
-  const emailField = form.querySelector('[name="email"]');
-  const messageField = form.querySelector('[name="message"]');
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  function showError(field, message) {
-    const el = form.querySelector('.error-' + field.name);
-    el.textContent = message;
-    el.style.maxHeight = '40px';
-    el.style.opacity = '1';
-    field.setAttribute('aria-invalid', 'true');
-  }
-
-  function clearError(field) {
-    const el = form.querySelector('.error-' + field.name);
-    el.style.maxHeight = '0';
-    el.style.opacity = '0';
-    field.removeAttribute('aria-invalid');
-
-    el.addEventListener(
-      'transitionend',
-      () => {
-        el.textContent = '';
-      },
-      { once: true }
-    );
-  }
-
-  function validateEmail() {
-    const value = emailField.value.trim();
-
-    if (!value) {
-      showError(emailField, t('email_required'));
-      return false;
-    }
-
-    if (!emailRegex.test(value)) {
-      showError(emailField, t('email_invalid'));
-      return false;
-    }
-
-    clearError(emailField);
-    return true;
-  }
-
-  function validateMessage() {
-    const value = messageField.value.trim();
-
-    if (!value) {
-      showError(messageField, t('message_required'));
-      return false;
-    }
-
-    if (value.length < 5) {
-      showError(messageField, t('message_too_short'));
-      return false;
-    }
-
-    clearError(messageField);
-    return true;
-  }
-
-  emailField.addEventListener('input', validateEmail);
-  messageField.addEventListener('input', validateMessage);
-
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-
-    const emailValid = validateEmail();
-    const messageValid = validateMessage();
-
-    if (!emailValid || !messageValid) return;
-
-    const data = new FormData(form);
-    data.append('action', 'contact_form_submit');
-
-    const ajaxUrl = form.dataset.ajaxUrl;
-
-    const response = await fetch(ajaxUrl, {
-      method: 'POST',
-      body: data
     });
 
-    const json = await response.json();
+  });
 
-    if (!json.success && json.data?.field) {
-      const field =
-        json.data.field === 'email' ? emailField : messageField;
-      showError(field, '');
+}
+
+/*
+|--------------------------------------------------------------------------
+| Media Auto-Title (ACF Native Hook)
+|--------------------------------------------------------------------------
+| Setzt den Post-Titel basierend auf dem Dateinamen eines ACF File Fields.
+|--------------------------------------------------------------------------
+*/
+function initMediaAutoTitle() {
+
+  if (typeof acf === 'undefined') {
+    return;
+  }
+
+  acf.addAction('select_attachment', function (attachment, field) {
+
+    if (!field || field.data.name !== 'audio_file') {
       return;
     }
 
-    clearError(emailField);
-    clearError(messageField);
+    const titleField = document.querySelector('#title');
+    if (!titleField) {
+      return;
+    }
 
-    successBox.style.maxHeight = '40px';
-    successBox.style.opacity = '1';
+    const currentTitle = titleField.value.trim();
 
+    if (
+      currentTitle &&
+      currentTitle !== 'Auto Draft' &&
+      currentTitle !== 'Titel hinzufügen'
+    ) {
+      return;
+    }
+
+    if (!attachment || !attachment.filename) {
+      return;
+    }
+
+    let cleanTitle = attachment.filename
+      .split('.')
+      .slice(0, -1)
+      .join('.')
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+
+    titleField.value = cleanTitle;
+
+    titleField.style.backgroundColor = 'rgba(0,124,186,0.1)';
     setTimeout(() => {
-      successBox.style.maxHeight = '0';
-      successBox.style.opacity = '0';
-    }, 5000);
+      titleField.style.backgroundColor = '';
+    }, 800);
 
-    form.reset();
-  });
-}
-
-document.addEventListener('DOMContentLoaded', initContactForm);
-
-/**
- * Aktiviert Reveal-Animationen für Text- und Medien-Elemente beim Eintritt in den Viewport.
- * Staggering erfolgt lokal pro Eintrittsgruppe, mit einmaliger Zusatzbewegung.
- */
-function initRevealOnScroll() {
-  const elements = document.querySelectorAll('.reveal-text, .reveal-media');
-  if (!elements.length) return;
-
-  const observer = new IntersectionObserver(
-    entries => {
-      const visibleEntries = entries.filter(entry => entry.isIntersecting);
-
-      visibleEntries.forEach((entry, localIndex) => {
-        const el = entry.target;
-        const delay = Number(el.dataset.revealDelay ?? localIndex * 250);
-
-        setTimeout(() => {
-          el.classList.add('is-visible');
-
-          if (el.classList.contains('reveal-media')) {
-            el.classList.add('reveal-float-once');
-          }
-        }, delay);
-
-        observer.unobserve(el);
-      });
-    },
-    { threshold: 0.15 }
-  );
-
-  elements.forEach(el => observer.observe(el));
-}
-
-document.addEventListener('DOMContentLoaded', initRevealOnScroll);
-
-/**
- *
- * @returns Hero image effect / moving
- */
-function initHeroFloat() {
-  const el = document.querySelector('.hero-phone-float');
-  if (!el) return;
-
-  function update() {
-    const y = Math.min(window.scrollY / 12, 12);
-    el.style.transform = `translateY(${-y}px)`;
-  }
-
-  update();
-  window.addEventListener('scroll', update, { passive: true });
-}
-
-document.addEventListener('DOMContentLoaded', initHeroFloat);
-
-/* classes/colors for navigation links */
-function initScrollSpy() {
-  const navLinks = Array.from(document.querySelectorAll('.nav-link'));
-  if (!navLinks.length) return;
-
-  const sections = navLinks
-    .map(link => {
-      const href = link.getAttribute('href')
-      if (!href || !href.includes('#')) return null
-
-      const id = href.split('#')[1]
-      if (!id) return null
-
-      return document.getElementById(id)
-    })
-    .filter(Boolean)
-
-  function updateActiveNav() {
-    const triggerPoint = window.innerHeight * 0.5;
-    let activeSection = null;
-
-    for (const section of sections) {
-      const rect = section.getBoundingClientRect();
-      if (rect.top <= triggerPoint && rect.bottom >= triggerPoint) {
-        activeSection = section;
-        break;
-      }
-    }
-
-    navLinks.forEach(link => {
-      const href = link.getAttribute('href')
-      if (!href || !href.includes('#')) return
-
-      const id = href.split('#')[1]
-      const isActive = activeSection && id === activeSection.id
-
-      link.classList.toggle('is-active', isActive)
-    })
-
-  }
-
-  updateActiveNav();
-  window.addEventListener('scroll', updateActiveNav, { passive: true });
-}
-
-document.addEventListener('DOMContentLoaded', initScrollSpy);
-
-
-===== resources/js/landingpage copy_js =====
-
-import.meta.glob([
-  '../images/**',
-  '../fonts/**',
-]);
-
-function initSmoothScroll(duration = 700) {
-  document.querySelectorAll('a[href^="#"]').forEach(link => {
-    link.addEventListener('click', function (e) {
-      const id = this.getAttribute('href');
-      if (!id || id === '#') return;
-
-      const target = document.querySelector(id);
-      if (!target) return;
-
-      e.preventDefault();
-
-      const rectTop = target.getBoundingClientRect().top;
-      const absoluteY = window.scrollY + rectTop;
-
-      const DEFAULT_OFFSET = 80;
-      const customOffset = target.dataset.scrollOffset
-        ? parseInt(target.dataset.scrollOffset, 10)
-        : DEFAULT_OFFSET;
-
-      const targetY = absoluteY - customOffset;
-
-      smoothScrollTo(targetY, duration);
-    });
   });
 
-  function smoothScrollTo(targetY, duration) {
-    const startY = window.scrollY;
-    const diff = targetY - startY;
-    let startTime = null;
-
-    function step(ts) {
-      if (!startTime) startTime = ts;
-
-      const time = ts - startTime;
-      const percent = Math.min(time / duration, 1);
-
-      window.scrollTo(0, startY + diff * ease(percent));
-
-      if (percent < 1) requestAnimationFrame(step);
-    }
-
-    function ease(t) {
-      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-    }
-
-    requestAnimationFrame(step);
-  }
 }
 
+/*
+|--------------------------------------------------------------------------
+| Backend Init
+|--------------------------------------------------------------------------
+| Zentrale Initialisierung aller Backend-Module.
+|--------------------------------------------------------------------------
+*/
+function initBackend() {
+  initCollapsibleMetaBoxes();
+  initMediaAutoTitle();
 
-function initScrollToTop() {
-  const scrollBtn = document.getElementById('scrollToTopBtn');
-  if (!scrollBtn) return;
-  window.addEventListener('scroll', () => {
-    const isVisible = window.scrollY > 200;
-    scrollBtn.style.opacity = isVisible ? '1' : '0';
-    scrollBtn.style.pointerEvents = isVisible ? 'auto' : 'none';
-  });
-  scrollBtn.addEventListener('click', () => {
-    smoothScrollTo(0, 900);
-  });
-  function smoothScrollTo(targetY, duration) {
-    const startY = window.scrollY;
-    const diff = targetY - startY;
-    let startTime;
-    function step(timestamp) {
-      if (!startTime) startTime = timestamp;
-      const time = timestamp - startTime;
-      const percent = Math.min(time / duration, 1);
-      window.scrollTo(0, startY + diff * easeInOutQuad(percent));
-      if (time < duration) requestAnimationFrame(step);
-    }
-    function easeInOutQuad(t) {
-      return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-    }
-    requestAnimationFrame(step);
-  }
 }
 
-function initApp() {
-  initSmoothScroll(900);
-  initScrollToTop();
-}
-
-document.addEventListener('DOMContentLoaded', initApp);
-
-/* mobile menu */
-function initMobileMenu() {
-  const toggle = document.getElementById('mobileMenuToggle');
-  const close = document.getElementById('mobileMenuClose');
-  const menu = document.getElementById('mobileMenu');
-  const links = menu?.querySelectorAll('.mobile-link');
-
-  if (!toggle || !menu) return;
-
-  function openMenu() {
-    menu.classList.remove('translate-x-full');
-    document.body.classList.add('overflow-hidden');
-  }
-
-  function closeMenu() {
-    menu.classList.add('translate-x-full');
-    document.body.classList.remove('overflow-hidden');
-  }
-
-  toggle.addEventListener('click', openMenu);
-  close?.addEventListener('click', closeMenu);
-
-  links?.forEach(link => {
-    link.addEventListener('click', closeMenu);
-  });
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeMenu();
-  });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  initMobileMenu();
+domReady(() => {
+  initBackend();
 });
 
 
+/*
+|--------------------------------------------------------------------------
+| Admin Backend
+|--------------------------------------------------------------------------
+| Anpassungen für Redakteure
+|--------------------------------------------------------------------------
+*/
 
 
 
-function initStickyHeader() {
-  const header = document.getElementById('siteHeader')
-  if (!header) return
+===== resources/js/landingpage-admin.js =====
 
-  function update() {
-    if (window.scrollY > 40) {
-      header.classList.add('is-scrolled')
-    } else {
-      header.classList.remove('is-scrolled')
-    }
-  }
+document.addEventListener('DOMContentLoaded', () => {
 
-  update()
-  window.addEventListener('scroll', update, { passive: true })
-}
+  const selector = '.acf-postbox.postbox';
 
-document.addEventListener('DOMContentLoaded', initStickyHeader)
-
-
-
-
-/**
- * Initialisiert Validierung und AJAX-Submit für das Kontaktformular.
- * Zeigt mehrsprachige Inline-Fehlermeldungen und sendet gültige Daten per AJAX.
- */
-
-function initContactForm() {
-  const form = document.getElementById('contactForm')
-  if (!form) return
-  const successBox = document.getElementById('contactSuccess')
-  const lang =
-    document.documentElement.lang?.startsWith('de') ? 'de' : 'en'
-
-  const messages = {
-    en: {
-      email_required: 'Please enter your email address.',
-      email_invalid: 'Please enter a valid email address.',
-      message_required: 'Please enter a message.',
-      message_too_short: 'Your message must contain at least 5 characters.'
-    },
-    de: {
-      email_required: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
-      email_invalid: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
-      message_required: 'Bitte geben Sie eine Nachricht ein.',
-      message_too_short: 'Die Nachricht muss mindestens 5 Zeichen enthalten.'
-    }
-  }
-
-  const t = key => messages[lang][key] || messages.en[key]
-
-  const emailField = form.querySelector('[name="email"]')
-  const messageField = form.querySelector('[name="message"]')
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-  function showError(field, message) {
-    const el = form.querySelector('.error-' + field.name)
-    el.textContent = message
-    el.style.maxHeight = '40px'
-    el.style.opacity = '1'
-    field.setAttribute('aria-invalid', 'true')
-  }
-
-  function clearError(field) {
-    const el = form.querySelector('.error-' + field.name)
-
-    el.style.maxHeight = '0'
-    el.style.opacity = '0'
-    field.removeAttribute('aria-invalid')
-
-    el.addEventListener(
-      'transitionend',
-      () => {
-        el.textContent = ''
-      },
-      { once: true }
-    )
-  }
-
-  function validateEmail() {
-    const value = emailField.value.trim()
-
-    if (!value) {
-      showError(emailField, t('email_required'))
-      return false
-    }
-
-    if (!emailRegex.test(value)) {
-      showError(emailField, t('email_invalid'))
-      return false
-    }
-
-    clearError(emailField)
-    return true
-  }
-
-  function validateMessage() {
-    const value = messageField.value.trim()
-
-    if (!value) {
-      showError(messageField, t('message_required'))
-      return false
-    }
-
-    if (value.length < 5) {
-      showError(messageField, t('message_too_short'))
-      return false
-    }
-
-    clearError(messageField)
-    return true
-  }
-
-  emailField.addEventListener('input', validateEmail)
-  messageField.addEventListener('input', validateMessage)
-
-  form.addEventListener('submit', async e => {
-    e.preventDefault()
-
-    const emailValid = validateEmail()
-    const messageValid = validateMessage()
-
-    if (!emailValid || !messageValid) return
-
-    const data = new FormData(form)
-    data.append('action', 'contact_form_submit')
-
-    const ajaxUrl = form.dataset.ajaxUrl
-
-    const response = await fetch(ajaxUrl, {
-      method: 'POST',
-      body: data
-    })
-
-    const json = await response.json()
-
-    if (!json.success && json.data?.field) {
-      const field =
-        json.data.field === 'email' ? emailField : messageField
-      showError(field, '')
-      return
-    }
-
-    clearError(emailField)
-    clearError(messageField)
-
-    successBox.style.maxHeight = '40px'
-    successBox.style.opacity = '1'
-
-    setTimeout(() => {
-      successBox.style.maxHeight = '0'
-      successBox.style.opacity = '0'
-    }, 5000)
-
-    form.reset()
-  })
-}
-
-document.addEventListener('DOMContentLoaded', initContactForm)
-
-/**
- * Aktiviert Reveal-Animationen für Text- und Medien-Elemente beim Eintritt in den Viewport.
- * Staggering erfolgt lokal pro Eintrittsgruppe, mit einmaliger Zusatzbewegung.
- */
-function initRevealOnScroll() {
-  const elements = document.querySelectorAll('.reveal-text, .reveal-media')
-  if (!elements.length) return
-
-  const observer = new IntersectionObserver(
-    entries => {
-      const visibleEntries = entries.filter(entry => entry.isIntersecting)
-
-      visibleEntries.forEach((entry, localIndex) => {
-        const el = entry.target
-        const delay = Number(el.dataset.revealDelay ?? localIndex * 250)
-
-        setTimeout(() => {
-          el.classList.add('is-visible')
-
-          if (el.classList.contains('reveal-media')) {
-            el.classList.add('reveal-float-once')
-          }
-        }, delay)
-
-        observer.unobserve(el)
-      })
-    },
-    { threshold: 0.15 }
-  )
-
-  elements.forEach(el => observer.observe(el))
-}
-
-document.addEventListener('DOMContentLoaded', initRevealOnScroll)
-
-/**
- *
- * @returns Hero image effect
- */
-
-function initHeroFloat() {
-  const el = document.querySelector('.hero-phone-float')
-  if (!el) return
-
-  function update() {
-    const y = Math.min(window.scrollY / 12, 12)
-    el.style.transform = `translateY(${-y}px)`
-  }
-
-  update()
-  window.addEventListener('scroll', update, { passive: true })
-}
-
-document.addEventListener('DOMContentLoaded', initHeroFloat)
-
-
-/* Scroll-Spy für Landingpage Navigation mit Debug-Ausgaben */
-
-const navLinks = Array.from(document.querySelectorAll('.nav-link'));
-
-console.log('[ScrollSpy] navLinks gefunden:', navLinks.length);
-
-if (!navLinks.length) {
-  console.warn('[ScrollSpy] Keine .nav-link gefunden – Abbruch');
-} else {
-  const sections = navLinks
-    .map(link => {
-      const target = link.getAttribute('href');
-      const section = document.querySelector(target);
-
-      console.log('[ScrollSpy] Link → Section', target, section ? 'OK' : 'NICHT GEFUNDEN');
-
-      return section;
-    })
-    .filter(Boolean);
-
-  console.log('[ScrollSpy] Gültige Sections:', sections.map(s => s.id));
-
-  const updateActiveNav = () => {
-    const triggerPoint = window.innerHeight * 0.5;
-
-    console.log('--- Scroll ---');
-    console.log('[ScrollSpy] TriggerPoint:', triggerPoint);
-
-    let activeSection = null;
-
-    for (const section of sections) {
-      const rect = section.getBoundingClientRect();
-
-      console.log(
-        `[ScrollSpy] Section #${section.id}`,
-        'top:', Math.round(rect.top),
-        'bottom:', Math.round(rect.bottom)
-      );
-
-      if (rect.top <= triggerPoint && rect.bottom >= triggerPoint) {
-        activeSection = section;
-        break;
-      }
-    }
-
-    console.log(
-      '[ScrollSpy] Aktive Section:',
-      activeSection ? `#${activeSection.id}` : 'KEINE'
-    );
-
-    navLinks.forEach(link => {
-      const href = link.getAttribute('href');
-      const isActive = activeSection && href === `#${activeSection.id}`;
-
-      link.classList.toggle('is-active', isActive);
-
-      if (isActive) {
-        console.log('[ScrollSpy] Aktiv gesetzt:', href);
+  function closeAllInitially() {
+    document.querySelectorAll(selector).forEach(box => {
+      if (!box.classList.contains('closed')) {
+        window.jQuery(box).addClass('closed').find('.inside').slideUp(150);
       }
     });
-  };
+  }
 
-  updateActiveNav();
-  window.addEventListener('scroll', updateActiveNav, { passive: true });
-}
+  requestAnimationFrame(closeAllInitially);
+
+  document.addEventListener('click', (e) => {
+
+    const toggle = e.target.closest('.acf-postbox .handlediv, .acf-postbox .hndle');
+    if (!toggle) return;
+
+    const box = toggle.closest('.acf-postbox.postbox');
+    if (!box) return;
+
+    setTimeout(() => {
+
+      document.querySelectorAll(selector).forEach(other => {
+
+        if (other !== box && !other.classList.contains('closed')) {
+          window.jQuery(other).addClass('closed').find('.inside').slideUp(150);
+        }
+
+      });
+
+    }, 10);
+
+  });
+
+});
 
 
 ===== resources/js/landingpage.js =====
 
 import.meta.glob([
-  '../images/**',
+  '../images/dashboard/**',
+  '../images/landingpage/**',
   '../fonts/**',
 ])
 
@@ -2621,6 +2677,7 @@ function initContactForm() {
 
     const data = new FormData(form)
     data.append('action', 'contact_form_submit')
+    data.append('_wpnonce', form.dataset.nonce)
 
     const ajaxUrl = form.dataset.ajaxUrl
 
@@ -2802,8 +2859,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const html = document.documentElement
   const buttons = document.querySelectorAll('[data-theme-toggle]')
+  const mobilePanel = document.querySelector('[data-mobile-menu-panel]')
 
   if (!buttons.length) return
+
+  function syncMobilePanel(theme) {
+    if (!mobilePanel) return
+
+    mobilePanel.classList.remove('bg-white/10', 'bg-brand-primary/10')
+
+    if (theme === 'dark') {
+      mobilePanel.classList.add('bg-brand-primary/10')
+    } else {
+      mobilePanel.classList.add('bg-white/10')
+    }
+  }
+
+  function syncToggleUI(btn, theme) {
+    const thumb = btn.querySelector('span')
+    const label = btn.closest('div')?.querySelector('[data-theme-label]')
+
+    btn.classList.remove('bg-white/20', 'bg-brand-primary')
+
+    if (theme === 'dark') {
+      btn.classList.add('bg-brand-primary')
+      if (thumb) {
+        thumb.classList.remove('left-1')
+        thumb.classList.add('left-6')
+      }
+      if (label) label.textContent = 'Light Mode'
+    } else {
+      btn.classList.add('bg-white/20')
+      if (thumb) {
+        thumb.classList.remove('left-6')
+        thumb.classList.add('left-1')
+      }
+      if (label) label.textContent = 'Dark Mode'
+    }
+  }
+
+  const initialTheme = html.dataset.theme === 'dark' ? 'dark' : 'light'
+
+  syncMobilePanel(initialTheme)
+  buttons.forEach(btn => syncToggleUI(btn, initialTheme))
 
   buttons.forEach(btn => {
 
@@ -2813,6 +2911,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const next = current === 'dark' ? 'light' : 'dark'
 
       html.dataset.theme = next
+
+      syncMobilePanel(next)
+      buttons.forEach(b => syncToggleUI(b, next))
 
       const form = new FormData()
       form.append('action', 'set_dashboard_theme')
@@ -2829,23 +2930,6 @@ document.addEventListener('DOMContentLoaded', () => {
   })
 
 })
-
-
-===== resources/views/404.blade.php =====
-
-@extends('layouts.landingpage')
-
-@section('content')
-  @include('partials.page-header')
-
-  @if (! have_posts())
-    <x-alert type="warning">
-      {!! __('Sorry, but the page you are trying to view does not exist.', 'sage') !!}
-    </x-alert>
-
-    {!! get_search_form(false) !!}
-  @endif
-@endsection
 
 
 ===== resources/views/index.blade.php =====
@@ -2978,6 +3062,7 @@ Template Name: Landing Page
 @include('partials.landing.contact')
 @include('partials.landing.team')
 @include('partials.landing.market-insights')
+@include('partials.landing.cta')
 @endsection
 
 
@@ -3007,7 +3092,7 @@ Template Name: Conversion – Trial
 
   <div class="absolute inset-0">
     <img
-      src="{{ Vite::asset('resources/images/hero-bg.jpg') }}"
+      src="{{ Vite::asset('resources/images/landingpage/hero-bg.jpg') }}"
       alt=""
       class="h-full w-full object-cover">
     <div class="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-slate-950/30 to-slate-950/10"></div>
@@ -3021,12 +3106,14 @@ Template Name: Conversion – Trial
         {{-- LEFT · HEADLINE --}}
         <div>
           <h1 class="text-4xl font-semibold tracking-tight text-white lg:text-5xl">
-            Start Your <span class="text-brand-primary">Free Trial</span>
+            {!! pll__('Start Your') !!}
+            <span class="text-brand-primary">
+              {!! pll__('Free Trial') !!}
+            </span>
           </h1>
 
           <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-300">
-            Sign up to access advanced trading signals and structured market analyses.
-            Cancel anytime during your free trial.
+            {!! pll__('Sign up to access advanced trading signals and structured market analyses. Cancel anytime during your free trial.') !!}
           </p>
         </div>
 
@@ -3060,62 +3147,64 @@ Template Name: Conversion – Trial
 
   <div class="mb-6 grid grid-cols-2 gap-4">
     <button type="button" class="flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-      <img src="{{ Vite::asset('resources/images/google.svg') }}" alt="" class="h-4 w-4">
-      Sign up with Google
+      <img src="{{ Vite::asset('resources/images/landingpage/google.svg') }}" alt="" class="h-4 w-4">
+      {!! pll__('Sign up with Google') !!}
     </button>
 
     <button type="button" class="flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-      <img src="{{ Vite::asset('resources/images/apple.svg') }}" alt="" class="h-4 w-4">
-      Sign up with Apple
+      <img src="{{ Vite::asset('resources/images/landingpage/apple.svg') }}" alt="" class="h-4 w-4">
+      {!! pll__('Sign up with Apple') !!}
     </button>
   </div>
 
   <h2 class="text-xl font-semibold text-slate-900">
-    Create Your <span class="text-brand-primary">Bloombridge Capital</span> Account
+    {!! pll__('Create Your') !!}
+    <span class="text-brand-primary">
+      Bloombridge Capital
+    </span>
+    {!! pll__('Account') !!}
   </h2>
-
 
   <form class="mt-6 space-y-5">
 
     <div>
-      <input type="text" placeholder="Full Name" class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none">
+      <input type="text" placeholder="{{ pll__('Full Name') }}" class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none">
     </div>
 
     <div>
-      <input type="email" placeholder="Email Address" class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none">
+      <input type="email" placeholder="{{ pll__('Email Address') }}" class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none">
     </div>
 
     <div>
-      <input type="password" placeholder="Password" class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none">
+      <input type="password" placeholder="{{ pll__('Password') }}" class="w-full rounded-md border border-slate-300 px-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none">
     </div>
 
     <button type="submit" class="mt-4 w-full rounded-md bg-brand-primary py-3 text-base font-medium text-white transition hover:bg-brand-primaryHover">
-      Start Free Now
+      {!! pll__('Start Free Now') !!}
     </button>
 
     <ul class="mt-6 space-y-3 text-base font-base text-slate-700">
       <li class="flex items-start gap-3">
         @include('icons.check')
-        <span>7 Tage <strong>kostenlos</strong> testen</span>
+        <span>{!! pll__('7 Tage kostenlos testen') !!}</span>
       </li>
 
       <li class="flex items-start gap-3">
         @include('icons.check')
-        <span>Keine Zahlungsdaten beim Start</span>
+        <span>{!! pll__('Keine Zahlungsdaten beim Start') !!}</span>
       </li>
 
       <li class="flex items-start gap-3">
         @include('icons.check')
-        <span>Kündigung jederzeit mit einem Klick</span>
+        <span>{!! pll__('Kündigung jederzeit mit einem Klick') !!}</span>
       </li>
     </ul>
-
 
     {{--
     <div class="mt-6 text-xs text-slate-400">
       Zahlungsabwicklung später über Stripe.
     </div>
---}}
+    --}}
 
     {{--
     <div class="mt-3 flex items-center gap-4 text-xs text-slate-400">
@@ -3124,7 +3213,7 @@ Template Name: Conversion – Trial
       <span>Mastercard</span>
       <span>SEPA</span>
     </div>
---}}
+    --}}
 
     {{--
     <div class="mt-6 border-t border-slate-200 pt-4">
@@ -3137,27 +3226,25 @@ Template Name: Conversion – Trial
 </div>
 --}}
 
-
 <p class="mt-5 text-center text-xs text-slate-400">
-  By clicking “Start Free Now”, you agree to our Terms & Privacy Policy.
+  {!! pll__('By clicking "Start Free Now", you agree to our Terms & Privacy Policy.') !!}
 </p>
 
 <div class="mt-2 pt-2 flex justify-center">
   <img
-    src="{{ asset('resources/images/trustline.png') }}"
+    src="{{ asset('resources/images/landingpage/trustline.png') }}"
     alt="Payment methods"
     class="h-7 opacity-70">
 </div>
 
 {{--
-<div class="mt-6 pt-4 flex justify-center">
-  <img
-    src="{{ asset('resources/images/trustline-2.png') }}"
-    alt="Payment methods"
-    class="h-7 opacity-60">
+    <div class="mt-6 pt-4 flex justify-center">
+      <img
+        src="{{ asset('resources/images/trustline-2.png') }}"
+alt="Payment methods"
+class="h-7 opacity-60">
 </div>
 --}}
-
 
 </form>
 </div>
@@ -3320,77 +3407,71 @@ Template Name: Conversion – Trial
 
 <section id="about" class="bg-[#F8F7F7] py-24" {{-- data-scroll-offset="80" --}}>
   <div class="container-content">
-    @php
-    $headline = get_field('about_section_headline');
-    $intro = get_field('about_intro');
-    $visual = get_field('about_visual');
-    @endphp
 
     <div class="grid grid-cols-1 items-start gap-16 lg:grid-cols-[2fr_3fr]">
 
       <div>
-        @if($visual)
+        @if($about['visual'])
         <img
-          src="{{ $visual['url'] }}"
-          alt="{{ $visual['alt'] ?? '' }}"
+          src="{{ $about['visual']['url'] }}"
+          alt="{{ $about['visual']['alt'] ?? '' }}"
           class="reveal-media w-full max-w-md">
         @endif
       </div>
 
       <div>
-        @if($headline)
+        @if($about['headline'])
         <h2 class="reveal-text text-4xl font-semibold tracking-tight text-slate-900" data-reveal-delay="0">
-          {!! $headline !!}
+          {!! $about['headline'] !!}
         </h2>
         @endif
 
-        @if($intro)
+        @if($about['intro'])
         <p class="reveal-text mt-6 text-lg text-slate-600" data-reveal-delay="150">
-          {!! $intro !!}
+          {!! $about['intro'] !!}
         </p>
         @endif
 
         <div class="mt-12 grid grid-cols-1 gap-x-10 gap-y-12 md:grid-cols-2" data-reveal-delay="300">
-          @for($i = 1; $i <= 4; $i++)
-            @php
-            $label=get_field("about_feature_{$i}_label");
-            $headlineFeature=get_field("about_feature_{$i}_headline");
-            $text=get_field("about_feature_{$i}_text");
-            @endphp
+          @foreach($about['features'] as $i => $feature)
 
-            @if($label || $headlineFeature || $text)
-            @php $itemDelay = 450 + (($i - 1) * 150); @endphp
-            <div class="reveal-text flex gap-4" data-reveal-delay="{{ $itemDelay }}">
+          @if($feature)
+          @php $itemDelay = 450 + ($i * 150); @endphp
+
+          <div class="reveal-text flex gap-4" data-reveal-delay="{{ $itemDelay }}">
             <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-200 text-lg font-medium text-brand-primary shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-              {{ str_pad($i, 2, '0', STR_PAD_LEFT) }}
+              {{ str_pad($i + 1, 2, '0', STR_PAD_LEFT) }}
             </div>
 
             <div>
-              @if($label)
-              <div class="text-base font-semibold text-slate-900">
-                {!! $label !!}
+              @if(!empty($feature['label']))
+              <div class="text-lg font-semibold text-slate-900">
+                {!! $feature['label'] !!}
               </div>
               @endif
 
-              @if($headlineFeature)
+              @if(!empty($feature['headline']))
               <div class="mt-1 text-base font-semibold text-slate-700">
-                {!! $headlineFeature !!}
+                {!! $feature['headline'] !!}
               </div>
               @endif
 
-              @if($text)
+              @if(!empty($feature['text']))
               <div class="mt-2 text-base leading-relaxed text-slate-500">
-                {!! nl2br(e($text)) !!}
+                {!! nl2br(e($feature['text'])) !!}
               </div>
               @endif
             </div>
+          </div>
+
+          @endif
+
+          @endforeach
         </div>
-        @endif
-        @endfor
+
       </div>
     </div>
 
-  </div>
   </div>
 </section>
 
@@ -3458,6 +3539,7 @@ Template Name: Conversion – Trial
           <form
             id="contactForm"
             data-ajax-url="{{ admin_url('admin-ajax.php') }}"
+            data-nonce="{{ wp_create_nonce('contact_form') }}"
             class="space-y-4"
             novalidate>
 
@@ -3507,12 +3589,64 @@ Template Name: Conversion – Trial
 </section>
 
 
+===== resources/views/partials/landing/cta.blade.php =====
+
+  <section id="ct" class="relative overflow-hidden py-20 lg:py-28 scroll-mt-15">
+
+    {{-- Background --}}
+    <div class="absolute inset-0 -z-10">
+      <div class="absolute inset-0 bg-cta"></div>
+      <div class="absolute inset-0 cta-pattern pattern-section"></div>
+    </div>
+
+    <div class="container-content text-center">
+
+      {{-- Icon --}}
+      <!-- <div class="mb-8 opacity-70 flex justify-center">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+          <path d="M4 18V6M4 18H18M4 18L10 12L14 16L20 8" stroke="#fff" stroke-width="1.5" />
+        </svg>
+      </div> -->
+
+      {{-- Headline --}}
+      <h2 class="text-3xl lg:text-4xl font-light text-brand-primary mb-4">
+        Handeln Sie nicht schneller.
+      </h2>
+
+      <h3 class="mt-2 text-4xl lg:text-5xl font-semibold text-white">
+        Handeln Sie <span class="text-brand-primary">strukturierter.</span>
+      </h3>
+
+      {{-- Subline --}}
+      <p class="mt-6 max-w-xl mx-auto text-lg text-slate-500 leading-relaxed">
+        Märkte werden sich weiter bewegen.<br>
+        Die Frage ist nicht ob, sondern <strong>wie vorbereitet</strong> Sie sind.
+      </p>
+
+      {{-- CTA --}}
+      <div class="mt-10 flex flex-col items-center gap-4">
+
+        <a href="#"
+          class="inline-flex items-center justify-center rounded-full bg-gradient-to-b from-[#4a97ad] to-[#3f879c] px-8 py-3 text-base font-medium text-white shadow-[0_10px_30px_rgba(63,135,156,0.45)] transition-all duration-300 hover:from-[#3f879c] hover:to-[#35788b] hover:shadow-[0_14px_40px_rgba(63,135,156,0.5)]">
+          Kostenlosen Zugang sichern
+        </a>
+
+        <div class="mt-4 text-xs text-slate-500">
+          Kein Risiko · 7 Tage kostenlos · jederzeit kündbar
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+
 ===== resources/views/partials/landing/hero.blade.php =====
 
 <section class="relative overflow-hidden bg-slate-950">
   <div class="absolute inset-0">
     <img
-      src="{{ Vite::asset('resources/images/hero-bg.jpg') }}"
+      src="{{ Vite::asset('resources/images/landingpage/hero-bg.jpg') }}"
       alt=""
       class="h-full w-full object-cover opacity-80">
     <div class="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/20 to-transparent"></div>
@@ -3524,11 +3658,12 @@ Template Name: Conversion – Trial
 
         <div>
           <h1 class="reveal-text text-4xl font-semibold tracking-tight text-white lg:text-5xl" data-reveal-delay="0">
-            {{ $hero['headline'] }}
+            {!! $hero['headline'] !!}
+
           </h1>
 
           <p class="reveal-text mt-6 max-w-xl text-lg text-slate-300" data-reveal-delay="150">
-            {{ $hero['subline'] }}
+            {!! $hero['subline'] !!}
           </p>
 
           <div class="reveal-text mt-10">
@@ -3536,7 +3671,7 @@ Template Name: Conversion – Trial
               href="{{ $hero['cta_link']['url'] }}"
               target="{{ $hero['cta_link']['target'] ?: '_self' }}"
               class="inline-flex items-center rounded-xl bg-brand-primary px-6 py-3 text-base font-medium text-white transition hover:bg-brand-primaryHover" data-reveal-delay="300">
-              {{ $hero['cta_text'] }}
+              {!! $hero['cta_text'] !!}
             </a>
           </div>
         </div>
@@ -3552,7 +3687,7 @@ Template Name: Conversion – Trial
       </div>
 
       <div class="reveal-text mt-20 text-center text-sm text-slate-400" data-reveal-delay="600">
-        45 Börsenplätze · permanente Updates · tägliche Analysen
+        {!! $hero['additional_text'] !!}
       </div>
     </div>
   </div>
@@ -3565,16 +3700,14 @@ Template Name: Conversion – Trial
 
 @php
 $platformIcons = [
-'youtube' => Vite::asset('resources/images/platforms/youtube.svg'),
-'x' => Vite::asset('resources/images/platforms/x.svg'),
-'shorts' => Vite::asset('resources/images/platforms/shorts.svg'),
+'youtube' => Vite::asset('resources/images/landingpage/platforms/youtube.svg'),
+'x' => Vite::asset('resources/images/landingpage/platforms/x.svg'),
+'shorts' => Vite::asset('resources/images/landingpage/platforms/shorts.svg'),
 ];
 
-$headline = get_field('market_insights_headline') ?: 'Market Insights – live from our analysts';
-$subline = get_field('market_insights_subline') ?: 'Meet our team of experienced professionals ready to support your financial journey';
-
-$normalizedHeadline = str_replace(['–', '—'], '-', $headline);
-$headlineParts = explode(' - ', $normalizedHeadline, 2);
+$headline = $marketInsights['headline'];
+$subline = $marketInsights['subline'];
+$additional = $marketInsights['additional'];
 @endphp
 
 <section
@@ -3587,41 +3720,36 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
     <div class="absolute inset-0 market-pattern pattern-section"></div>
   </div>
 
-
   <div class="relative container-content text-center">
 
     {{-- Headline --}}
     <h2 class="text-4xl font-semibold tracking-tight text-slate-900">
-      @if(count($headlineParts) === 2)
-      {{ $headlineParts[0] }}
-      <span class="text-brand-primary">– {{ $headlineParts[1] }}</span>
-      @else
-      {{ $headline }}
-      @endif
+      {!! $headline !!}
     </h2>
 
     {{-- Subline --}}
     <p class="mt-4 text-lg text-slate-600">
-      {{ $subline }}
+      {!! $subline !!}
     </p>
 
     {{-- Cards --}}
     <div class="mt-16 grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
-      @for ($i = 1; $i <= 3; $i++)
-        @php
-        $image=get_field("market_insight_{$i}_image");
-        $title=get_field("market_insight_{$i}_title");
-        $link=get_field("market_insight_{$i}_link");
-        $duration=get_field("market_insight_{$i}_duration");
-        $platform=get_field("market_insight_{$i}_platform");
-        @endphp
+      @foreach ($marketInsights['items'] as $item)
+      @php
+      $image = $item['image'];
+      $title = $item['title'];
+      $link = $item['link'];
+      $duration = $item['duration'];
+      $platform = $item['platform'];
+      $isPremium = $item['premium'];
+      @endphp
 
-        @if ($image && $link)
-        <div class="reveal-media">
+      @if ($image && $link)
+      <div class="reveal-media">
         <a
           href="{{ $link }}"
           target="_blank"
-          class="group block overflow-hidden rounded-2xl bg-white shadow-[0_16px_40px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:-translate-y-2 {{ $i === 2 ? 'market-insight--premium' : '' }}">
+          class="group block overflow-hidden rounded-2xl bg-white shadow-[0_16px_40px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:-translate-y-2 {{ $isPremium ? 'market-insight--premium' : '' }}">
 
           <div class="relative aspect-video overflow-hidden">
             <img
@@ -3629,7 +3757,7 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
               alt="{{ $image['alt'] ?? '' }}"
               class="h-full w-full object-cover">
 
-            @if ($i === 2)
+            @if ($isPremium)
             <span class="premium-banner">
               <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <defs>
@@ -3643,13 +3771,7 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
                 <path d="M5 19H19V17H5V19ZM19 15L21 7L16 10L12 4L8 10L3 7L5 15H19Z"
                   fill="url(#goldGradient)" />
               </svg>
-              {{--
-            <svg class="crown" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M5 19H19V17H5V19ZM19 15L21 7L16 10L12 4L8 10L3 7L5 15H19Z"
-                fill="currentColor" />
-            </svg>
---}}
-              Premium Content
+              {{ pll__('Premium Content') }}
             </span>
             @endif
 
@@ -3677,15 +3799,14 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
           </div>
 
         </a>
+      </div>
+      @endif
+      @endforeach
     </div>
-    @endif
-    @endfor
-  </div>
 
-
-  <div class="mt-16 text-sm text-brand-primary">
-    Independent market analysis. Updated daily.
-  </div>
+    <div class="mt-16 text-sm text-brand-primary">
+      {!! $additional !!}
+    </div>
 
   </div>
 </section>
@@ -3701,72 +3822,87 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
 
   <div class="relative container-content">
 
-    <div class="mb-16 text-center">
-      <h2 class="reveal-text text-3xl lg:text-4xl font-semibold tracking-tight text-brand-primaryFontDark">
-        Dedicated <span class="text-brand-primary">Expert</span> Consultants
-      </h2>
-      <p class="reveal-text mt-4 mx-auto max-w-xl text-sm lg:text-base text-slate-600">
-        Meet our team of experienced professionals ready to support your financial journey
-      </p>
-    </div>
-
     @php
-    $team = [
-    ['name' => 'Jennifer', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
-    ['name' => 'Sarah', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
-    ['name' => 'Markus', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
-    ['name' => 'Thomas', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
-    ['name' => 'Michael', 'role' => 'Senior Consultant', 'image' => 'team/markus.jpg'],
-    ];
+    $headline = $team['headline'];
+    $subheadline = $team['subheadline'];
+    $members = $team['members'];
     @endphp
 
-    {{--
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-14 mb-14">
-    --}}
+    <div class="mb-16 text-center">
+      @if($headline)
+      <h2 class="reveal-text text-3xl lg:text-4xl font-semibold tracking-tight text-brand-primaryFontDark">
+        {!! $headline !!}
+      </h2>
+      @endif
+
+      @if($subheadline)
+      <p class="reveal-text mt-4 mx-auto max-w-xl text-sm lg:text-base text-slate-600">
+        {!! $subheadline !!}
+      </p>
+      @endif
+    </div>
+
+    @if(!empty($members))
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-14 mb-14">
-      @foreach (array_slice($team, 0, 3) as $member)
+      @foreach (array_slice($members, 0, 3) as $member)
+      @if(!empty($member))
       <div class="reveal-media text-center group">
         <div class="team-photo-wrapper">
+          @if(!empty($member['image']))
           <img
-            src="{{ Vite::asset('resources/images/' . $member['image']) }}"
-            alt="{{ $member['name'] }}"
+            src="{{ $member['image']['url'] }}"
+            alt="{{ $member['image']['alt'] ?? $member['name'] }}"
             class="team-photo">
+          @endif
         </div>
 
+        @if(!empty($member['name']))
         <p class="mt-4 text-lg font-semibold text-brand-primaryFontDark">
           {{ $member['name'] }}
         </p>
+        @endif
+
+        @if(!empty($member['role']))
         <p class="mt-0.5 text-sm text-slate-500">
           {{ $member['role'] }}
         </p>
+        @endif
       </div>
+      @endif
       @endforeach
     </div>
 
-    {{--
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-10 lg:gap-14 max-w-3xl mx-auto">
-    --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 max-w-3xl mx-auto">
-      @foreach (array_slice($team, 3, 2) as $member)
+      @foreach (array_slice($members, 3, 2) as $member)
+      @if(!empty($member))
       <div class="reveal-media text-center group">
         <div class="team-photo-wrapper">
+          @if(!empty($member['image']))
           <img
-            src="{{ Vite::asset('resources/images/' . $member['image']) }}"
-            alt="{{ $member['name'] }}"
+            src="{{ $member['image']['url'] }}"
+            alt="{{ $member['image']['alt'] ?? $member['name'] }}"
             class="team-photo">
+          @endif
         </div>
 
+        @if(!empty($member['name']))
         <p class="mt-4 text-lg font-semibold text-brand-primaryFontDark">
           {{ $member['name'] }}
         </p>
+        @endif
+
+        @if(!empty($member['role']))
         <p class="mt-0.5 text-sm text-slate-500">
           {{ $member['role'] }}
         </p>
-
+        @endif
       </div>
-
+      @endif
       @endforeach
     </div>
+
+    @endif
 
   </div>
 </section>
@@ -3783,11 +3919,11 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
 
 <div class="rounded-2xl bg-white/10 p-8 text-slate-200 backdrop-blur shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
   <div class="text-xs font-semibold uppercase tracking-wide text-brand-primary/80">
-    Free 7-Day Trial
+    {!! pll__('Free 7-Day Trial') !!}
   </div>
 
   <div class="mt-3 text-2xl font-semibold text-white">
-    Full Access Plan
+    {!! pll__('Full Access Plan') !!}
   </div>
 
   <div class="mt-4 flex items-end gap-2">
@@ -3795,24 +3931,24 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
       €59
     </div>
     <div class="pb-1 text-sm text-slate-300">
-      / Monat
+      / {!! pll__('Month') !!}
     </div>
   </div>
 
   <div class="mt-1 text-sm text-slate-300">
-    danach €59 pro Monat
+    {!! pll__('after €59 per month') !!}
   </div>
 
   <ul class="mt-6 space-y-3 text-sm">
-    <li class="flex gap-3"><span class="text-brand-primary">✓</span> Echtzeit Marktanalysen</li>
-    <li class="flex gap-3"><span class="text-brand-primary">✓</span> Strukturierte Handelssignale</li>
-    <li class="flex gap-3"><span class="text-brand-primary">✓</span> Aktien, Krypto & Forex</li>
-    <li class="flex gap-3"><span class="text-brand-primary">✓</span> 45 Börsenplätze weltweit</li>
-    <li class="flex gap-3"><span class="text-brand-primary">✓</span> Tägliche Updates & Alerts</li>
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> {!! pll__('Echtzeit Marktanalysen') !!}</li>
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> {!! pll__('Strukturierte Handelssignale') !!}</li>
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> {!! pll__('Aktien, Krypto & Forex') !!}</li>
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> {!! pll__('45 Börsenplätze weltweit') !!}</li>
+    <li class="flex gap-3"><span class="text-brand-primary">✓</span> {!! pll__('Tägliche Updates & Alerts') !!}</li>
   </ul>
 
   <div class="mt-6 text-xs text-slate-400">
-    Jederzeit kündbar. Keine Gebühren während des Testzeitraums.
+    {!! pll__('Jederzeit kündbar. Keine Gebühren während des Testzeitraums.') !!}
   </div>
 </div>
 
@@ -3825,30 +3961,6 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
       @include('partials.subscription.plan-card')
       @include('partials.auth.signup-form')
     </div>
-  </div>
-</section>
-
-
-===== resources/views/partials/subscription/trial-hero.blade.php =====
-
-<section class="relative overflow-hidden">
-  <div class="absolute inset-0">
-    <img
-      src="{{ Vite::asset('resources/images/hero-bg.jpg') }}"
-      alt=""
-      class="h-full w-full object-cover opacity-80">
-    <div class="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/70 to-slate-950/90"></div>
-  </div>
-
-  <div class="relative container-content pt-32 pb-24">
-    <h1 class="text-4xl font-semibold tracking-tight text-white lg:text-5xl">
-      Start Your <span class="text-brand-primary">Free Trial</span>
-    </h1>
-
-    <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-300">
-      Sign up to access advanced trading signals and structured market analyses.
-      Cancel anytime during your free trial.
-    </p>
   </div>
 </section>
 
@@ -3886,8 +3998,8 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
     </div>
 
     <div class="flex gap-6">
-      <a href="/imprint" class="transition hover:text-brand-primary">Imprint</a>
-      <a href="/privacy-policy" class="transition hover:text-brand-primary">Privacy</a>
+      <a href="{{ home_url('/imprint') }}" class="transition hover:text-brand-primary">Imprint</a>
+      <a href="{{ home_url('/privacy-policy') }}" class="transition hover:text-brand-primary">Privacy</a>
     </div>
 
   </div>
@@ -3899,7 +4011,7 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
 <footer class="relative overflow-hidden bg-slate-950 text-slate-300">
   <div class="absolute inset-0">
     <img
-      src="{{ Vite::asset('resources/images/footer-bg.jpg') }}"
+      src="{{ Vite::asset('resources/images/landingpage/footer-bg.jpg') }}"
       alt=""
       class="h-full w-full object-cover opacity-60">
     <div class="absolute inset-0 bg-gradient-to-r from-slate-950/20 via-slate-950/10 to-slate-950/30"></div>
@@ -3912,7 +4024,7 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
         <div>
           <div class="mb-8 flex items-center gap-3">
             <img
-              src="{{ Vite::asset('resources/images/bridge-free.png') }}"
+              src="{{ Vite::asset('resources/images/landingpage/bridge-free.png') }}"
               alt="Bloombridge Capital"
               class="h-12">
           </div>
@@ -4000,7 +4112,7 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
       <div class="flex items-center">
         <a href="{{ home_url('/') }}#top">
           <img
-            src="{{ Vite::asset('resources/images/bridge-free.png') }}"
+            src="{{ Vite::asset('resources/images/landingpage/bridge-free.png') }}"
             alt="Bloombridge Capital"
             class="h-10 lg:h-13">
         </a>
@@ -4035,7 +4147,7 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
 
         {{-- Login Desktop --}}
         <a
-          href="/login"
+          href="{{ home_url('/login') }}"
           class="hidden rounded-md bg-brand-primary px-6 py-2 text-sm font-medium text-white transition hover:bg-brand-primaryHover lg:inline-flex">
           Log in
         </a>

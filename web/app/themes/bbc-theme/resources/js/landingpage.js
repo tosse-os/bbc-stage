@@ -138,86 +138,141 @@ function initStickyHeader() {
  * Initialisiert Validierung und AJAX-Submit für das Kontaktformular.
  * Zeigt mehrsprachige Inline-Fehlermeldungen und sendet gültige Daten per AJAX.
  */
+
+/**
+ * Zeigt die Fehlermeldung eines Formularfelds an.
+ * Nutzt den vorhandenen Fehlercontainer ohne DOM-Neuerzeugung.
+ */
+function contactFormShowFieldError(form, field, message) {
+  const box = form.querySelector('.error-' + field.name)
+  if (!box) return
+
+  box.textContent = message
+  box.style.maxHeight = '60px'
+  box.style.opacity = '1'
+  field.setAttribute('aria-invalid', 'true')
+}
+
+/**
+ * Entfernt die Fehlermeldung eines Formularfelds.
+ * Löscht den Text erst nach Ende der Transition.
+ */
+function contactFormClearFieldError(form, field) {
+  const box = form.querySelector('.error-' + field.name)
+  if (!box) return
+
+  box.style.maxHeight = '0'
+  box.style.opacity = '0'
+  field.removeAttribute('aria-invalid')
+
+  box.addEventListener('transitionend', () => {
+    box.textContent = ''
+  }, { once: true })
+}
+
+/**
+ * Blendet die Erfolgsmeldung des Kontaktformulars ein.
+ * Nutzt den bereits vorhandenen Container im Markup.
+ */
+function contactFormShowSuccess(box) {
+  if (!box) return
+
+  box.style.maxHeight = '60px'
+  box.style.opacity = '1'
+}
+
+/**
+ * Blendet die Erfolgsmeldung des Kontaktformulars aus.
+ * Der vorhandene Text bleibt dabei unverändert erhalten.
+ */
+function contactFormHideSuccess(box) {
+  if (!box) return
+
+  box.style.maxHeight = '0'
+  box.style.opacity = '0'
+}
+
+/**
+ * Initialisiert Validierung und AJAX-Submit für das Kontaktformular.
+ * Verarbeitet serverseitige Formularfehler, Honeypot und Throttling sauber im bestehenden UI.
+ */
 function initContactForm() {
   const form = document.getElementById('contactForm')
   if (!form) return
 
   const successBox = document.getElementById('contactSuccess')
+  const emailField = form.querySelector('[name="email"]')
+  const messageField = form.querySelector('[name="message"]')
   const lang = document.documentElement.lang?.startsWith('de') ? 'de' : 'en'
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  let successTimeout = null
 
   const messages = {
     en: {
       email_required: 'Please enter your email address.',
       email_invalid: 'Please enter a valid email address.',
       message_required: 'Please enter a message.',
-      message_too_short: 'Your message must contain at least 5 characters.'
+      message_too_short: 'Your message must contain at least 5 characters.',
+      too_fast: 'Please wait a moment before sending another message.',
+      rate_limited: 'Too many requests. Please try again in a few minutes.',
+      request_invalid: 'Your request could not be processed.',
+      mail_failed: 'Your message could not be sent. Please try again later.',
+      submit_failed: 'Submission failed. Please try again later.'
     },
     de: {
       email_required: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
       email_invalid: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
       message_required: 'Bitte geben Sie eine Nachricht ein.',
-      message_too_short: 'Die Nachricht muss mindestens 5 Zeichen enthalten.'
+      message_too_short: 'Die Nachricht muss mindestens 5 Zeichen enthalten.',
+      too_fast: 'Bitte warten Sie kurz, bevor Sie eine weitere Nachricht senden.',
+      rate_limited: 'Zu viele Anfragen. Bitte versuchen Sie es in einigen Minuten erneut.',
+      request_invalid: 'Ihre Anfrage konnte nicht verarbeitet werden.',
+      mail_failed: 'Ihre Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es später erneut.',
+      submit_failed: 'Der Versand ist fehlgeschlagen. Bitte versuchen Sie es später erneut.'
     }
   }
 
-  const t = key => messages[lang][key] || messages.en[key]
+  const t = key => messages[lang][key] || messages.en[key] || messages.en.submit_failed
 
-  const emailField = form.querySelector('[name="email"]')
-  const messageField = form.querySelector('[name="message"]')
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-  function showError(field, message) {
-    const el = form.querySelector('.error-' + field.name)
-    if (!el) return
-    el.textContent = message
-    el.style.maxHeight = '40px'
-    el.style.opacity = '1'
-    field.setAttribute('aria-invalid', 'true')
-  }
-
-  function clearError(field) {
-    const el = form.querySelector('.error-' + field.name)
-    if (!el) return
-    el.style.maxHeight = '0'
-    el.style.opacity = '0'
-    field.removeAttribute('aria-invalid')
-
-    el.addEventListener('transitionend', () => {
-      el.textContent = ''
-    }, { once: true })
-  }
-
+  /**
+   * Prüft das E-Mail-Feld clientseitig.
+   * Nutzt die vorhandene Inline-Fehlerausgabe im Formular.
+   */
   function validateEmail() {
     const value = emailField.value.trim()
 
     if (!value) {
-      showError(emailField, t('email_required'))
+      contactFormShowFieldError(form, emailField, t('email_required'))
       return false
     }
 
     if (!emailRegex.test(value)) {
-      showError(emailField, t('email_invalid'))
+      contactFormShowFieldError(form, emailField, t('email_invalid'))
       return false
     }
 
-    clearError(emailField)
+    contactFormClearFieldError(form, emailField)
     return true
   }
 
+  /**
+   * Prüft das Nachrichtenfeld clientseitig.
+   * Nutzt die vorhandene Inline-Fehlerausgabe im Formular.
+   */
   function validateMessage() {
     const value = messageField.value.trim()
 
     if (!value) {
-      showError(messageField, t('message_required'))
+      contactFormShowFieldError(form, messageField, t('message_required'))
       return false
     }
 
     if (value.length < 5) {
-      showError(messageField, t('message_too_short'))
+      contactFormShowFieldError(form, messageField, t('message_too_short'))
       return false
     }
 
-    clearError(messageField)
+    contactFormClearFieldError(form, messageField)
     return true
   }
 
@@ -227,47 +282,62 @@ function initContactForm() {
   form.addEventListener('submit', async e => {
     e.preventDefault()
 
+    if (form.dataset.submitting === '1') return
+
+    clearTimeout(successTimeout)
+
     const emailValid = validateEmail()
     const messageValid = validateMessage()
 
     if (!emailValid || !messageValid) return
 
+    form.dataset.submitting = '1'
+
     const data = new FormData(form)
     data.append('action', 'contact_form_submit')
     data.append('_wpnonce', form.dataset.nonce)
 
-    const ajaxUrl = form.dataset.ajaxUrl
-
     try {
-      const response = await fetch(ajaxUrl, {
+      const response = await fetch(form.dataset.ajaxUrl, {
         method: 'POST',
         body: data
       })
 
-      if (!response.ok) throw new Error()
+      const json = await response.json().catch(() => null)
 
-      const json = await response.json()
+      if (!response.ok || !json?.success) {
+        const code = json?.data?.code || 'submit_failed'
+        const field = json?.data?.field || ''
 
-      if (!json.success && json.data?.field) {
-        const field = json.data.field === 'email' ? emailField : messageField
-        showError(field, '')
+        contactFormHideSuccess(successBox)
+
+        if (field === 'email') {
+          contactFormShowFieldError(form, emailField, t(code))
+          return
+        }
+
+        if (field === 'message') {
+          contactFormShowFieldError(form, messageField, t(code))
+          return
+        }
+
+        contactFormShowFieldError(form, messageField, t(code))
         return
       }
 
-      clearError(emailField)
-      clearError(messageField)
-
-      successBox.style.maxHeight = '40px'
-      successBox.style.opacity = '1'
-
-      setTimeout(() => {
-        successBox.style.maxHeight = '0'
-        successBox.style.opacity = '0'
-      }, 5000)
-
+      contactFormClearFieldError(form, emailField)
+      contactFormClearFieldError(form, messageField)
       form.reset()
+      contactFormShowSuccess(successBox)
+
+      successTimeout = window.setTimeout(() => {
+        contactFormHideSuccess(successBox)
+      }, 5000)
     } catch {
-      console.error('Contact form submission failed')
+      contactFormHideSuccess(successBox)
+      contactFormShowFieldError(form, messageField, t('submit_failed'))
+    } finally {
+      form.dataset.submitting = '0'
     }
   })
 }

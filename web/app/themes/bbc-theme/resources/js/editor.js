@@ -121,17 +121,11 @@ domReady(() => {
 });
 
 
+/*
+|--------------------------------------------------------------------------
+| Admin Backend
+|--------------------------------------------------------------------------
+| Anpassungen für Redakteure
+|--------------------------------------------------------------------------
+*/
 
-wp.domReady(() => {
-  wp.data.dispatch('core/edit-post').removeEditorPanel('featured-image')
-  wp.data.dispatch('core/edit-post').removeEditorPanel('discussion-panel')
-  wp.data.dispatch('core/edit-post').removeEditorPanel('page-attributes')
-})
-
-acf.add_action('ready', function () {
-  document.querySelectorAll('.acf-button').forEach(btn => {
-    if (btn.innerText.includes('Layout')) {
-      btn.innerText = 'Sektion hinzufügen'
-    }
-  })
-})

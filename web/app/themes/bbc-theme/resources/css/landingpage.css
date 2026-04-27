@@ -289,6 +289,33 @@
   mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
 }
 
+
+
+
+
+/* CTA Section */
+
+.bg-cta {
+background: radial-gradient(ellipse at center,
+  #eef7f9 0%,
+    #cfe3e9 30%,
+    #8fb6c3 65%,
+    #6f9eae 100%);
+}
+
+.cta-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+
+
+
+
 /* standard pages */
 .page-template-template-plain #siteHeader {
   background-color: rgba(2, 6, 23, 0.75);
@@ -496,3 +523,4 @@ ul.footer-nav {
   /* Der Punkt bekommt links und rechts Platz */
   color: rgb(148 163 184);
 }
+

@@ -10,7 +10,7 @@
       und hinterlege deine Zahlungsdaten.
     </p>
 
-    <a href="/dashboard/settings/billing"
+    <a href="/dashboard-settings?tab=billing"
       class="inline-flex items-center px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary-dark transition">
       Zahlung einrichten
     </a>

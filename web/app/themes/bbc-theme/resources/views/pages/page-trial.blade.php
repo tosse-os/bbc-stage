@@ -24,14 +24,14 @@ Template Name: Conversion – Trial
         {{-- LEFT · HEADLINE --}}
         <div>
           <h1 class="text-4xl font-semibold tracking-tight text-white lg:text-5xl">
-            {!! pll__('Start Your') !!}
+            {!! pll__('Starten Sie Ihre') !!}
             <span class="text-brand-primary">
-              {!! pll__('Free Trial') !!}
+              {!! pll__('Gratis-Testphase') !!}
             </span>
           </h1>
 
           <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-300">
-            {!! pll__('Sign up to access advanced trading signals and structured market analyses. Cancel anytime during your free trial.') !!}
+            {!! pll__('Melden Sie sich an für Trading-Signale und strukturierte Marktanalysen. Während der Testphase jederzeit kündbar.') !!}
           </p>
         </div>
 

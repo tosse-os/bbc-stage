@@ -12,7 +12,7 @@ Routing: WordPress Templates + Redirects
 State: user_meta + URL Parameter
 ================
 
-Anzahl Dateien: 48
+Anzahl Dateien: 50
 
 Dateistruktur:
 - app/ajax.php
@@ -28,6 +28,7 @@ Dateistruktur:
 - app/dashboard-subscription.php
 - app/filters.php
 - app/helper/dashboard.php
+- app/helper/polylang-stubs.php
 - app/media-entry-access.php
 - app/media-entry.php
 - app/setup.php
@@ -37,6 +38,7 @@ Dateistruktur:
 - resources/js/dashboard-filters.js
 - resources/js/dashboard.js
 - resources/js/editor.js
+- resources/js/landingpage-admin.js
 - resources/js/landingpage.js
 - resources/js/theme-toggle.js
 - resources/views/dashboard/analyses/filters.blade.php
@@ -154,6 +156,15 @@ function contact_form_submit()
     wp_send_json_error();
   }
 
+  $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+  $key = 'contact_form_' . md5($ip);
+
+  if (get_transient($key)) {
+    wp_send_json_error(['message' => 'Rate limit']);
+  }
+
+  set_transient($key, 1, 60);
+
   $email = trim($_POST['email'] ?? '');
   $message = trim($_POST['message'] ?? '');
 
@@ -220,6 +231,21 @@ add_action('save_post_analysis', function ($post_id) {
 
   if ($market) {
     update_post_meta($post_id, 'report_market_name', $market->name);
+  }
+});
+
+add_action('pre_get_posts', function ($query) {
+
+  if (is_admin() || !$query->is_main_query()) {
+    return;
+  }
+
+  if ($query->get('post_type') !== 'analysis') {
+    return;
+  }
+
+  if (!can_view_analysis(get_current_user_id())) {
+    $query->set('post__in', [0]);
   }
 });
 
@@ -909,6 +935,14 @@ add_action('user_register', function ($user_id) {
  */
 
 add_action('admin_post_nopriv_dashboard_login', function () {
+  $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+  $key = 'login_attempts_' . md5($ip);
+  $attempts = (int) get_transient($key);
+
+  if ($attempts >= 5) {
+    wp_redirect('/dashboard-login?error=too_many_attempts');
+    exit;
+  }
 
   if (
     !isset($_POST['_wpnonce']) ||
@@ -927,10 +961,12 @@ add_action('admin_post_nopriv_dashboard_login', function () {
   $user = wp_signon($creds, false);
 
   if (is_wp_error($user)) {
+    set_transient($key, $attempts + 1, 15 * MINUTE_IN_SECONDS);
     wp_redirect('/dashboard-login?error=1');
     exit;
   }
 
+  delete_transient($key);
   wp_redirect('/dashboard');
   exit;
 });
@@ -940,6 +976,7 @@ add_action('admin_post_nopriv_dashboard_login', function () {
  */
 
 add_action('admin_post_nopriv_dashboard_register', function () {
+
   if (
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register')
@@ -948,22 +985,28 @@ add_action('admin_post_nopriv_dashboard_register', function () {
     exit;
   }
 
-  if (email_exists($_POST['email'])) {
-    wp_redirect('/dashboard-register?error=exists');
+  $email = sanitize_email($_POST['email']);
+  $password = $_POST['password'] ?? '';
+
+  if (strlen($password) < 8) {
+    wp_redirect('/dashboard-register?error=weak_password');
     exit;
   }
-
-  $email = sanitize_email($_POST['email']);
 
   if (!is_email($email)) {
     wp_redirect('/dashboard-register?error=email');
     exit;
   }
 
+  if (email_exists($email)) {
+    wp_redirect('/dashboard-register?error=exists');
+    exit;
+  }
+
   $user_id = wp_create_user(
-    sanitize_email($_POST['email']),
-    $_POST['password'],
-    sanitize_email($_POST['email'])
+    $email,
+    $password,
+    $email
   );
 
   wp_update_user([
@@ -986,8 +1029,6 @@ add_action('wp_logout', function () {
   wp_redirect('/dashboard-login');
   exit;
 });
-
-
 
 add_action('admin_post_dashboard_update_account', function () {
 
@@ -1089,7 +1130,9 @@ add_action('wp_ajax_dashboard_upload_avatar', function () {
   }
 
   $allowed = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!in_array($file['type'], $allowed, true)) {
+  $check = wp_check_filetype_and_ext($file['tmp_name'], $file['name']);
+
+  if (!$check['ext'] || !in_array($check['type'], $allowed, true)) {
     wp_send_json_error(['message' => 'invalid_type']);
   }
 
@@ -1348,6 +1391,32 @@ function dashboard_active(string $path, bool $exact = false): bool
 }
 
 
+===== app/helper/polylang-stubs.php =====
+
+<?php
+
+if (!function_exists('pll__')) {
+  function pll__($string)
+  {
+    return $string;
+  }
+}
+
+if (!function_exists('pll_e')) {
+  function pll_e($string)
+  {
+    echo $string;
+  }
+}
+
+if (!function_exists('pll_register_string')) {
+  function pll_register_string($name, $string, $group = 'Polylang', $multiline = false)
+  {
+    return true;
+  }
+}
+
+
 ===== app/media-entry-access.php =====
 
 <?php
@@ -1362,7 +1431,7 @@ add_action('template_redirect', function () {
 
   if (get_post_type() === 'media_entry') {
     if (!can_view_media_entry(get_current_user_id())) {
-      wp_redirect('/dashboard-payment-required');
+      wp_safe_redirect(home_url('/dashboard-payment-required'));
       exit;
     }
   }
@@ -1490,43 +1559,65 @@ use Illuminate\Support\Facades\Vite;
 //     return $settings;
 // });
 
-add_action('enqueue_block_editor_assets', function () {
-    echo \Illuminate\Support\Facades\Vite::withEntryPoints([
-        'resources/css/editor.css',
-    ])->toHtml();
-});
-
 
 /**
- * Inject scripts into the block editor.
- *
- * @return void
+ * Prüft, ob der aktuelle Admin-Screen die Theme-Editor-Assets benötigt.
+ * Gilt für die Bearbeitung definierter Inhaltstypen im Backend.
  */
-add_filter('admin_head', function () {
+function should_load_admin_editor_assets(): bool
+{
+    if (!is_admin()) {
+        return false;
+    }
 
     $screen = get_current_screen();
 
     if (!$screen) {
-        return;
+        return false;
     }
 
-    if (!in_array($screen->post_type, ['page', 'media_entry', 'analysis'])) {
-        return;
+    if (!in_array($screen->base, ['post', 'post-new'], true)) {
+        return false;
     }
 
-    $dependencies = json_decode(Vite::content('editor.deps.json'));
+    return in_array($screen->post_type, ['page', 'media_entry', 'analysis'], true);
+}
+
+/**
+ * Registriert die WordPress-Abhängigkeiten für das Backend-Editor-Script.
+ * Nutzt die von Vite erzeugte Dependency-Liste für editor.js.
+ */
+function enqueue_admin_editor_script_dependencies(): void
+{
+    $dependencies = json_decode(Vite::content('editor.deps.json'), true);
+
+    if (!is_array($dependencies)) {
+        return;
+    }
 
     foreach ($dependencies as $dependency) {
-        if (!wp_script_is($dependency)) {
+        if (!wp_script_is($dependency, 'enqueued')) {
             wp_enqueue_script($dependency);
         }
     }
+}
+
+/**
+ * Lädt die Backend-Assets für die Bearbeitung rollenunabhängig.
+ * CSS und JS werden auf denselben Edit-Screens für alle Rollen identisch eingebunden.
+ */
+add_action('admin_head', function () {
+    if (!should_load_admin_editor_assets()) {
+        return;
+    }
+
+    enqueue_admin_editor_script_dependencies();
 
     echo Vite::withEntryPoints([
+        'resources/css/editor.css',
         'resources/js/editor.js',
     ])->toHtml();
-});
-
+}, 20);
 
 /**
  * Use the generated theme.json file.
@@ -1674,10 +1765,16 @@ require_once __DIR__ . '/translations.php';
 
 require_once __DIR__ . '/helper/dashboard.php';
 require_once __DIR__ . '/dashboard-subscription.php';
+require_once __DIR__ . '/stripe-checkout.php';
+require_once __DIR__ . '/stripe-webhook.php';
 
 require_once __DIR__ . '/acf-chart-image-validation.php';
 
-require_once __DIR__ . '/sql-query-admin.php';
+#require_once __DIR__ . '/sql-query-admin.php';//only debug cases
+
+require_once __DIR__ . '/export-landing.php';
+#require_once __DIR__ . '/import-landing.php';
+#require_once __DIR__ . '/import-landing-admin.php';
 
 
 /**
@@ -1722,39 +1819,269 @@ add_action('init', function () {
 
 /* Admin Backend */
 
-/* extend admin view */
+
+/**
+ * Fügt Template + ID Spalten NUR für Admins hinzu
+ */
 add_filter('manage_pages_columns', function ($columns) {
-  $columns['page_template'] = 'Template';
-  return $columns;
+
+    if (!current_user_can('administrator')) {
+        return $columns;
+    }
+
+    $columns['page_template'] = 'Template';
+    $columns['page_id'] = 'ID';
+
+    return $columns;
 });
 
+
+/**
+ * Befüllt Template + ID Spalten NUR für Admins
+ */
 add_action('manage_pages_custom_column', function ($column, $post_id) {
-  if ($column !== 'page_template') {
-    return;
-  }
 
-  $template = get_page_template_slug($post_id);
+    if (!current_user_can('administrator')) {
+        return;
+    }
 
-  if (!$template) {
-    echo 'Standard';
-    return;
-  }
+    if ($column === 'page_template') {
 
-  $theme = wp_get_theme();
-  $templates = $theme->get_page_templates();
-  $label = array_search($template, $templates, true);
+        $template = get_page_template_slug($post_id);
 
-  echo $label ?: $template;
+        if (!$template) {
+            echo 'Standard';
+            return;
+        }
+
+        $theme = wp_get_theme();
+        $templates = $theme->get_page_templates();
+        $label = array_search($template, $templates, true);
+
+        echo $label ?: $template;
+    }
+
+    if ($column === 'page_id') {
+        echo $post_id;
+    }
 }, 10, 2);
 
+
+/**
+ * Styling nur für Admins
+ */
 add_action('admin_enqueue_scripts', function () {
-  wp_add_inline_style('wp-admin', '
-    .wp-list-table .column-page_template {
-      width: 220px;
-      white-space: nowrap;
-    }
-  ');
+
+    // if (!current_user_can('administrator')) {
+    //     return;
+    // }
+
+    $screen = get_current_screen();
+
+    if (!$screen) return;
+
+    if ($screen->post_type !== 'page') return;
+
+    echo \Illuminate\Support\Facades\Vite::withEntryPoints([
+        'resources/css/admin.css',
+    ])->toHtml();
+
+    wp_add_inline_style('wp-admin', '
+        .wp-list-table .column-page_template {
+            width: 220px;
+            white-space: nowrap;
+        }
+        .wp-list-table .column-page_id {
+            width: 80px;
+            text-align: right;
+            font-weight: 600;
+        }
+    ');
 });
+
+
+/* added for redakeur role */
+
+add_action('add_meta_boxes', function () {
+
+    global $post;
+
+    if (!$post || get_post_type($post) !== 'page') return;
+
+    $template = get_page_template_slug($post->ID);
+
+    if (!in_array($template, [
+        'page-landing.blade.php',
+        'template-plain.blade.php'
+    ])) return;
+
+    remove_meta_box('pageparentdiv', 'page', 'side');
+    remove_meta_box('authordiv', 'page', 'side');
+    remove_meta_box('authordiv', 'page', 'normal');
+    remove_meta_box('postimagediv', 'page', 'side');
+    remove_meta_box('commentstatusdiv', 'page', 'normal');
+    remove_meta_box('commentsdiv', 'page', 'normal');
+}, 99);
+
+
+
+add_filter('use_block_editor_for_post', function ($use, $post) {
+
+    if (!$post || $post->post_type !== 'page') {
+        return $use;
+    }
+
+    $template = get_page_template_slug($post->ID);
+
+    if (in_array($template, [
+        'page-landing.blade.php',
+        'template-plain.blade.php'
+    ])) {
+        return false;
+    }
+
+    return $use;
+}, 10, 2);
+
+
+
+add_action('admin_head', function () {
+
+    $screen = get_current_screen();
+    if (!$screen || $screen->post_type !== 'page') return;
+
+    global $post;
+    if (!$post) return;
+
+    $template = get_page_template_slug($post->ID);
+
+    if (!in_array($template, [
+        'page-landing.blade.php',
+        'template-plain.blade.php'
+    ])) return;
+
+    echo \Illuminate\Support\Facades\Vite::withEntryPoints([
+        'resources/js/landingpage-admin.js',
+    ])->toHtml();
+
+    echo '<style>
+        #postdivrich,
+        #postdiv,
+        #contentdiv {
+            display: none !important;
+        }
+    </style>';
+});
+
+add_action('admin_init', function () {
+
+    remove_post_type_support('page', 'author');
+});
+
+
+/* kann boxen nicht ausblenden */
+
+add_filter('hidden_meta_boxes', function ($hidden, $screen) {
+    if ($screen->id === 'page') {
+        return [];
+    }
+    return $hidden;
+}, 10, 2);
+
+
+/* kann nicht verschieben */
+
+add_action('admin_enqueue_scripts', function($hook){
+    if( $hook === "post.php" || $hook === "post-new.php" ){
+        $screen = get_current_screen();
+        if( $screen->post_type === "page" && current_user_can("editor") ){
+            wp_add_inline_script("jquery-ui-sortable", '
+                jQuery(function($){
+                    $(".meta-box-sortables").sortable("disable");
+                });
+            ');
+        }
+    }
+});
+
+
+
+/**
+ * Blendet im Admin alle Seiten ohne Template aus (außer für Admins)
+ */
+add_action('pre_get_posts', function ($query) {
+
+    if (!is_admin() || !$query->is_main_query()) {
+        return;
+    }
+
+    if (current_user_can('administrator')) {
+        return;
+    }
+
+    global $pagenow;
+
+    if ($pagenow !== 'edit.php') {
+        return;
+    }
+
+    if ($query->get('post_type') !== 'page') {
+        return;
+    }
+
+    $query->set('meta_query', [
+        [
+            'key'     => '_wp_page_template',
+            'compare' => 'EXISTS',
+        ],
+        [
+            'key'     => '_wp_page_template',
+            'value'   => '',
+            'compare' => '!=',
+        ],
+        [
+            'key'     => '_wp_page_template',
+            'value'   => 'default',
+            'compare' => '!=',
+        ],
+    ]);
+});
+
+
+
+/**
+ * Entfernt Beiträge und Kommentare aus dem Admin-Menü für Redakteure
+ */
+add_action('admin_menu', function () {
+
+    if (current_user_can('administrator')) {
+        return;
+    }
+
+    remove_menu_page('edit.php'); // Beiträge
+    remove_menu_page('edit-comments.php'); // Kommentare
+
+}, 999);
+
+
+
+/* language workaround */
+
+// add_filter('pll_the_language_link', function ($url, $slug, $locale) {
+//     if (is_admin()) {
+//         return $url;
+//     }
+
+//     if (!is_front_page()) {
+//         return $url;
+//     }
+
+//     if ($url !== null) {
+//         return $url;
+//     }
+
+//     return function_exists('pll_home_url') ? pll_home_url('de') : home_url('/');
+// }, 10, 3);
 
 
 ===== resources/css/dashboard-app.css =====
@@ -3383,6 +3710,57 @@ domReady(() => {
 });
 
 
+/*
+|--------------------------------------------------------------------------
+| Admin Backend
+|--------------------------------------------------------------------------
+| Anpassungen für Redakteure
+|--------------------------------------------------------------------------
+*/
+
+
+
+===== resources/js/landingpage-admin.js =====
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  const selector = '.acf-postbox.postbox';
+
+  function closeAllInitially() {
+    document.querySelectorAll(selector).forEach(box => {
+      if (!box.classList.contains('closed')) {
+        window.jQuery(box).addClass('closed').find('.inside').slideUp(150);
+      }
+    });
+  }
+
+  requestAnimationFrame(closeAllInitially);
+
+  document.addEventListener('click', (e) => {
+
+    const toggle = e.target.closest('.acf-postbox .handlediv, .acf-postbox .hndle');
+    if (!toggle) return;
+
+    const box = toggle.closest('.acf-postbox.postbox');
+    if (!box) return;
+
+    setTimeout(() => {
+
+      document.querySelectorAll(selector).forEach(other => {
+
+        if (other !== box && !other.classList.contains('closed')) {
+          window.jQuery(other).addClass('closed').find('.inside').slideUp(150);
+        }
+
+      });
+
+    }, 10);
+
+  });
+
+});
+
+
 ===== resources/js/landingpage.js =====
 
 import.meta.glob([
@@ -3525,86 +3903,141 @@ function initStickyHeader() {
  * Initialisiert Validierung und AJAX-Submit für das Kontaktformular.
  * Zeigt mehrsprachige Inline-Fehlermeldungen und sendet gültige Daten per AJAX.
  */
+
+/**
+ * Zeigt die Fehlermeldung eines Formularfelds an.
+ * Nutzt den vorhandenen Fehlercontainer ohne DOM-Neuerzeugung.
+ */
+function contactFormShowFieldError(form, field, message) {
+  const box = form.querySelector('.error-' + field.name)
+  if (!box) return
+
+  box.textContent = message
+  box.style.maxHeight = '60px'
+  box.style.opacity = '1'
+  field.setAttribute('aria-invalid', 'true')
+}
+
+/**
+ * Entfernt die Fehlermeldung eines Formularfelds.
+ * Löscht den Text erst nach Ende der Transition.
+ */
+function contactFormClearFieldError(form, field) {
+  const box = form.querySelector('.error-' + field.name)
+  if (!box) return
+
+  box.style.maxHeight = '0'
+  box.style.opacity = '0'
+  field.removeAttribute('aria-invalid')
+
+  box.addEventListener('transitionend', () => {
+    box.textContent = ''
+  }, { once: true })
+}
+
+/**
+ * Blendet die Erfolgsmeldung des Kontaktformulars ein.
+ * Nutzt den bereits vorhandenen Container im Markup.
+ */
+function contactFormShowSuccess(box) {
+  if (!box) return
+
+  box.style.maxHeight = '60px'
+  box.style.opacity = '1'
+}
+
+/**
+ * Blendet die Erfolgsmeldung des Kontaktformulars aus.
+ * Der vorhandene Text bleibt dabei unverändert erhalten.
+ */
+function contactFormHideSuccess(box) {
+  if (!box) return
+
+  box.style.maxHeight = '0'
+  box.style.opacity = '0'
+}
+
+/**
+ * Initialisiert Validierung und AJAX-Submit für das Kontaktformular.
+ * Verarbeitet serverseitige Formularfehler, Honeypot und Throttling sauber im bestehenden UI.
+ */
 function initContactForm() {
   const form = document.getElementById('contactForm')
   if (!form) return
 
   const successBox = document.getElementById('contactSuccess')
+  const emailField = form.querySelector('[name="email"]')
+  const messageField = form.querySelector('[name="message"]')
   const lang = document.documentElement.lang?.startsWith('de') ? 'de' : 'en'
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  let successTimeout = null
 
   const messages = {
     en: {
       email_required: 'Please enter your email address.',
       email_invalid: 'Please enter a valid email address.',
       message_required: 'Please enter a message.',
-      message_too_short: 'Your message must contain at least 5 characters.'
+      message_too_short: 'Your message must contain at least 5 characters.',
+      too_fast: 'Please wait a moment before sending another message.',
+      rate_limited: 'Too many requests. Please try again in a few minutes.',
+      request_invalid: 'Your request could not be processed.',
+      mail_failed: 'Your message could not be sent. Please try again later.',
+      submit_failed: 'Submission failed. Please try again later.'
     },
     de: {
       email_required: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
       email_invalid: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
       message_required: 'Bitte geben Sie eine Nachricht ein.',
-      message_too_short: 'Die Nachricht muss mindestens 5 Zeichen enthalten.'
+      message_too_short: 'Die Nachricht muss mindestens 5 Zeichen enthalten.',
+      too_fast: 'Bitte warten Sie kurz, bevor Sie eine weitere Nachricht senden.',
+      rate_limited: 'Zu viele Anfragen. Bitte versuchen Sie es in einigen Minuten erneut.',
+      request_invalid: 'Ihre Anfrage konnte nicht verarbeitet werden.',
+      mail_failed: 'Ihre Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es später erneut.',
+      submit_failed: 'Der Versand ist fehlgeschlagen. Bitte versuchen Sie es später erneut.'
     }
   }
 
-  const t = key => messages[lang][key] || messages.en[key]
+  const t = key => messages[lang][key] || messages.en[key] || messages.en.submit_failed
 
-  const emailField = form.querySelector('[name="email"]')
-  const messageField = form.querySelector('[name="message"]')
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-  function showError(field, message) {
-    const el = form.querySelector('.error-' + field.name)
-    if (!el) return
-    el.textContent = message
-    el.style.maxHeight = '40px'
-    el.style.opacity = '1'
-    field.setAttribute('aria-invalid', 'true')
-  }
-
-  function clearError(field) {
-    const el = form.querySelector('.error-' + field.name)
-    if (!el) return
-    el.style.maxHeight = '0'
-    el.style.opacity = '0'
-    field.removeAttribute('aria-invalid')
-
-    el.addEventListener('transitionend', () => {
-      el.textContent = ''
-    }, { once: true })
-  }
-
+  /**
+   * Prüft das E-Mail-Feld clientseitig.
+   * Nutzt die vorhandene Inline-Fehlerausgabe im Formular.
+   */
   function validateEmail() {
     const value = emailField.value.trim()
 
     if (!value) {
-      showError(emailField, t('email_required'))
+      contactFormShowFieldError(form, emailField, t('email_required'))
       return false
     }
 
     if (!emailRegex.test(value)) {
-      showError(emailField, t('email_invalid'))
+      contactFormShowFieldError(form, emailField, t('email_invalid'))
       return false
     }
 
-    clearError(emailField)
+    contactFormClearFieldError(form, emailField)
     return true
   }
 
+  /**
+   * Prüft das Nachrichtenfeld clientseitig.
+   * Nutzt die vorhandene Inline-Fehlerausgabe im Formular.
+   */
   function validateMessage() {
     const value = messageField.value.trim()
 
     if (!value) {
-      showError(messageField, t('message_required'))
+      contactFormShowFieldError(form, messageField, t('message_required'))
       return false
     }
 
     if (value.length < 5) {
-      showError(messageField, t('message_too_short'))
+      contactFormShowFieldError(form, messageField, t('message_too_short'))
       return false
     }
 
-    clearError(messageField)
+    contactFormClearFieldError(form, messageField)
     return true
   }
 
@@ -3614,47 +4047,62 @@ function initContactForm() {
   form.addEventListener('submit', async e => {
     e.preventDefault()
 
+    if (form.dataset.submitting === '1') return
+
+    clearTimeout(successTimeout)
+
     const emailValid = validateEmail()
     const messageValid = validateMessage()
 
     if (!emailValid || !messageValid) return
 
+    form.dataset.submitting = '1'
+
     const data = new FormData(form)
     data.append('action', 'contact_form_submit')
     data.append('_wpnonce', form.dataset.nonce)
 
-    const ajaxUrl = form.dataset.ajaxUrl
-
     try {
-      const response = await fetch(ajaxUrl, {
+      const response = await fetch(form.dataset.ajaxUrl, {
         method: 'POST',
         body: data
       })
 
-      if (!response.ok) throw new Error()
+      const json = await response.json().catch(() => null)
 
-      const json = await response.json()
+      if (!response.ok || !json?.success) {
+        const code = json?.data?.code || 'submit_failed'
+        const field = json?.data?.field || ''
 
-      if (!json.success && json.data?.field) {
-        const field = json.data.field === 'email' ? emailField : messageField
-        showError(field, '')
+        contactFormHideSuccess(successBox)
+
+        if (field === 'email') {
+          contactFormShowFieldError(form, emailField, t(code))
+          return
+        }
+
+        if (field === 'message') {
+          contactFormShowFieldError(form, messageField, t(code))
+          return
+        }
+
+        contactFormShowFieldError(form, messageField, t(code))
         return
       }
 
-      clearError(emailField)
-      clearError(messageField)
-
-      successBox.style.maxHeight = '40px'
-      successBox.style.opacity = '1'
-
-      setTimeout(() => {
-        successBox.style.maxHeight = '0'
-        successBox.style.opacity = '0'
-      }, 5000)
-
+      contactFormClearFieldError(form, emailField)
+      contactFormClearFieldError(form, messageField)
       form.reset()
+      contactFormShowSuccess(successBox)
+
+      successTimeout = window.setTimeout(() => {
+        contactFormHideSuccess(successBox)
+      }, 5000)
     } catch {
-      console.error('Contact form submission failed')
+      contactFormHideSuccess(successBox)
+      contactFormShowFieldError(form, messageField, t('submit_failed'))
+    } finally {
+      form.dataset.submitting = '0'
     }
   })
 }
@@ -4424,6 +4872,45 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
       alt=""
       class="w-full rounded-2xl shadow-lg cursor-zoom-in"
       data-chart-zoom>
+  </div>
+  @endif
+
+  @php
+  $commentary = get_field('commentary_file');
+  @endphp
+
+  @if($commentary && !empty($commentary['url']))
+  <div class="dashboard-card rounded-xl px-6 py-5 shadow-sm">
+
+    <div class="custom-audio-wrapper flex items-center gap-4">
+
+      <audio src="{{ $commentary['url'] }}" class="hidden-audio" preload="metadata"></audio>
+
+      <button class="play-btn w-10 h-10 flex items-center justify-center bg-brand-primary rounded-full text-white">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </button>
+
+      <div class="flex-1 flex flex-col">
+        <div class="flex justify-between text-xs text-slate-400 mb-1">
+          <span class="current-time">0:00</span>
+          <span class="duration">0:00</span>
+        </div>
+
+        <input type="range"
+          class="seek-bar w-full h-1 accent-brand-primary cursor-pointer"
+          value="0" step="0.1">
+      </div>
+
+      <button class="mute-btn text-slate-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+      </button>
+
+    </div>
+
   </div>
   @endif
 
@@ -5519,6 +6006,86 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
     @endif
 
+    {{-- BILLING TAB --}}
+    @if ($tab === 'billing')
+
+    @php
+    $subscriptionState = get_user_meta($user->ID, USER_META_SUB_STATUS, true) ?: 'payment_required';
+    $stripeCustomerId = get_user_meta($user->ID, 'stripe_customer_id', true);
+    $stripeSubscriptionId = get_user_meta($user->ID, 'stripe_subscription_id', true);
+    @endphp
+
+    <section class="max-w-3xl space-y-6">
+
+      @if(request()->get('stripe') === 'success')
+      <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        Checkout completed. Your subscription status will update automatically in a moment.
+      </div>
+      @endif
+
+      @if(request()->get('stripe') === 'cancel')
+      <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        Checkout was cancelled.
+      </div>
+      @endif
+
+      @if(request()->get('error'))
+      <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        Stripe checkout could not be started.
+      </div>
+      @endif
+
+      <div class="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
+        <div class="mb-6">
+          <h2 class="text-lg font-semibold text-slate-900">Subscription</h2>
+          <p class="mt-1 text-sm text-slate-500">
+            Current dashboard access status: <span class="font-medium text-slate-700">{{ $subscriptionState }}</span>
+          </p>
+        </div>
+
+        @if($subscriptionState !== 'active')
+        <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+          <input type="hidden" name="action" value="dashboard_start_checkout">
+          @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
+
+          <button
+            type="submit"
+            class="inline-flex items-center px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
+            Start subscription
+          </button>
+        </form>
+        @else
+        <div class="text-sm text-slate-600">
+          Your subscription is already active.
+        </div>
+        @endif
+      </div>
+
+      @if($stripeCustomerId || $stripeSubscriptionId)
+      <div class="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900 mb-4">Stripe</h3>
+
+        <div class="space-y-3 text-sm text-slate-600">
+          @if($stripeCustomerId)
+          <div>
+            <span class="font-medium text-slate-700">Customer ID:</span>
+            <span>{{ $stripeCustomerId }}</span>
+          </div>
+          @endif
+
+          @if($stripeSubscriptionId)
+          <div>
+            <span class="font-medium text-slate-700">Subscription ID:</span>
+            <span>{{ $stripeSubscriptionId }}</span>
+          </div>
+          @endif
+        </div>
+      </div>
+      @endif
+
+    </section>
+
+    @endif
 
     {{-- SECURITY TAB --}}
     @if ($tab === 'security')
@@ -5742,10 +6309,12 @@ Template Name: Dashboard Login
 
     {{-- 1. Logo & Welcome Message --}}
     <div class="flex flex-col items-center mb-10">
-      <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-13 mb-5 drop-shadow-md">
+      <a href="{{ home_url('/') }}" aria-label="Zurück zur Startseite" class="inline-flex items-center justify-center transition duration-300 hover:opacity-80">
+        <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-13 mb-5 drop-shadow-md">
+      </a>
       {{--
-        <h1 class="text-xl font-semibold text-white tracking-tight">Willkommen zurück</h1>
-        --}}
+    <h1 class="text-xl font-semibold text-white tracking-tight">Willkommen zurück</h1>
+    --}}
       <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">Sicherer Zugriff auf Ihren Account</p>
     </div>
 
@@ -5811,9 +6380,16 @@ Template Name: Dashboard Login
     </div>
     @endif
 
-    <p class="mt-10 text-sm text-center text-slate-400">
-      Noch kein Konto? <a href="/dashboard-register" class="text-brand-primary font-semibold hover:underline">Kostenlos registrieren</a>
-    </p>
+    <div class="mt-10 text-sm text-center text-slate-400 space-y-3">
+      <p>
+        Noch kein Konto?
+        <a href="/dashboard-register" class="text-brand-primary font-semibold hover:underline">Kostenlos registrieren</a>
+      </p>
+
+      <a href="{{ home_url('/') }}" class="inline-flex items-center justify-center text-xs uppercase tracking-[0.18em] text-slate-500 hover:text-brand-primary transition duration-300">
+        Zurück zur Startseite
+      </a>
+    </div>
 
   </div>
 </section>

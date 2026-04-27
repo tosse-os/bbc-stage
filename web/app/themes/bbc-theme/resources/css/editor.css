@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
-.acf-postbox .postbox-header {
+/* .acf-postbox .postbox-header {
   background: #acdbe5!important;
-}
+} */
 
 /* 1. Den Standard-Zustand erzwingen */
 .postbox .inside {
@@ -39,7 +39,7 @@
 }
 
 
-/* Admin Backend */
+/* Admin Backend  - obsolet weil Gutenberg? */
 
 .wp-list-table .column-page_template {
   width: 220px;
@@ -49,8 +49,6 @@
 .acf-image-uploader .image-wrap img {
   max-height: 140px !important;
 }
-
-
 
 .edit-post-sidebar {
   background: #f8fafc;

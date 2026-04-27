@@ -1,0 +1,180 @@
+/* ACF Admin UI Redesign */
+
+.acf-postbox {
+  border: none !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08) !important;
+  margin-bottom: 28px !important;
+}
+
+/* Section Header */
+.acf-postbox .postbox-header {
+  background: linear-gradient(180deg, #eaf4f6 0%, #d7e9ee 100%) !important;
+  border-bottom: 1px solid #d0e3e8 !important;
+  padding: 16px 20px !important;
+}
+
+.acf-postbox .postbox-header h2 {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #2c5c6a !important;
+}
+
+/* Content */
+.acf-postbox .inside {
+  background: #f8fbfc !important;
+  padding: 18px !important;
+}
+
+/* Feature Cards */
+.acf-field[data-name^="feature_"] {
+  background: #ffffff !important;
+  border-radius: 14px !important;
+  padding: 16px !important;
+  margin-bottom: 16px !important;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #e4eef2 !important;
+}
+
+/* Labels */
+.acf-label label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #3f6b78 !important;
+}
+
+/* Inputs */
+.acf-input input,
+.acf-input textarea {
+  border-radius: 10px !important;
+  border: 1px solid #cfe3ea !important;
+  padding: 10px 12px !important;
+  font-size: 14px !important;
+}
+
+.acf-input input:focus,
+.acf-input textarea:focus {
+  border-color: #35788b !important;
+  box-shadow: 0 0 0 3px rgba(63, 135, 156, 0.2) !important;
+}
+
+/* Tabs */
+.acf-tab-group {
+  border-bottom: none !important;
+  margin-bottom: 10px !important;
+}
+
+.acf-tab-button {
+  border-radius: 10px !important;
+  background: #eef6f8 !important;
+  color: #3f6b78 !important;
+  padding: 6px 12px !important;
+  margin-right: 6px !important;
+}
+
+.acf-tab-button.-active {
+  background: #3f879c !important;
+  color: #fff !important;
+}
+
+/* Spacing */
+.acf-field {
+  margin-bottom: 12px !important;
+}
+
+/* Collapse animation smoother */
+.postbox .inside {
+  transition: all 0.3s ease !important;
+}
+
+/* Admin Background soften */
+#wpbody-content {
+  background: #f4f8f9;
+}
+
+
+
+/* Feature Cards (Group-Level) */
+.acf-field[data-name^="feature_"] {
+  border: 1px solid #e3e7ea;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+/* Hover */
+.acf-field[data-name^="feature_"]:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* Accordion Header */
+.acf-field[data-name^="feature_"] .acf-accordion-title {
+  background: #f4f7f9;
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid #e3e7ea;
+}
+
+/* Active */
+.acf-field[data-name^="feature_"] .acf-accordion.-open .acf-accordion-title {
+  background: #e3edf5;
+}
+
+/* Content */
+.acf-field[data-name^="feature_"] .acf-fields {
+  padding: 16px;
+  background: #fafbfc;
+}
+
+/* Labels */
+.acf-field[data-name^="feature_"] .acf-label label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #6b7c93;
+}
+
+/* Inputs */
+.acf-field[data-name^="feature_"] input,
+.acf-field[data-name^="feature_"] textarea {
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  padding: 8px 10px;
+}
+
+/* Textarea */
+.acf-field[data-name^="feature_"] textarea {
+  min-height: 120px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Sticky Publish Box */
+#postbox-container-1 {
+  position: sticky;
+  top: 20px;
+}
+
+#submitdiv {
+  position: fixed;
+  bottom: 10px;
+  z-index: 5;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}

@@ -17,11 +17,11 @@
 
       {{-- Desktop Navigation --}}
       <nav class="hidden flex-1 justify-center gap-8 text-base text-slate-300 lg:flex">
-        <a class="nav-link" href="{{ home_url('/') }}#top">Home</a>
-        <a class="nav-link" href="{{ home_url('/') }}#about">About</a>
-        <a class="nav-link" href="{{ home_url('/') }}#contact">Contact & Support</a>
+        <a class="nav-link" href="{{ home_url('/') }}#top">{{ pll__('Start') }}</a>
+        <a class="nav-link" href="{{ home_url('/') }}#market-insights">{{ pll__('Insights') }}</a>
+        <a class="nav-link" href="{{ home_url('/') }}#about">{{ pll__('Kompetenz') }}</a>
         <a class="nav-link" href="{{ home_url('/') }}#team">Team</a>
-        <a class="nav-link" href="{{ home_url('/') }}#market-insights">Insights</a>
+        <a class="nav-link" href="{{ home_url('/') }}#contact">{{ pll__('Support') }}</a>
       </nav>
 
       {{-- Right Side Actions --}}
@@ -44,7 +44,7 @@
 
         {{-- Login Desktop --}}
         <a
-          href="/login"
+          href="{{ home_url('/dashboard-login') }}"
           class="hidden rounded-md bg-brand-primary px-6 py-2 text-sm font-medium text-white transition hover:bg-brand-primaryHover lg:inline-flex">
           Log in
         </a>
@@ -99,17 +99,17 @@
 
   {{-- Mobile Navigation --}}
   <nav class="mt-10 flex flex-col gap-6 px-6 text-lg">
-    <a href="#top" class="mobile-link">Home</a>
-    <a href="#about" class="mobile-link">About</a>
-    <a href="#contact" class="mobile-link">Contact & Support</a>
+    <a href="#top" class="mobile-link">{{ pll__('Start') }}</a>
+    <a href="#about" class="mobile-link">{{ pll__('Über uns') }}</a>
+    <a href="#contact" class="mobile-link">{{ pll__('Support') }}</a>
     <a href="#team" class="mobile-link">Team</a>
-    <a href="#market-insights" class="mobile-link">Insights</a>
+    <a href="#market-insights" class="mobile-link">{{ pll__('Insights') }}</a>
   </nav>
 
   {{-- Login Mobile --}}
   <div class="mt-10 px-6">
     <a
-      href="/login"
+      href="/dashboard-login"
       class="flex w-full items-center justify-center rounded-md bg-brand-primary px-4 py-2 text-base font-medium text-white">
       Log in
     </a>

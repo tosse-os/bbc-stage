@@ -47,6 +47,15 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
         Appearance
       </a>
 
+      <a
+        href="/dashboard-settings?tab=billing"
+        class="pb-3 text-sm font-medium
+  {{ $tab === 'billing'
+    ? 'text-brand-primary border-b-2 border-brand-primary'
+    : 'text-slate-400 hover:text-slate-600' }}">
+        Billing
+      </a>
+
     </div>
 
     {{-- ACCOUNT TAB --}}
@@ -143,6 +152,86 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
     @endif
 
+    {{-- BILLING TAB --}}
+    @if ($tab === 'billing')
+
+    @php
+    $subscriptionState = get_user_meta($user->ID, USER_META_SUB_STATUS, true) ?: 'payment_required';
+    $stripeCustomerId = get_user_meta($user->ID, 'stripe_customer_id', true);
+    $stripeSubscriptionId = get_user_meta($user->ID, 'stripe_subscription_id', true);
+    @endphp
+
+    <section class="max-w-3xl space-y-6">
+
+      @if(request()->get('stripe') === 'success')
+      <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        Checkout completed. Your subscription status will update automatically in a moment.
+      </div>
+      @endif
+
+      @if(request()->get('stripe') === 'cancel')
+      <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        Checkout was cancelled.
+      </div>
+      @endif
+
+      @if(request()->get('error'))
+      <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        Stripe checkout could not be started.
+      </div>
+      @endif
+
+      <div class="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
+        <div class="mb-6">
+          <h2 class="text-lg font-semibold text-slate-900">Subscription</h2>
+          <p class="mt-1 text-sm text-slate-500">
+            Current dashboard access status: <span class="font-medium text-slate-700">{{ $subscriptionState }}</span>
+          </p>
+        </div>
+
+        @if($subscriptionState !== 'active')
+        <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+          <input type="hidden" name="action" value="dashboard_start_checkout">
+          @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
+
+          <button
+            type="submit"
+            class="inline-flex items-center px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
+            Start subscription
+          </button>
+        </form>
+        @else
+        <div class="text-sm text-slate-600">
+          Your subscription is already active.
+        </div>
+        @endif
+      </div>
+
+      @if($stripeCustomerId || $stripeSubscriptionId)
+      <div class="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900 mb-4">Stripe</h3>
+
+        <div class="space-y-3 text-sm text-slate-600">
+          @if($stripeCustomerId)
+          <div>
+            <span class="font-medium text-slate-700">Customer ID:</span>
+            <span>{{ $stripeCustomerId }}</span>
+          </div>
+          @endif
+
+          @if($stripeSubscriptionId)
+          <div>
+            <span class="font-medium text-slate-700">Subscription ID:</span>
+            <span>{{ $stripeSubscriptionId }}</span>
+          </div>
+          @endif
+        </div>
+      </div>
+      @endif
+
+    </section>
+
+    @endif
 
     {{-- SECURITY TAB --}}
     @if ($tab === 'security')

@@ -135,6 +135,45 @@
   </div>
   @endif
 
+  @php
+  $commentary = get_field('commentary_file');
+  @endphp
+
+  @if($commentary && !empty($commentary['url']))
+  <div class="dashboard-card rounded-xl px-6 py-5 shadow-sm">
+
+    <div class="custom-audio-wrapper flex items-center gap-4">
+
+      <audio src="{{ $commentary['url'] }}" class="hidden-audio" preload="metadata"></audio>
+
+      <button class="play-btn w-10 h-10 flex items-center justify-center bg-brand-primary rounded-full text-white">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </button>
+
+      <div class="flex-1 flex flex-col">
+        <div class="flex justify-between text-xs text-slate-400 mb-1">
+          <span class="current-time">0:00</span>
+          <span class="duration">0:00</span>
+        </div>
+
+        <input type="range"
+          class="seek-bar w-full h-1 accent-brand-primary cursor-pointer"
+          value="0" step="0.1">
+      </div>
+
+      <button class="mute-btn text-slate-400">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+      </button>
+
+    </div>
+
+  </div>
+  @endif
+
   <div class="dashboard-card rounded-xl px-6 py-6 shadow-sm">
     <div class="prose prose-lg max-w-none">
       {!! get_field('content_text') !!}

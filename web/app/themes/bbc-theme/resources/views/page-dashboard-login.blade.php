@@ -9,10 +9,12 @@ Template Name: Dashboard Login
 
     {{-- 1. Logo & Welcome Message --}}
     <div class="flex flex-col items-center mb-10">
-      <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-13 mb-5 drop-shadow-md">
+      <a href="{{ home_url('/') }}" aria-label="Zurück zur Startseite" class="inline-flex items-center justify-center transition duration-300 hover:opacity-80">
+        <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-13 mb-5 drop-shadow-md">
+      </a>
       {{--
-        <h1 class="text-xl font-semibold text-white tracking-tight">Willkommen zurück</h1>
-        --}}
+    <h1 class="text-xl font-semibold text-white tracking-tight">Willkommen zurück</h1>
+    --}}
       <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">Sicherer Zugriff auf Ihren Account</p>
     </div>
 
@@ -78,9 +80,16 @@ Template Name: Dashboard Login
     </div>
     @endif
 
-    <p class="mt-10 text-sm text-center text-slate-400">
-      Noch kein Konto? <a href="/dashboard-register" class="text-brand-primary font-semibold hover:underline">Kostenlos registrieren</a>
-    </p>
+    <div class="mt-10 text-sm text-center text-slate-400 space-y-3">
+      <p>
+        Noch kein Konto?
+        <a href="/dashboard-register" class="text-brand-primary font-semibold hover:underline">Kostenlos registrieren</a>
+      </p>
+
+      <a href="{{ home_url('/') }}" class="inline-flex items-center justify-center text-xs uppercase tracking-[0.18em] text-slate-500 hover:text-brand-primary transition duration-300">
+        Zurück zur Startseite
+      </a>
+    </div>
 
   </div>
 </section>
