@@ -73,6 +73,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
           </label>
           <input
             type="text"
+            name="display_name"
             value="{{ $user->display_name }}"
             class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
         </div>
@@ -105,6 +106,8 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
           </label>
           <input
             type="text"
+            name="phone"
+            value="{{ get_user_meta($user->ID, 'phone_number', true) }}"
             placeholder="+49 …"
             class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
         </div>
@@ -178,6 +181,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
       @if(request()->get('error'))
       <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         Stripe checkout could not be started.
+        {{ rawurldecode(request()->get('error')) }}
       </div>
       @endif
 

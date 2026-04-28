@@ -1223,12 +1223,7 @@ add_action('wp_ajax_dashboard_upload_avatar', function () {
 
 <?php
 
-/**
- * Zentrales Dashboard Zugriffsgate
- * Schützt alle dashboard-* Seiten systemisch.
- */
 add_action('template_redirect', function () {
-
   if (!is_page()) {
     return;
   }
@@ -1253,6 +1248,13 @@ add_action('template_redirect', function () {
     $slug === 'dashboard-register' ||
     $slug === 'dashboard-password';
 
+  $isBillingPage =
+    $slug === 'dashboard-settings' &&
+    (($_GET['tab'] ?? 'account') === 'billing');
+
+  $isPaymentRequiredPage =
+    $slug === 'dashboard-payment-required';
+
   if (is_user_logged_in() && $isLoginPage) {
     wp_redirect('/dashboard');
     exit;
@@ -1265,7 +1267,12 @@ add_action('template_redirect', function () {
 
   $state = dashboard_access_state(get_current_user_id());
 
-  if ($state === 'payment_required' && !$isLoginPage) {
+  if (
+    $state === 'payment_required' &&
+    !$isLoginPage &&
+    !$isBillingPage &&
+    !$isPaymentRequiredPage
+  ) {
     wp_redirect('/dashboard-payment-required');
     exit;
   }
@@ -5415,7 +5422,7 @@ $langs = pll_the_languages(['raw' => 1]);
       und hinterlege deine Zahlungsdaten.
     </p>
 
-    <a href="/dashboard/settings/billing"
+    <a href="/dashboard-settings?tab=billing"
       class="inline-flex items-center px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary-dark transition">
       Zahlung einrichten
     </a>
@@ -5910,6 +5917,15 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
         Appearance
       </a>
 
+      <a
+        href="/dashboard-settings?tab=billing"
+        class="pb-3 text-sm font-medium
+  {{ $tab === 'billing'
+    ? 'text-brand-primary border-b-2 border-brand-primary'
+    : 'text-slate-400 hover:text-slate-600' }}">
+        Billing
+      </a>
+
     </div>
 
     {{-- ACCOUNT TAB --}}
@@ -5927,6 +5943,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
           </label>
           <input
             type="text"
+            name="display_name"
             value="{{ $user->display_name }}"
             class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
         </div>
@@ -5959,6 +5976,8 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
           </label>
           <input
             type="text"
+            name="phone"
+            value="{{ get_user_meta($user->ID, 'phone_number', true) }}"
             placeholder="+49 …"
             class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
         </div>

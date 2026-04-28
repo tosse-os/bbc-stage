@@ -1,68 +1,64 @@
 <?php
 
-/**
- * Registriert den Checkout-Start für eingeloggte Dashboard-User.
- * Erstellt eine Stripe Checkout Session für das Abo.
- */
-add_action('admin_post_dashboard_start_checkout', __NAMESPACE__ . '\\dashboard_start_checkout');
+if (!function_exists('dashboard_stripe_boot_sdk')) {
+  function dashboard_stripe_boot_sdk(): bool
+  {
+    if (class_exists(\Stripe\Stripe::class)) {
+      return true;
+    }
 
-/**
- * Liest einen Stripe-Umgebungswert aus der Server-Konfiguration.
- * Nutzt die gesetzten ENV-Werte aus Bedrock.
- */
-function stripe_checkout_env(string $key): string
-{
-  $value = getenv($key);
+    $autoload = dirname(__DIR__) . '/vendor/autoload.php';
 
-  return is_string($value) ? trim($value) : '';
-}
+    if (file_exists($autoload)) {
+      require_once $autoload;
+    }
 
-/**
- * Liefert den Stripe-Client für serverseitige Checkout-Aktionen.
- * Verwendet den Secret Key aus der Umgebung.
- */
-function stripe_checkout_client(): \Stripe\StripeClient
-{
-  return new \Stripe\StripeClient(stripe_checkout_env('STRIPE_SECRET_KEY'));
-}
-
-/**
- * Liefert oder erstellt den Stripe Customer des aktuellen Users.
- * Verknüpft den WordPress-User dauerhaft mit einer Stripe Customer ID.
- */
-function stripe_checkout_customer_id(int $user_id): string
-{
-  $existing = (string) get_user_meta($user_id, 'stripe_customer_id', true);
-
-  if ($existing !== '') {
-    return $existing;
+    return class_exists(\Stripe\Stripe::class);
   }
-
-  $user = get_userdata($user_id);
-
-  if (!$user) {
-    return '';
-  }
-
-  $customer = stripe_checkout_client()->customers->create([
-    'email' => $user->user_email,
-    'name' => $user->display_name ?: $user->user_login,
-    'metadata' => [
-      'user_id' => (string) $user_id,
-    ],
-  ]);
-
-  update_user_meta($user_id, 'stripe_customer_id', (string) $customer->id);
-
-  return (string) $customer->id;
 }
 
-/**
- * Startet den Stripe Checkout für das Dashboard-Abo.
- * Prüft Login, Nonce und Konfiguration und leitet dann zu Stripe weiter.
- */
-function dashboard_start_checkout(): void
-{
+if (!function_exists('dashboard_stripe_env')) {
+  function dashboard_stripe_env(string $key, $default = '')
+  {
+    if (function_exists('env')) {
+      $value = env($key);
+      if ($value !== null && $value !== '') {
+        return is_string($value) ? trim($value) : $value;
+      }
+    }
+
+    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+    if ($value === false || $value === null || $value === '') {
+      return $default;
+    }
+
+    return is_string($value) ? trim($value) : $value;
+  }
+}
+
+if (!function_exists('dashboard_stripe_config')) {
+  function dashboard_stripe_config(): array
+  {
+    return [
+      'publishable_key' => (string) dashboard_stripe_env('STRIPE_PUBLISHABLE_KEY', ''),
+      'secret_key' => (string) dashboard_stripe_env('STRIPE_SECRET_KEY', ''),
+      'price_id' => (string) dashboard_stripe_env('STRIPE_PRICE_ID', ''),
+      'webhook_secret' => (string) dashboard_stripe_env('STRIPE_WEBHOOK_SECRET', ''),
+    ];
+  }
+}
+
+if (!function_exists('dashboard_stripe_billing_url')) {
+  function dashboard_stripe_billing_url(array $args = []): string
+  {
+    $base = home_url('/dashboard-settings');
+    $args = array_merge(['tab' => 'billing'], $args);
+    return add_query_arg($args, $base);
+  }
+}
+
+add_action('admin_post_dashboard_start_checkout', function () {
   if (!is_user_logged_in()) {
     wp_safe_redirect(home_url('/dashboard-login'));
     exit;
@@ -70,36 +66,55 @@ function dashboard_start_checkout(): void
 
   if (
     !isset($_POST['_wpnonce']) ||
-    !wp_verify_nonce(wp_unslash($_POST['_wpnonce']), 'dashboard_start_checkout')
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_start_checkout')
   ) {
-    wp_safe_redirect(home_url('/dashboard-settings?tab=billing&error=invalid_request'));
+    wp_safe_redirect(dashboard_stripe_billing_url(['error' => 'invalid_request']));
     exit;
   }
 
-  $secretKey = stripe_checkout_env('STRIPE_SECRET_KEY');
-  $priceId = stripe_checkout_env('STRIPE_PRICE_ID');
-
-  if ($secretKey === '' || $priceId === '') {
-    wp_safe_redirect(home_url('/dashboard-settings?tab=billing&error=stripe_not_configured'));
+  if (!dashboard_stripe_boot_sdk()) {
+    wp_safe_redirect(dashboard_stripe_billing_url(['error' => 'stripe_sdk_missing']));
     exit;
   }
 
-  $user_id = get_current_user_id();
-  $customerId = stripe_checkout_customer_id($user_id);
+  $config = dashboard_stripe_config();
 
-  if ($customerId === '') {
-    wp_safe_redirect(home_url('/dashboard-settings?tab=billing&error=customer_failed'));
+  if ($config['secret_key'] === '' || $config['price_id'] === '') {
+    wp_safe_redirect(dashboard_stripe_billing_url(['error' => 'stripe_not_configured']));
     exit;
   }
 
   try {
-    $session = stripe_checkout_client()->checkout->sessions->create([
+    \Stripe\Stripe::setApiKey($config['secret_key']);
+
+    $user = wp_get_current_user();
+    $user_id = (int) $user->ID;
+
+    $customer_id = (string) get_user_meta($user_id, 'stripe_customer_id', true);
+
+    if ($customer_id === '') {
+      $customer = \Stripe\Customer::create([
+        'email' => $user->user_email,
+        'name' => $user->display_name ?: $user->user_email,
+        'metadata' => [
+          'user_id' => (string) $user_id,
+        ],
+      ]);
+
+      $customer_id = (string) $customer->id;
+
+      update_user_meta($user_id, 'stripe_customer_id', $customer_id);
+    }
+
+    $session = \Stripe\Checkout\Session::create([
       'mode' => 'subscription',
-      'customer' => $customerId,
-      'line_items' => [[
-        'price' => $priceId,
-        'quantity' => 1,
-      ]],
+      'customer' => $customer_id,
+      'line_items' => [
+        [
+          'price' => $config['price_id'],
+          'quantity' => 1,
+        ],
+      ],
       'client_reference_id' => (string) $user_id,
       'metadata' => [
         'user_id' => (string) $user_id,
@@ -109,19 +124,21 @@ function dashboard_start_checkout(): void
           'user_id' => (string) $user_id,
         ],
       ],
-      'success_url' => home_url('/dashboard-settings?tab=billing&stripe=success'),
-      'cancel_url' => home_url('/dashboard-settings?tab=billing&stripe=cancel'),
+      'allow_promotion_codes' => true,
+      'success_url' => dashboard_stripe_billing_url([
+        'stripe' => 'success',
+        'session_id' => '{CHECKOUT_SESSION_ID}',
+      ]),
+      'cancel_url' => dashboard_stripe_billing_url([
+        'stripe' => 'cancel',
+      ]),
     ]);
-  } catch (\Throwable $exception) {
-    wp_safe_redirect(home_url('/dashboard-settings?tab=billing&error=checkout_failed'));
+
+    wp_safe_redirect($session->url);
+    exit;
+  } catch (\Throwable $e) {
+    error_log('Stripe checkout error: ' . $e->getMessage());
+    wp_safe_redirect(dashboard_stripe_billing_url(['error' => 'stripe_checkout_failed']));
     exit;
   }
-
-  if (empty($session->url)) {
-    wp_safe_redirect(home_url('/dashboard-settings?tab=billing&error=checkout_missing_url'));
-    exit;
-  }
-
-  wp_redirect((string) $session->url);
-  exit;
-}
+});
