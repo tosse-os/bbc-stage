@@ -1,66 +1,12 @@
 <?php
 
-if (!function_exists('dashboard_stripe_boot_sdk')) {
-  function dashboard_stripe_boot_sdk(): bool
-  {
-    if (class_exists(\Stripe\Stripe::class)) {
-      return true;
-    }
-
-    $autoload = dirname(__DIR__) . '/vendor/autoload.php';
-
-    if (file_exists($autoload)) {
-      require_once $autoload;
-    }
-
-    return class_exists(\Stripe\Stripe::class);
-  }
-}
-
-if (!function_exists('dashboard_stripe_env')) {
-  function dashboard_stripe_env(string $key, $default = '')
-  {
-    if (function_exists('env')) {
-      $value = env($key);
-      if ($value !== null && $value !== '') {
-        return is_string($value) ? trim($value) : $value;
-      }
-    }
-
-    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-
-    if ($value === false || $value === null || $value === '') {
-      return $default;
-    }
-
-    return is_string($value) ? trim($value) : $value;
-  }
-}
-
-if (!function_exists('dashboard_stripe_config')) {
-  function dashboard_stripe_config(): array
-  {
-    return [
-      'publishable_key' => (string) dashboard_stripe_env('STRIPE_PUBLISHABLE_KEY', ''),
-      'secret_key' => (string) dashboard_stripe_env('STRIPE_SECRET_KEY', ''),
-      'price_id' => (string) dashboard_stripe_env('STRIPE_PRICE_ID', ''),
-      'webhook_secret' => (string) dashboard_stripe_env('STRIPE_WEBHOOK_SECRET', ''),
-    ];
-  }
-}
-
-if (!function_exists('dashboard_stripe_billing_url')) {
-  function dashboard_stripe_billing_url(array $args = []): string
-  {
-    $base = home_url('/dashboard-settings');
-    $args = array_merge(['tab' => 'billing'], $args);
-    return add_query_arg($args, $base);
-  }
-}
-
-add_action('admin_post_dashboard_start_checkout', function () {
+/**
+ * Startet den Stripe-Checkout für eine Subscription.
+ */
+function dashboard_handle_start_checkout()
+{
   if (!is_user_logged_in()) {
-    wp_safe_redirect(home_url('/dashboard-login'));
+    wp_safe_redirect('/dashboard-login');
     exit;
   }
 
@@ -68,77 +14,149 @@ add_action('admin_post_dashboard_start_checkout', function () {
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_start_checkout')
   ) {
-    wp_safe_redirect(dashboard_stripe_billing_url(['error' => 'invalid_request']));
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=invalid_request');
     exit;
   }
 
-  if (!dashboard_stripe_boot_sdk()) {
-    wp_safe_redirect(dashboard_stripe_billing_url(['error' => 'stripe_sdk_missing']));
+  if (!dashboard_stripe_boot()) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_sdk_missing');
     exit;
   }
 
-  $config = dashboard_stripe_config();
+  $configError = dashboard_stripe_checkout_config_error();
 
-  if ($config['secret_key'] === '' || $config['price_id'] === '') {
-    wp_safe_redirect(dashboard_stripe_billing_url(['error' => 'stripe_not_configured']));
+  if ($configError !== '') {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($configError));
+    exit;
+  }
+
+  $user = wp_get_current_user();
+
+  try {
+    $customer = dashboard_get_or_create_stripe_customer($user);
+
+    $session = \Stripe\Checkout\Session::create([
+      'mode' => 'subscription',
+      'customer' => $customer->id,
+      'line_items' => [[
+        'price' => dashboard_stripe_price_id(),
+        'quantity' => 1,
+      ]],
+      'success_url' => dashboard_checkout_success_url(),
+      'cancel_url' => dashboard_checkout_cancel_url(),
+      'client_reference_id' => (string) $user->ID,
+      'metadata' => [
+        'wp_user_id' => (string) $user->ID,
+      ],
+      'subscription_data' => [
+        'metadata' => [
+          'wp_user_id' => (string) $user->ID,
+        ],
+      ],
+      'allow_promotion_codes' => true,
+    ]);
+
+    wp_redirect($session->url);
+    exit;
+  } catch (\Throwable $e) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_checkout_failed');
+    exit;
+  }
+}
+
+add_action('admin_post_dashboard_start_checkout', 'dashboard_handle_start_checkout');
+
+/**
+ * Öffnet das Stripe Billing Portal für bestehende Kunden.
+ */
+function dashboard_handle_open_billing_portal()
+{
+  if (!is_user_logged_in()) {
+    wp_safe_redirect('/dashboard-login');
+    exit;
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_open_billing_portal')
+  ) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=invalid_request');
+    exit;
+  }
+
+  if (!dashboard_stripe_boot()) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_sdk_missing');
+    exit;
+  }
+
+  $configError = dashboard_stripe_portal_config_error();
+
+  if ($configError !== '') {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($configError));
+    exit;
+  }
+
+  $customerId = trim((string) get_user_meta(get_current_user_id(), 'stripe_customer_id', true));
+
+  if ($customerId === '') {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_customer_missing');
     exit;
   }
 
   try {
-    \Stripe\Stripe::setApiKey($config['secret_key']);
-
-    $user = wp_get_current_user();
-    $user_id = (int) $user->ID;
-
-    $customer_id = (string) get_user_meta($user_id, 'stripe_customer_id', true);
-
-    if ($customer_id === '') {
-      $customer = \Stripe\Customer::create([
-        'email' => $user->user_email,
-        'name' => $user->display_name ?: $user->user_email,
-        'metadata' => [
-          'user_id' => (string) $user_id,
-        ],
-      ]);
-
-      $customer_id = (string) $customer->id;
-
-      update_user_meta($user_id, 'stripe_customer_id', $customer_id);
-    }
-
-    $session = \Stripe\Checkout\Session::create([
-      'mode' => 'subscription',
-      'customer' => $customer_id,
-      'line_items' => [
-        [
-          'price' => $config['price_id'],
-          'quantity' => 1,
-        ],
-      ],
-      'client_reference_id' => (string) $user_id,
-      'metadata' => [
-        'user_id' => (string) $user_id,
-      ],
-      'subscription_data' => [
-        'metadata' => [
-          'user_id' => (string) $user_id,
-        ],
-      ],
-      'allow_promotion_codes' => true,
-      'success_url' => dashboard_stripe_billing_url([
-        'stripe' => 'success',
-        'session_id' => '{CHECKOUT_SESSION_ID}',
-      ]),
-      'cancel_url' => dashboard_stripe_billing_url([
-        'stripe' => 'cancel',
-      ]),
+    $session = \Stripe\BillingPortal\Session::create([
+      'customer' => $customerId,
+      'return_url' => dashboard_settings_billing_url(),
     ]);
 
-    wp_safe_redirect($session->url);
+    wp_redirect($session->url);
     exit;
   } catch (\Throwable $e) {
-    error_log('Stripe checkout error: ' . $e->getMessage());
-    wp_safe_redirect(dashboard_stripe_billing_url(['error' => 'stripe_checkout_failed']));
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_portal_failed');
     exit;
   }
-});
+}
+
+add_action('admin_post_dashboard_open_billing_portal', 'dashboard_handle_open_billing_portal');
+
+/**
+ * Holt einen vorhandenen Stripe-Kunden oder legt ihn neu an.
+ */
+function dashboard_get_or_create_stripe_customer($user)
+{
+  $customerId = trim((string) get_user_meta($user->ID, 'stripe_customer_id', true));
+
+  if ($customerId !== '') {
+    try {
+      $customer = \Stripe\Customer::retrieve($customerId);
+
+      if (empty($customer->deleted)) {
+        \Stripe\Customer::update($customerId, [
+          'email' => $user->user_email,
+          'name' => $user->display_name ?: $user->user_login,
+          'metadata' => [
+            'wp_user_id' => (string) $user->ID,
+          ],
+        ]);
+
+        return \Stripe\Customer::retrieve($customerId);
+      }
+
+      delete_user_meta($user->ID, 'stripe_customer_id');
+    } catch (\Throwable $e) {
+      delete_user_meta($user->ID, 'stripe_customer_id');
+    }
+  }
+
+  $customer = \Stripe\Customer::create([
+    'email' => $user->user_email,
+    'name' => $user->display_name ?: $user->user_login,
+    'metadata' => [
+      'wp_user_id' => (string) $user->ID,
+    ],
+  ]);
+
+  update_user_meta($user->ID, 'stripe_customer_id', $customer->id);
+
+  return $customer;
+}

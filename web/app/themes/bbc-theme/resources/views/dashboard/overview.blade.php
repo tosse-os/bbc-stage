@@ -45,16 +45,21 @@
       $publish_date = get_post_meta($post_id, 'publish_date', true);
       @endphp
 
-      <div class="dashboard-card rounded-xl p-5 flex items-center justify-between">
+      <a
+        href="/analysis/{{ get_post_field('post_name', $post_id) }}"
+        class="dashboard-card group rounded-xl p-5 flex items-center justify-between gap-4
+         transition-all duration-200 cursor-pointer
+         hover:-translate-y-0.5 hover:shadow-lg
+         focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4 min-w-0">
           @if($image_url)
           <img src="{{ $image_url }}"
-            class="w-16 h-16 object-cover rounded-lg">
+            class="w-16 h-16 object-cover rounded-lg flex-shrink-0">
           @endif
 
-          <div>
-            <div class="break-all line-clamp-2 font-medium text-heading">
+          <div class="min-w-0">
+            <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors">
               {{ get_the_title() }}
             </div>
             <div class="text-sm text-meta">
@@ -63,12 +68,12 @@
           </div>
         </div>
 
-        <a href="/analysis/{{ get_post_field('post_name', $post_id) }}"
-          class="text-sm text-brand-primary">
+        <span class="text-sm text-brand-primary whitespace-nowrap transition-transform duration-200 group-hover:translate-x-1">
           View →
-        </a>
+        </span>
 
-      </div>
+      </a>
+
       @endwhile
       @php wp_reset_postdata(); @endphp
     </div>
@@ -119,13 +124,18 @@
       : get_theme_file_uri('resources/images/dashboard/default-cover.jpg');
       @endphp
 
-      <div class="dashboard-card rounded-xl p-5 flex items-center gap-4">
+      <a
+        href="/dashboard-media"
+        class="dashboard-card group rounded-xl p-5 flex items-center gap-4
+         transition-all duration-200 cursor-pointer
+         hover:-translate-y-0.5 hover:shadow-lg
+         focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
         <img src="{{ $coverUrl }}"
-          class="w-16 h-16 object-cover rounded-lg">
+          class="w-16 h-16 object-cover rounded-lg flex-shrink-0">
 
-        <div class="flex-1">
-          <div class="break-all line-clamp-2 font-medium text-heading">
+        <div class="flex-1 min-w-0">
+          <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors">
             {{ get_the_title() }}
           </div>
           <div class="text-sm text-meta">
@@ -133,12 +143,11 @@
           </div>
         </div>
 
-        <a href="/dashboard-media"
-          class="text-sm text-brand-primary">
+        <span class="text-sm text-brand-primary whitespace-nowrap transition-transform duration-200 group-hover:translate-x-1">
           View →
-        </a>
+        </span>
 
-      </div>
+      </a>
 
       @endwhile
       @php wp_reset_postdata(); @endphp

@@ -10,7 +10,7 @@
       und hinterlege deine Zahlungsdaten.
     </p>
 
-    <a href="/dashboard-settings?tab=billing"
+    <a href="{{ dashboard_settings_billing_url() }}"
       class="inline-flex items-center px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary-dark transition">
       Zahlung einrichten
     </a>

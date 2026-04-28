@@ -62,10 +62,12 @@ if (fs.existsSync(appPath)) {
     if (
       !shouldIgnore(fullPath) &&
       (
+        file.startsWith('stripe-') ||
         file.startsWith('dashboard-') ||
         file.startsWith('analysis') ||
         file.startsWith('media-entry') ||
         file.includes('media') ||
+        file === 'stripe.php' ||
         file === 'ajax.php' ||
         file === 'filters.php' ||
         file === 'setup.php'

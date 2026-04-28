@@ -160,8 +160,12 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
     @php
     $subscriptionState = get_user_meta($user->ID, USER_META_SUB_STATUS, true) ?: 'payment_required';
+    $subscriptionStateLabel = dashboard_stripe_subscription_state_label($subscriptionState);
     $stripeCustomerId = get_user_meta($user->ID, 'stripe_customer_id', true);
     $stripeSubscriptionId = get_user_meta($user->ID, 'stripe_subscription_id', true);
+    $stripeRawStatus = get_user_meta($user->ID, 'stripe_subscription_status', true);
+    $billingErrorCode = trim((string) request()->get('error', ''));
+    $billingErrorMessage = $billingErrorCode !== '' ? dashboard_stripe_billing_error_message($billingErrorCode) : '';
     @endphp
 
     <section class="max-w-3xl space-y-6">
@@ -178,10 +182,9 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
       </div>
       @endif
 
-      @if(request()->get('error'))
+      @if($billingErrorMessage !== '')
       <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        Stripe checkout could not be started.
-        {{ rawurldecode(request()->get('error')) }}
+        {{ $billingErrorMessage }}
       </div>
       @endif
 
@@ -189,23 +192,48 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
         <div class="mb-6">
           <h2 class="text-lg font-semibold text-slate-900">Subscription</h2>
           <p class="mt-1 text-sm text-slate-500">
-            Current dashboard access status: <span class="font-medium text-slate-700">{{ $subscriptionState }}</span>
+            Current dashboard access status:
+            <span class="font-medium text-slate-700">{{ $subscriptionStateLabel }}</span>
           </p>
+
+          @if($stripeRawStatus)
+          <p class="mt-1 text-sm text-slate-500">
+            Stripe subscription status:
+            <span class="font-medium text-slate-700">{{ $stripeRawStatus }}</span>
+          </p>
+          @endif
         </div>
 
-        @if($subscriptionState !== 'active')
-        <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
-          <input type="hidden" name="action" value="dashboard_start_checkout">
-          @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
+        <div class="flex flex-wrap gap-3">
+          @if($subscriptionState !== 'active')
+          <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+            <input type="hidden" name="action" value="dashboard_start_checkout">
+            @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
 
-          <button
-            type="submit"
-            class="inline-flex items-center px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
-            Start subscription
-          </button>
-        </form>
-        @else
-        <div class="text-sm text-slate-600">
+            <button
+              type="submit"
+              class="inline-flex items-center px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
+              Start subscription
+            </button>
+          </form>
+          @endif
+
+          @if($stripeCustomerId)
+          <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+            <input type="hidden" name="action" value="dashboard_open_billing_portal">
+            @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+
+            <button
+              type="submit"
+              class="inline-flex items-center px-6 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition">
+              Open billing portal
+            </button>
+          </form>
+          @endif
+        </div>
+
+        @if($subscriptionState === 'active' && !$stripeCustomerId)
+        <div class="mt-4 text-sm text-slate-600">
           Your subscription is already active.
         </div>
         @endif

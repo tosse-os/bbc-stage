@@ -1,11 +1,17 @@
 <?php
 
-add_action('template_redirect', function () {
+/**
+ * Zentrales Dashboard-Gate.
+ * Lässt Login/Register/Password immer zu und Billing trotz payment_required.
+ */
+function dashboard_handle_dashboard_gate()
+{
   if (!is_page()) {
     return;
   }
 
   $post = get_queried_object();
+
   if (!$post) {
     return;
   }
@@ -33,12 +39,12 @@ add_action('template_redirect', function () {
     $slug === 'dashboard-payment-required';
 
   if (is_user_logged_in() && $isLoginPage) {
-    wp_redirect('/dashboard');
+    wp_safe_redirect('/dashboard');
     exit;
   }
 
   if (!is_user_logged_in() && !$isLoginPage) {
-    wp_redirect('/dashboard-login');
+    wp_safe_redirect('/dashboard-login');
     exit;
   }
 
@@ -50,7 +56,9 @@ add_action('template_redirect', function () {
     !$isBillingPage &&
     !$isPaymentRequiredPage
   ) {
-    wp_redirect('/dashboard-payment-required');
+    wp_safe_redirect('/dashboard-payment-required');
     exit;
   }
-}, 99);
+}
+
+add_action('template_redirect', 'dashboard_handle_dashboard_gate', 99);

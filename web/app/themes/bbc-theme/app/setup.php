@@ -217,6 +217,7 @@ require_once __DIR__ . '/analysis-access.php';
 require_once __DIR__ . '/dashboard-auth.php';
 require_once __DIR__ . '/dashboard-avatar.php';
 require_once __DIR__ . '/dashboard-access.php';
+require_once __DIR__ . '/stripe.php';
 require_once __DIR__ . '/dashboard-gate.php';
 require_once __DIR__ . '/dashboard-controller.php';
 
@@ -228,6 +229,7 @@ require_once __DIR__ . '/filters.php';
 require_once __DIR__ . '/translations.php';
 
 require_once __DIR__ . '/helper/dashboard.php';
+require_once __DIR__ . '/dashboard-admin.php';
 require_once __DIR__ . '/dashboard-subscription.php';
 require_once __DIR__ . '/stripe-checkout.php';
 require_once __DIR__ . '/stripe-webhook.php';
@@ -455,10 +457,10 @@ add_filter('hidden_meta_boxes', function ($hidden, $screen) {
 
 /* kann nicht verschieben */
 
-add_action('admin_enqueue_scripts', function($hook){
-    if( $hook === "post.php" || $hook === "post-new.php" ){
+add_action('admin_enqueue_scripts', function ($hook) {
+    if ($hook === "post.php" || $hook === "post-new.php") {
         $screen = get_current_screen();
-        if( $screen->post_type === "page" && current_user_can("editor") ){
+        if ($screen->post_type === "page" && current_user_can("editor")) {
             wp_add_inline_script("jquery-ui-sortable", '
                 jQuery(function($){
                     $(".meta-box-sortables").sortable("disable");

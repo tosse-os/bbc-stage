@@ -12,7 +12,7 @@ Routing: WordPress Templates + Redirects
 State: user_meta + URL Parameter
 ================
 
-Anzahl Dateien: 50
+Anzahl Dateien: 54
 
 Dateistruktur:
 - app/ajax.php
@@ -32,6 +32,9 @@ Dateistruktur:
 - app/media-entry-access.php
 - app/media-entry.php
 - app/setup.php
+- app/stripe-checkout.php
+- app/stripe-webhook.php
+- app/stripe.php
 - resources/css/dashboard-app.css
 - resources/css/dashboard-theme.css
 - resources/css/dashboard.css
@@ -61,6 +64,7 @@ Dateistruktur:
 - resources/views/page-dashboard-login.blade.php
 - resources/views/page-dashboard-media.blade.php
 - resources/views/page-dashboard-password.blade.php
+- resources/views/page-dashboard-payment-required.blade.php
 - resources/views/page-dashboard-register.blade.php
 - resources/views/page-dashboard-reports.blade.php
 - resources/views/page-dashboard-settings.blade.php
@@ -888,7 +892,7 @@ function dashboard_access_state($user_id = null)
     return 'guest';
   }
 
-  $status = get_user_meta($user_id, USER_META_SUB_STATUS, true);
+  $status = (string) get_user_meta($user_id, USER_META_SUB_STATUS, true);
   $trial_end = (int) get_user_meta($user_id, USER_META_TRIAL_END, true);
   $now = current_time('timestamp');
 
@@ -900,7 +904,31 @@ function dashboard_access_state($user_id = null)
     return 'trial';
   }
 
+  if (in_array($status, ['past_due', 'canceled'], true)) {
+    return $status;
+  }
+
   return 'payment_required';
+}
+
+function dashboard_user_has_premium_access($user_id = null): bool
+{
+  return in_array(dashboard_access_state($user_id), ['trial', 'active'], true);
+}
+
+function dashboard_user_is_locked($user_id = null): bool
+{
+  return !dashboard_user_has_premium_access($user_id);
+}
+
+function dashboard_billing_url(): string
+{
+  return home_url('/dashboard-settings') . '?tab=billing';
+}
+
+function dashboard_payment_required_url(): string
+{
+  return home_url('/dashboard-payment-required');
 }
 
 
@@ -1223,12 +1251,18 @@ add_action('wp_ajax_dashboard_upload_avatar', function () {
 
 <?php
 
-add_action('template_redirect', function () {
+/**
+ * Zentrales Dashboard-Gate.
+ * Lässt Login/Register/Password immer zu und Billing trotz payment_required.
+ */
+function dashboard_handle_dashboard_gate()
+{
   if (!is_page()) {
     return;
   }
 
   $post = get_queried_object();
+
   if (!$post) {
     return;
   }
@@ -1256,12 +1290,12 @@ add_action('template_redirect', function () {
     $slug === 'dashboard-payment-required';
 
   if (is_user_logged_in() && $isLoginPage) {
-    wp_redirect('/dashboard');
+    wp_safe_redirect('/dashboard');
     exit;
   }
 
   if (!is_user_logged_in() && !$isLoginPage) {
-    wp_redirect('/dashboard-login');
+    wp_safe_redirect('/dashboard-login');
     exit;
   }
 
@@ -1273,10 +1307,12 @@ add_action('template_redirect', function () {
     !$isBillingPage &&
     !$isPaymentRequiredPage
   ) {
-    wp_redirect('/dashboard-payment-required');
+    wp_safe_redirect('/dashboard-payment-required');
     exit;
   }
-}, 99);
+}
+
+add_action('template_redirect', 'dashboard_handle_dashboard_gate', 99);
 
 
 ===== app/dashboard-subscription.php =====
@@ -1760,6 +1796,7 @@ require_once __DIR__ . '/analysis-access.php';
 require_once __DIR__ . '/dashboard-auth.php';
 require_once __DIR__ . '/dashboard-avatar.php';
 require_once __DIR__ . '/dashboard-access.php';
+require_once __DIR__ . '/stripe.php';
 require_once __DIR__ . '/dashboard-gate.php';
 require_once __DIR__ . '/dashboard-controller.php';
 
@@ -1998,10 +2035,10 @@ add_filter('hidden_meta_boxes', function ($hidden, $screen) {
 
 /* kann nicht verschieben */
 
-add_action('admin_enqueue_scripts', function($hook){
-    if( $hook === "post.php" || $hook === "post-new.php" ){
+add_action('admin_enqueue_scripts', function ($hook) {
+    if ($hook === "post.php" || $hook === "post-new.php") {
         $screen = get_current_screen();
-        if( $screen->post_type === "page" && current_user_can("editor") ){
+        if ($screen->post_type === "page" && current_user_can("editor")) {
             wp_add_inline_script("jquery-ui-sortable", '
                 jQuery(function($){
                     $(".meta-box-sortables").sortable("disable");
@@ -2089,6 +2126,844 @@ add_action('admin_menu', function () {
 
 //     return function_exists('pll_home_url') ? pll_home_url('de') : home_url('/');
 // }, 10, 3);
+
+
+===== app/stripe-checkout.php =====
+
+<?php
+
+/**
+ * Startet den Stripe-Checkout für eine Subscription.
+ */
+function dashboard_handle_start_checkout()
+{
+  if (!is_user_logged_in()) {
+    wp_safe_redirect('/dashboard-login');
+    exit;
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_start_checkout')
+  ) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=invalid_request');
+    exit;
+  }
+
+  if (!dashboard_stripe_boot()) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_sdk_missing');
+    exit;
+  }
+
+  $configError = dashboard_stripe_checkout_config_error();
+
+  if ($configError !== '') {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($configError));
+    exit;
+  }
+
+  $user = wp_get_current_user();
+
+  try {
+    $customer = dashboard_get_or_create_stripe_customer($user);
+
+    $session = \Stripe\Checkout\Session::create([
+      'mode' => 'subscription',
+      'customer' => $customer->id,
+      'line_items' => [[
+        'price' => dashboard_stripe_price_id(),
+        'quantity' => 1,
+      ]],
+      'success_url' => dashboard_checkout_success_url(),
+      'cancel_url' => dashboard_checkout_cancel_url(),
+      'client_reference_id' => (string) $user->ID,
+      'metadata' => [
+        'wp_user_id' => (string) $user->ID,
+      ],
+      'subscription_data' => [
+        'metadata' => [
+          'wp_user_id' => (string) $user->ID,
+        ],
+      ],
+      'allow_promotion_codes' => true,
+    ]);
+
+    wp_redirect($session->url);
+    exit;
+  } catch (\Throwable $e) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_checkout_failed');
+    exit;
+  }
+}
+
+add_action('admin_post_dashboard_start_checkout', 'dashboard_handle_start_checkout');
+
+/**
+ * Öffnet das Stripe Billing Portal für bestehende Kunden.
+ */
+function dashboard_handle_open_billing_portal()
+{
+  if (!is_user_logged_in()) {
+    wp_safe_redirect('/dashboard-login');
+    exit;
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_open_billing_portal')
+  ) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=invalid_request');
+    exit;
+  }
+
+  if (!dashboard_stripe_boot()) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_sdk_missing');
+    exit;
+  }
+
+  $configError = dashboard_stripe_portal_config_error();
+
+  if ($configError !== '') {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($configError));
+    exit;
+  }
+
+  $customerId = trim((string) get_user_meta(get_current_user_id(), 'stripe_customer_id', true));
+
+  if ($customerId === '') {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_customer_missing');
+    exit;
+  }
+
+  try {
+    $session = \Stripe\BillingPortal\Session::create([
+      'customer' => $customerId,
+      'return_url' => dashboard_settings_billing_url(),
+    ]);
+
+    wp_redirect($session->url);
+    exit;
+  } catch (\Throwable $e) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_portal_failed');
+    exit;
+  }
+}
+
+add_action('admin_post_dashboard_open_billing_portal', 'dashboard_handle_open_billing_portal');
+
+/**
+ * Holt einen vorhandenen Stripe-Kunden oder legt ihn neu an.
+ */
+function dashboard_get_or_create_stripe_customer($user)
+{
+  $customerId = trim((string) get_user_meta($user->ID, 'stripe_customer_id', true));
+
+  if ($customerId !== '') {
+    try {
+      $customer = \Stripe\Customer::retrieve($customerId);
+
+      if (empty($customer->deleted)) {
+        \Stripe\Customer::update($customerId, [
+          'email' => $user->user_email,
+          'name' => $user->display_name ?: $user->user_login,
+          'metadata' => [
+            'wp_user_id' => (string) $user->ID,
+          ],
+        ]);
+
+        return \Stripe\Customer::retrieve($customerId);
+      }
+
+      delete_user_meta($user->ID, 'stripe_customer_id');
+    } catch (\Throwable $e) {
+      delete_user_meta($user->ID, 'stripe_customer_id');
+    }
+  }
+
+  $customer = \Stripe\Customer::create([
+    'email' => $user->user_email,
+    'name' => $user->display_name ?: $user->user_login,
+    'metadata' => [
+      'wp_user_id' => (string) $user->ID,
+    ],
+  ]);
+
+  update_user_meta($user->ID, 'stripe_customer_id', $customer->id);
+
+  return $customer;
+}
+
+
+===== app/stripe-webhook.php =====
+
+<?php
+
+/**
+ * Registriert die Stripe-Webhook-Route.
+ */
+function dashboard_register_stripe_webhook_route()
+{
+  register_rest_route('bloombridge/v1', '/stripe/webhook', [
+    'methods' => 'POST',
+    'callback' => 'dashboard_handle_stripe_webhook_request',
+    'permission_callback' => '__return_true',
+  ]);
+}
+
+add_action('rest_api_init', 'dashboard_register_stripe_webhook_route');
+
+/**
+ * Verarbeitet eingehende Stripe-Webhook-Requests.
+ */
+function dashboard_handle_stripe_webhook_request($request)
+{
+  if (!dashboard_stripe_boot()) {
+    return new \WP_REST_Response([
+      'success' => false,
+      'code' => 'stripe_sdk_missing',
+    ], 500);
+  }
+
+  $configError = dashboard_stripe_webhook_config_error();
+
+  if ($configError !== '') {
+    return new \WP_REST_Response([
+      'success' => false,
+      'code' => $configError,
+    ], 500);
+  }
+
+  $payload = $request->get_body();
+  $signature = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
+
+  try {
+    $event = \Stripe\Webhook::constructEvent(
+      $payload,
+      $signature,
+      dashboard_stripe_webhook_secret()
+    );
+  } catch (\UnexpectedValueException $e) {
+    return new \WP_REST_Response([
+      'success' => false,
+      'code' => 'invalid_payload',
+    ], 400);
+  } catch (\Stripe\Exception\SignatureVerificationException $e) {
+    return new \WP_REST_Response([
+      'success' => false,
+      'code' => 'invalid_signature',
+    ], 400);
+  }
+
+  dashboard_process_stripe_event($event);
+
+  return new \WP_REST_Response([
+    'success' => true,
+  ], 200);
+}
+
+/**
+ * Leitet Stripe-Events an die passende Verarbeitung weiter.
+ */
+function dashboard_process_stripe_event($event): void
+{
+  $type = (string) ($event->type ?? '');
+  $object = $event->data->object ?? null;
+
+  if (!$object) {
+    return;
+  }
+
+  switch ($type) {
+    case 'checkout.session.completed':
+      dashboard_handle_stripe_checkout_completed($object);
+      return;
+
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted':
+      dashboard_handle_stripe_subscription_event($object);
+      return;
+
+    case 'invoice.payment_succeeded':
+      dashboard_handle_stripe_invoice_paid($object);
+      return;
+
+    case 'invoice.payment_failed':
+      dashboard_handle_stripe_invoice_failed($object);
+      return;
+  }
+}
+
+/**
+ * Verarbeitet ein abgeschlossenes Stripe Checkout Event.
+ */
+function dashboard_handle_stripe_checkout_completed($session): void
+{
+  $user = dashboard_stripe_find_user_from_checkout_session($session);
+
+  if (!$user) {
+    return;
+  }
+
+  $customerId = trim((string) ($session->customer ?? ''));
+
+  if ($customerId !== '') {
+    dashboard_stripe_store_customer_id($user->ID, $customerId);
+  }
+
+  $subscriptionId = trim((string) ($session->subscription ?? ''));
+
+  if ($subscriptionId === '') {
+    return;
+  }
+
+  try {
+    $subscription = \Stripe\Subscription::retrieve($subscriptionId);
+    dashboard_stripe_sync_subscription($user->ID, $subscription);
+  } catch (\Throwable $e) {
+  }
+}
+
+/**
+ * Verarbeitet Stripe Subscription Events.
+ */
+function dashboard_handle_stripe_subscription_event($subscription): void
+{
+  $user = dashboard_stripe_find_user_from_subscription($subscription);
+
+  if (!$user) {
+    return;
+  }
+
+  dashboard_stripe_sync_subscription($user->ID, $subscription);
+}
+
+/**
+ * Verarbeitet erfolgreiche Stripe-Rechnungen.
+ */
+function dashboard_handle_stripe_invoice_paid($invoice): void
+{
+  $user = dashboard_stripe_find_user_from_invoice($invoice);
+
+  if (!$user) {
+    return;
+  }
+
+  $customerId = trim((string) ($invoice->customer ?? ''));
+
+  if ($customerId !== '') {
+    dashboard_stripe_store_customer_id($user->ID, $customerId);
+  }
+
+  $subscriptionId = trim((string) ($invoice->subscription ?? ''));
+
+  if ($subscriptionId === '') {
+    dashboard_set_subscription_state($user->ID, 'active');
+    update_user_meta($user->ID, 'stripe_subscription_status', 'active');
+    return;
+  }
+
+  try {
+    $subscription = \Stripe\Subscription::retrieve($subscriptionId);
+    dashboard_stripe_sync_subscription($user->ID, $subscription);
+  } catch (\Throwable $e) {
+    dashboard_set_subscription_state($user->ID, 'active');
+    update_user_meta($user->ID, 'stripe_subscription_status', 'active');
+  }
+}
+
+/**
+ * Verarbeitet fehlgeschlagene Stripe-Rechnungen.
+ */
+function dashboard_handle_stripe_invoice_failed($invoice): void
+{
+  $user = dashboard_stripe_find_user_from_invoice($invoice);
+
+  if (!$user) {
+    return;
+  }
+
+  $customerId = trim((string) ($invoice->customer ?? ''));
+
+  if ($customerId !== '') {
+    dashboard_stripe_store_customer_id($user->ID, $customerId);
+  }
+
+  $subscriptionId = trim((string) ($invoice->subscription ?? ''));
+
+  if ($subscriptionId !== '') {
+    try {
+      $subscription = \Stripe\Subscription::retrieve($subscriptionId);
+      dashboard_stripe_sync_subscription($user->ID, $subscription);
+      return;
+    } catch (\Throwable $e) {
+    }
+  }
+
+  dashboard_set_subscription_state($user->ID, 'past_due');
+  update_user_meta($user->ID, 'stripe_subscription_status', 'past_due');
+}
+
+
+===== app/stripe.php =====
+
+<?php
+
+/**
+ * Liefert die Billing-URL des Dashboards.
+ */
+if (!function_exists('dashboard_settings_billing_url')) {
+  function dashboard_settings_billing_url(): string
+  {
+    return home_url('/dashboard-settings?tab=billing');
+  }
+}
+
+/**
+ * Liefert die Success-URL nach erfolgreichem Checkout.
+ */
+function dashboard_checkout_success_url(): string
+{
+  return home_url('/dashboard-settings?tab=billing&stripe=success');
+}
+
+/**
+ * Liefert die Cancel-URL nach abgebrochenem Checkout.
+ */
+function dashboard_checkout_cancel_url(): string
+{
+  return home_url('/dashboard-settings?tab=billing&stripe=cancel');
+}
+
+/**
+ * Liest einen Stripe-ENV-Wert robust aus.
+ */
+function dashboard_stripe_env(string $key): string
+{
+  $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+  if ($value === false || $value === null) {
+    return '';
+  }
+
+  return trim((string) $value);
+}
+
+/**
+ * Liefert den Pfad zum Composer-Autoloader des Themes.
+ */
+function dashboard_stripe_vendor_autoload_path(): string
+{
+  return __DIR__ . '/../vendor/autoload.php';
+}
+
+/**
+ * Lädt das Stripe-SDK und bootet die API.
+ */
+function dashboard_stripe_boot(): bool
+{
+  static $booted = false;
+  static $ok = false;
+
+  if ($booted) {
+    return $ok;
+  }
+
+  $booted = true;
+
+  $autoload = dashboard_stripe_vendor_autoload_path();
+
+  if (!file_exists($autoload)) {
+    return false;
+  }
+
+  require_once $autoload;
+
+  if (!class_exists('\Stripe\Stripe')) {
+    return false;
+  }
+
+  $secretKey = dashboard_stripe_secret_key();
+
+  if ($secretKey !== '') {
+    \Stripe\Stripe::setApiKey($secretKey);
+  }
+
+  $ok = true;
+
+  return true;
+}
+
+/**
+ * Liefert den Stripe Publishable Key.
+ */
+function dashboard_stripe_publishable_key(): string
+{
+  return dashboard_stripe_env('STRIPE_PUBLISHABLE_KEY');
+}
+
+/**
+ * Liefert den Stripe Secret Key.
+ */
+function dashboard_stripe_secret_key(): string
+{
+  return dashboard_stripe_env('STRIPE_SECRET_KEY');
+}
+
+/**
+ * Liefert die Stripe Price ID.
+ */
+function dashboard_stripe_price_id(): string
+{
+  return dashboard_stripe_env('STRIPE_PRICE_ID');
+}
+
+/**
+ * Liefert das Stripe Webhook Secret.
+ */
+function dashboard_stripe_webhook_secret(): string
+{
+  return dashboard_stripe_env('STRIPE_WEBHOOK_SECRET');
+}
+
+/**
+ * Prüft die Checkout-Konfiguration.
+ */
+function dashboard_stripe_checkout_config_error(): string
+{
+  if (dashboard_stripe_secret_key() === '' || dashboard_stripe_price_id() === '') {
+    return 'stripe_not_configured';
+  }
+
+  return '';
+}
+
+/**
+ * Prüft die Webhook-Konfiguration.
+ */
+function dashboard_stripe_webhook_config_error(): string
+{
+  if (dashboard_stripe_secret_key() === '' || dashboard_stripe_webhook_secret() === '') {
+    return 'stripe_webhook_not_configured';
+  }
+
+  return '';
+}
+
+/**
+ * Prüft die Billing-Portal-Konfiguration.
+ */
+function dashboard_stripe_portal_config_error(): string
+{
+  if (dashboard_stripe_secret_key() === '') {
+    return 'stripe_not_configured';
+  }
+
+  return '';
+}
+
+/**
+ * Wandelt interne Billing-Fehlercodes in lesbare Meldungen um.
+ */
+function dashboard_stripe_billing_error_message(string $error): string
+{
+  return match ($error) {
+    'invalid_request' => 'Die Anfrage war ungültig.',
+    'stripe_sdk_missing' => 'Das Stripe SDK fehlt. Bitte composer require stripe/stripe-php im Theme ausführen.',
+    'stripe_not_configured' => 'Stripe ist noch nicht vollständig konfiguriert.',
+    'stripe_webhook_not_configured' => 'Das Stripe Webhook Secret fehlt.',
+    'stripe_customer_missing' => 'Kein Stripe-Kunde gefunden.',
+    'stripe_checkout_failed' => 'Stripe Checkout konnte nicht gestartet werden.',
+    'stripe_portal_failed' => 'Das Billing Portal konnte nicht geöffnet werden.',
+    default => 'Stripe Checkout konnte nicht gestartet werden.',
+  };
+}
+
+/**
+ * Wandelt den internen Subscription-State in ein Label um.
+ */
+function dashboard_stripe_subscription_state_label(string $state): string
+{
+  return match ($state) {
+    'trial' => 'Trial',
+    'active' => 'Active',
+    'payment_required' => 'Payment required',
+    'past_due' => 'Past due',
+    'canceled' => 'Canceled',
+    default => ucfirst(str_replace('_', ' ', $state)),
+  };
+}
+
+/**
+ * Extrahiert eine WordPress-User-ID aus Stripe-Metadaten.
+ */
+function dashboard_stripe_extract_wp_user_id($object): int
+{
+  if (!is_object($object)) {
+    return 0;
+  }
+
+  if (!isset($object->metadata) || !is_object($object->metadata)) {
+    return 0;
+  }
+
+  $userId = (int) ($object->metadata->wp_user_id ?? 0);
+
+  return $userId > 0 ? $userId : 0;
+}
+
+/**
+ * Findet einen User anhand der Stripe Customer ID.
+ */
+function dashboard_stripe_find_user_by_customer_id(string $customerId)
+{
+  if ($customerId === '') {
+    return null;
+  }
+
+  $users = get_users([
+    'number' => 1,
+    'meta_key' => 'stripe_customer_id',
+    'meta_value' => $customerId,
+  ]);
+
+  if (empty($users)) {
+    return null;
+  }
+
+  return $users[0];
+}
+
+/**
+ * Findet einen User anhand der E-Mail-Adresse.
+ */
+function dashboard_stripe_find_user_by_email(string $email)
+{
+  if ($email === '') {
+    return null;
+  }
+
+  $user = get_user_by('email', $email);
+
+  return $user ?: null;
+}
+
+/**
+ * Holt die Customer-E-Mail aus Stripe.
+ */
+function dashboard_stripe_get_customer_email(string $customerId): string
+{
+  if ($customerId === '') {
+    return '';
+  }
+
+  if (!dashboard_stripe_boot()) {
+    return '';
+  }
+
+  try {
+    $customer = \Stripe\Customer::retrieve($customerId);
+
+    if (!empty($customer->deleted)) {
+      return '';
+    }
+
+    return trim((string) ($customer->email ?? ''));
+  } catch (\Throwable $e) {
+    return '';
+  }
+}
+
+/**
+ * Findet den User aus einer Checkout-Session.
+ */
+function dashboard_stripe_find_user_from_checkout_session($session)
+{
+  if (!is_object($session)) {
+    return null;
+  }
+
+  $clientReferenceId = (int) ($session->client_reference_id ?? 0);
+
+  if ($clientReferenceId > 0) {
+    $user = get_user_by('id', $clientReferenceId);
+
+    if ($user) {
+      return $user;
+    }
+  }
+
+  $customerId = trim((string) ($session->customer ?? ''));
+
+  if ($customerId !== '') {
+    $user = dashboard_stripe_find_user_by_customer_id($customerId);
+
+    if ($user) {
+      return $user;
+    }
+  }
+
+  $email = trim((string) ($session->customer_email ?? ''));
+
+  if ($email === '' && isset($session->customer_details) && is_object($session->customer_details)) {
+    $email = trim((string) ($session->customer_details->email ?? ''));
+  }
+
+  if ($email !== '') {
+    return dashboard_stripe_find_user_by_email($email);
+  }
+
+  return null;
+}
+
+/**
+ * Findet den User aus einem Subscription-Objekt.
+ */
+function dashboard_stripe_find_user_from_subscription($subscription)
+{
+  if (!is_object($subscription)) {
+    return null;
+  }
+
+  $userId = dashboard_stripe_extract_wp_user_id($subscription);
+
+  if ($userId > 0) {
+    $user = get_user_by('id', $userId);
+
+    if ($user) {
+      return $user;
+    }
+  }
+
+  $customerId = trim((string) ($subscription->customer ?? ''));
+
+  if ($customerId !== '') {
+    $user = dashboard_stripe_find_user_by_customer_id($customerId);
+
+    if ($user) {
+      return $user;
+    }
+
+    $email = dashboard_stripe_get_customer_email($customerId);
+
+    if ($email !== '') {
+      return dashboard_stripe_find_user_by_email($email);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Findet den User aus einem Invoice-Objekt.
+ */
+function dashboard_stripe_find_user_from_invoice($invoice)
+{
+  if (!is_object($invoice)) {
+    return null;
+  }
+
+  $userId = dashboard_stripe_extract_wp_user_id($invoice);
+
+  if ($userId > 0) {
+    $user = get_user_by('id', $userId);
+
+    if ($user) {
+      return $user;
+    }
+  }
+
+  $customerId = trim((string) ($invoice->customer ?? ''));
+
+  if ($customerId !== '') {
+    $user = dashboard_stripe_find_user_by_customer_id($customerId);
+
+    if ($user) {
+      return $user;
+    }
+  }
+
+  $email = trim((string) ($invoice->customer_email ?? ''));
+
+  if ($email !== '') {
+    return dashboard_stripe_find_user_by_email($email);
+  }
+
+  if ($customerId !== '') {
+    $email = dashboard_stripe_get_customer_email($customerId);
+
+    if ($email !== '') {
+      return dashboard_stripe_find_user_by_email($email);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Speichert eine Stripe Customer ID am User.
+ */
+function dashboard_stripe_store_customer_id(int $userId, string $customerId): void
+{
+  if ($userId <= 0 || $customerId === '') {
+    return;
+  }
+
+  update_user_meta($userId, 'stripe_customer_id', $customerId);
+}
+
+/**
+ * Synchronisiert Stripe-Subscriptions in User-Meta und Access-State.
+ */
+function dashboard_stripe_sync_subscription(int $userId, $subscription): void
+{
+  if ($userId <= 0 || !is_object($subscription)) {
+    return;
+  }
+
+  $customerId = trim((string) ($subscription->customer ?? ''));
+  $subscriptionId = trim((string) ($subscription->id ?? ''));
+  $status = trim((string) ($subscription->status ?? ''));
+
+  if ($customerId !== '') {
+    update_user_meta($userId, 'stripe_customer_id', $customerId);
+  }
+
+  if ($subscriptionId !== '') {
+    update_user_meta($userId, 'stripe_subscription_id', $subscriptionId);
+  }
+
+  if ($status !== '') {
+    update_user_meta($userId, 'stripe_subscription_status', $status);
+  }
+
+  if (isset($subscription->current_period_end)) {
+    update_user_meta($userId, 'stripe_current_period_end', (int) $subscription->current_period_end);
+  }
+
+  update_user_meta(
+    $userId,
+    'stripe_cancel_at_period_end',
+    !empty($subscription->cancel_at_period_end) ? '1' : '0'
+  );
+
+  if (in_array($status, ['active', 'trialing'], true)) {
+    dashboard_set_subscription_state($userId, 'active');
+    return;
+  }
+
+  if (in_array($status, ['past_due', 'unpaid', 'incomplete', 'incomplete_expired'], true)) {
+    dashboard_set_subscription_state($userId, 'past_due');
+    return;
+  }
+
+  if ($status === 'canceled') {
+    dashboard_set_subscription_state($userId, 'canceled');
+    return;
+  }
+
+  dashboard_set_subscription_state($userId, 'payment_required');
+}
 
 
 ===== resources/css/dashboard-app.css =====
@@ -5422,7 +6297,7 @@ $langs = pll_the_languages(['raw' => 1]);
       und hinterlege deine Zahlungsdaten.
     </p>
 
-    <a href="/dashboard-settings?tab=billing"
+    <a href="{{ dashboard_settings_billing_url() }}"
       class="inline-flex items-center px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary-dark transition">
       Zahlung einrichten
     </a>
@@ -5839,7 +6714,7 @@ $avatar_url = $avatar_id
 <header class="h-14 flex items-center justify-between px-6 border-b border-dashboard-border">
   <nav class="flex gap-4 text-sm">
     <a href="/dashboard">Übersicht</a>
-    <a href="/dashboard/settings/billing">Abrechnung</a>
+    <a href="{{ dashboard_settings_billing_url() }}">Abrechnung</a>
     <a href="{{ wp_logout_url('/dashboard-login') }}">Logout</a>
   </nav>
   <button data-toggle-theme>Theme wechseln</button>
@@ -6030,8 +6905,12 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
     @php
     $subscriptionState = get_user_meta($user->ID, USER_META_SUB_STATUS, true) ?: 'payment_required';
+    $subscriptionStateLabel = dashboard_stripe_subscription_state_label($subscriptionState);
     $stripeCustomerId = get_user_meta($user->ID, 'stripe_customer_id', true);
     $stripeSubscriptionId = get_user_meta($user->ID, 'stripe_subscription_id', true);
+    $stripeRawStatus = get_user_meta($user->ID, 'stripe_subscription_status', true);
+    $billingErrorCode = trim((string) request()->get('error', ''));
+    $billingErrorMessage = $billingErrorCode !== '' ? dashboard_stripe_billing_error_message($billingErrorCode) : '';
     @endphp
 
     <section class="max-w-3xl space-y-6">
@@ -6048,9 +6927,9 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
       </div>
       @endif
 
-      @if(request()->get('error'))
+      @if($billingErrorMessage !== '')
       <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        Stripe checkout could not be started.
+        {{ $billingErrorMessage }}
       </div>
       @endif
 
@@ -6058,23 +6937,48 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
         <div class="mb-6">
           <h2 class="text-lg font-semibold text-slate-900">Subscription</h2>
           <p class="mt-1 text-sm text-slate-500">
-            Current dashboard access status: <span class="font-medium text-slate-700">{{ $subscriptionState }}</span>
+            Current dashboard access status:
+            <span class="font-medium text-slate-700">{{ $subscriptionStateLabel }}</span>
           </p>
+
+          @if($stripeRawStatus)
+          <p class="mt-1 text-sm text-slate-500">
+            Stripe subscription status:
+            <span class="font-medium text-slate-700">{{ $stripeRawStatus }}</span>
+          </p>
+          @endif
         </div>
 
-        @if($subscriptionState !== 'active')
-        <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
-          <input type="hidden" name="action" value="dashboard_start_checkout">
-          @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
+        <div class="flex flex-wrap gap-3">
+          @if($subscriptionState !== 'active')
+          <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+            <input type="hidden" name="action" value="dashboard_start_checkout">
+            @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
 
-          <button
-            type="submit"
-            class="inline-flex items-center px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
-            Start subscription
-          </button>
-        </form>
-        @else
-        <div class="text-sm text-slate-600">
+            <button
+              type="submit"
+              class="inline-flex items-center px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
+              Start subscription
+            </button>
+          </form>
+          @endif
+
+          @if($stripeCustomerId)
+          <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+            <input type="hidden" name="action" value="dashboard_open_billing_portal">
+            @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+
+            <button
+              type="submit"
+              class="inline-flex items-center px-6 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition">
+              Open billing portal
+            </button>
+          </form>
+          @endif
+        </div>
+
+        @if($subscriptionState === 'active' && !$stripeCustomerId)
+        <div class="mt-4 text-sm text-slate-600">
           Your subscription is already active.
         </div>
         @endif
@@ -6485,6 +7389,18 @@ Template Name: Dashboard Password Reset
 
   </div>
 </section>
+@endsection
+
+
+===== resources/views/page-dashboard-payment-required.blade.php =====
+
+{{--
+Template Name: Dashboard Payment Required
+--}}
+@extends('layouts.dashboard')
+
+@section('content')
+@include('dashboard.partials.payment-required')
 @endsection
 
 
