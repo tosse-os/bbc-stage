@@ -6,7 +6,6 @@
       Analyses Overview
     </h1>
 
-    {{-- View Switcher --}}
     @php
     $view = request()->get('view', 'default');
     if (!in_array($view, ['default', 'grid', 'list'], true)) {
@@ -14,37 +13,24 @@
     }
     @endphp
 
-    <div class="inline-flex items-center gap-1
-            rounded-xl border border-brand-primary/30
-            bg-white/70 backdrop-blur
-            p-1 shadow-sm">
+    <div class="inline-flex items-center gap-1 rounded-xl border border-brand-primary/30 bg-white/70 backdrop-blur p-1 shadow-sm">
 
       <a href="{{ request()->fullUrlWithQuery(['view' => 'default']) }}"
-        class="p-2 rounded-lg transition
-            {{ $view === 'default'
-              ? 'bg-brand-primary text-white'
-              : 'text-brand-primary hover:bg-brand-primary/10' }}">
+        class="p-2 rounded-lg transition {{ $view === 'default' ? 'bg-brand-primary text-white' : 'text-brand-primary hover:bg-brand-primary/10' }}">
         @include('dashboard.icons.view-table')
       </a>
 
       <a href="{{ request()->fullUrlWithQuery(['view' => 'grid']) }}"
-        class="p-2 rounded-lg transition
-            {{ $view === 'grid'
-              ? 'bg-brand-primary text-white'
-              : 'text-brand-primary hover:bg-brand-primary/10' }}">
+        class="p-2 rounded-lg transition {{ $view === 'grid' ? 'bg-brand-primary text-white' : 'text-brand-primary hover:bg-brand-primary/10' }}">
         @include('dashboard.icons.view-grid')
       </a>
 
       <a href="{{ request()->fullUrlWithQuery(['view' => 'list']) }}"
-        class="p-2 rounded-lg transition
-            {{ $view === 'list'
-              ? 'bg-brand-primary text-white'
-              : 'text-brand-primary hover:bg-brand-primary/10' }}">
+        class="p-2 rounded-lg transition {{ $view === 'list' ? 'bg-brand-primary text-white' : 'text-brand-primary hover:bg-brand-primary/10' }}">
         @include('dashboard.icons.view-list')
       </a>
 
     </div>
-
   </header>
 
   @php
@@ -78,9 +64,6 @@
 
   @include('dashboard.analyses.filters')
 
-  {{-- ===================== --}}
-  {{-- DEFAULT VIEW (TABELLE) --}}
-  {{-- ===================== --}}
   @if ($view === 'default')
 
   <div class="bg-white rounded-xl shadow-sm overflow-hidden hidden md:block">
@@ -110,9 +93,15 @@
       }
       @endphp
 
-      <div class="grid grid-cols-[160px_140px_1fr_140px_160px] px-6 py-5 gap-4 element-border-t first:border-t-0 hover:bg-slate-50/80 transition-colors group">
+      <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+        class="grid grid-cols-[160px_140px_1fr_140px_160px] px-6 py-5 gap-4 element-border-t first:border-t-0
+               hover:bg-slate-50/80 transition-all duration-200 group cursor-pointer
+               hover:-translate-y-0.5 hover:shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
 
-        <div class="font-medium text-slate-900">{{ $primaryMarket?->name }}</div>
+        <div class="font-medium text-slate-900 group-hover:text-brand-primary transition-colors">
+          {{ $primaryMarket?->name }}
+        </div>
 
         <div class="chart-preview">
           @if ($image = get_field('chart_image'))
@@ -131,13 +120,14 @@
         </div>
 
         <div class="flex items-center justify-end">
-          <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
-            class="text-sm font-medium text-brand-primary border border-brand-primary/20 bg-brand-primary/5 hover:bg-brand-primary hover:text-white px-4 py-2 rounded-lg transition-all shadow-sm">
+          <span
+            class="text-sm font-medium text-brand-primary border border-brand-primary/20 bg-brand-primary/5
+                   group-hover:bg-brand-primary group-hover:text-white px-4 py-2 rounded-lg transition-all shadow-sm">
             View Analysis →
-          </a>
+          </span>
         </div>
 
-      </div>
+      </a>
       @endwhile
     </div>
     @php wp_reset_postdata(); @endphp
@@ -162,9 +152,14 @@
     }
     @endphp
 
-    <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+    <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+      class="block bg-white rounded-xl shadow-sm p-4 space-y-3 group
+             transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg
+             focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
 
-      <div class="font-semibold text-slate-900">{{ $primaryMarket?->name }}</div>
+      <div class="font-semibold text-slate-900 group-hover:text-brand-primary transition-colors">
+        {{ $primaryMarket?->name }}
+      </div>
 
       @if ($image = get_field('chart_image'))
       <img src="{{ $image['sizes']['medium'] }}" class="rounded-md">
@@ -176,12 +171,12 @@
 
       <div class="flex items-center justify-between text-sm text-slate-500">
         <span>{{ date_i18n('d M, Y', strtotime(get_field('publish_date'))) }}</span>
-        <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}" class="text-brand-primary font-medium">
+        <span class="text-brand-primary font-medium transition-transform duration-200 group-hover:translate-x-1">
           View →
-        </a>
+        </span>
       </div>
 
-    </div>
+    </a>
     @endwhile
 
     @php wp_reset_postdata(); @endphp
@@ -189,9 +184,6 @@
 
   @endif
 
-  {{-- ================= --}}
-  {{-- GRID VIEW (2-SPALTIG) --}}
-  {{-- ================= --}}
   @if ($view === 'grid')
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -210,9 +202,14 @@
     }
     @endphp
 
-    <div class="bg-white rounded-xl shadow-sm p-5 space-y-3">
+    <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+      class="block bg-white rounded-xl shadow-sm p-5 space-y-3 group
+             transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg
+             focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
 
-      <div class="font-semibold">{{ $primaryMarket?->name }}</div>
+      <div class="font-semibold group-hover:text-brand-primary transition-colors">
+        {{ $primaryMarket?->name }}
+      </div>
 
       @if ($image = get_field('chart_image'))
       <img src="{{ $image['sizes']['medium'] }}" class="rounded-md">
@@ -226,23 +223,19 @@
         {{ date_i18n('d M, Y', strtotime(get_field('publish_date'))) }}
       </div>
 
-      <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
-        class="text-sm text-brand-primary font-medium">
+      <span class="inline-block text-sm text-brand-primary font-medium transition-transform duration-200 group-hover:translate-x-1">
         View Report →
-      </a>
+      </span>
 
-    </div>
+    </a>
     @endwhile
     @php wp_reset_postdata(); @endphp
   </div>
   @endif
 
-  {{-- ================= --}}
-  {{-- LIST VIEW (TEXT ONLY) --}}
-  {{-- ================= --}}
   @if ($view === 'list')
 
-  <div class="bg-white rounded-xl shadow-sm divide-y">
+  <div class="bg-white rounded-xl shadow-sm divide-y overflow-hidden">
     @while ($query->have_posts())
     @php
     $query->the_post();
@@ -258,21 +251,25 @@
     }
     @endphp
 
-    <div class="px-6 py-4 flex items-center justify-between">
+    <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+      class="px-6 py-4 flex items-center justify-between group
+             transition-all duration-200 hover:bg-slate-50
+             focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
 
       <div>
-        <div class="font-medium">{{ $primaryMarket?->name }}</div>
+        <div class="font-medium group-hover:text-brand-primary transition-colors">
+          {{ $primaryMarket?->name }}
+        </div>
         <div class="text-sm text-slate-500">
           {{ date_i18n('d M, Y', strtotime(get_field('publish_date'))) }}
         </div>
       </div>
 
-      <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
-        class="text-sm text-brand-primary">
+      <span class="text-sm text-brand-primary transition-transform duration-200 group-hover:translate-x-1">
         View →
-      </a>
+      </span>
 
-    </div>
+    </a>
     @endwhile
     @php wp_reset_postdata(); @endphp
   </div>

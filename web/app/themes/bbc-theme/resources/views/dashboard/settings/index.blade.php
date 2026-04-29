@@ -160,106 +160,247 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
     @php
     $subscriptionState = get_user_meta($user->ID, USER_META_SUB_STATUS, true) ?: 'payment_required';
-    $subscriptionStateLabel = dashboard_stripe_subscription_state_label($subscriptionState);
     $stripeCustomerId = get_user_meta($user->ID, 'stripe_customer_id', true);
     $stripeSubscriptionId = get_user_meta($user->ID, 'stripe_subscription_id', true);
     $stripeRawStatus = get_user_meta($user->ID, 'stripe_subscription_status', true);
+    $currentPeriodEnd = (int) get_user_meta($user->ID, 'stripe_current_period_end', true);
+    $cancelAtPeriodEnd = get_user_meta($user->ID, 'stripe_cancel_at_period_end', true) === '1';
     $billingErrorCode = trim((string) request()->get('error', ''));
     $billingErrorMessage = $billingErrorCode !== '' ? dashboard_stripe_billing_error_message($billingErrorCode) : '';
+
+    $isActive = $subscriptionState === 'active';
+    $isTrial = $subscriptionState === 'trial';
+
+    $stateText = match ($subscriptionState) {
+    'active' => 'Aktiv',
+    'trial' => 'Testphase',
+    'past_due' => 'Zahlung überfällig',
+    'canceled' => 'Gekündigt',
+    default => 'Zahlung erforderlich',
+    };
+
+    $badgeClass = $isActive || $isTrial
+    ? 'bg-emerald-400/20 text-emerald-200 border-emerald-300/20'
+    : 'bg-amber-400/20 text-amber-200 border-amber-300/20';
     @endphp
 
-    <section class="max-w-3xl space-y-6">
+    <section class="max-w-6xl text-white">
 
       @if(request()->get('stripe') === 'success')
-      <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-        Checkout completed. Your subscription status will update automatically in a moment.
+      <div class="mb-6 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        Checkout abgeschlossen. Dein Abo-Status wird automatisch aktualisiert.
       </div>
       @endif
 
       @if(request()->get('stripe') === 'cancel')
-      <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-        Checkout was cancelled.
+      <div class="mb-6 rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        Checkout wurde abgebrochen.
       </div>
       @endif
 
       @if($billingErrorMessage !== '')
-      <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <div class="mb-6 rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
         {{ $billingErrorMessage }}
       </div>
       @endif
 
-      <div class="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
-        <div class="mb-6">
-          <h2 class="text-lg font-semibold text-slate-900">Subscription</h2>
-          <p class="mt-1 text-sm text-slate-500">
-            Current dashboard access status:
-            <span class="font-medium text-slate-700">{{ $subscriptionStateLabel }}</span>
-          </p>
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,680px)_minmax(260px,1fr)] gap-8 items-start">
 
-          @if($stripeRawStatus)
-          <p class="mt-1 text-sm text-slate-500">
-            Stripe subscription status:
-            <span class="font-medium text-slate-700">{{ $stripeRawStatus }}</span>
-          </p>
-          @endif
-        </div>
+        <div class="space-y-6">
 
-        <div class="flex flex-wrap gap-3">
-          @if($subscriptionState !== 'active')
-          <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
-            <input type="hidden" name="action" value="dashboard_start_checkout">
-            @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
+          <div class="rounded-2xl border border-white/10 bg-slate-950/35 backdrop-blur-xl px-6 py-6 shadow-2xl">
+            <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-8 items-end">
 
-            <button
-              type="submit"
-              class="inline-flex items-center px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
-              Start subscription
-            </button>
-          </form>
-          @endif
+              <div>
+                <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
+                  Aktuelles Abonnement
+                </h2>
 
-          @if($stripeCustomerId)
-          <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
-            <input type="hidden" name="action" value="dashboard_open_billing_portal">
-            @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+                <span class="mt-3 inline-flex items-center rounded-lg border px-3 py-1 text-xs font-semibold {{ $badgeClass }}">
+                  {{ $stateText }}
+                </span>
 
-            <button
-              type="submit"
-              class="inline-flex items-center px-6 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition">
-              Open billing portal
-            </button>
-          </form>
-          @endif
-        </div>
+                <div class="mt-5">
+                  <div class="text-lg font-semibold text-white">
+                    Premium Analysen Zugang
+                  </div>
 
-        @if($subscriptionState === 'active' && !$stripeCustomerId)
-        <div class="mt-4 text-sm text-slate-600">
-          Your subscription is already active.
-        </div>
-        @endif
-      </div>
+                  <div class="text-slate-300">
+                    €29,99 / Monat
+                  </div>
 
-      @if($stripeCustomerId || $stripeSubscriptionId)
-      <div class="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-900 mb-4">Stripe</h3>
+                  @if($currentPeriodEnd)
+                  <div class="text-sm text-slate-400">
+                    Nächste Rechnung: {{ date_i18n('d.m.Y', $currentPeriodEnd) }}
+                  </div>
+                  @endif
 
-        <div class="space-y-3 text-sm text-slate-600">
-          @if($stripeCustomerId)
-          <div>
-            <span class="font-medium text-slate-700">Customer ID:</span>
-            <span>{{ $stripeCustomerId }}</span>
+                  @if($cancelAtPeriodEnd)
+                  <div class="text-sm text-amber-300">
+                    Kündigung zum Periodenende vorgemerkt.
+                  </div>
+                  @elseif($isActive)
+                  <div class="text-sm text-slate-400">
+                    Abonnement aktiv.
+                  </div>
+                  @elseif($isTrial)
+                  <div class="text-sm text-slate-400">
+                    Testphase aktiv.
+                  </div>
+                  @else
+                  <div class="text-sm text-slate-400">
+                    Kein aktives Abonnement.
+                  </div>
+                  @endif
+                </div>
+
+                <div class="mt-6 flex flex-wrap gap-3">
+                  @if(!$isActive)
+                  <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+                    <input type="hidden" name="action" value="dashboard_start_checkout">
+                    @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
+
+                    <button
+                      type="submit"
+                      class="inline-flex items-center px-5 py-2.5 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
+                      Abo starten
+                    </button>
+                  </form>
+                  @endif
+
+                  @if($stripeCustomerId)
+                  <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+                    <input type="hidden" name="action" value="dashboard_open_billing_portal">
+                    @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+
+                    <button
+                      type="submit"
+                      class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white text-sm font-semibold hover:bg-white/10 transition leading-none whitespace-nowrap">
+                      <svg xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="w-4 h-4 flex-shrink-0 text-brand-primary">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1z"></path>
+                      </svg>
+                      Im Stripe Portal verwalten
+                    </button>
+                  </form>
+                  @endif
+                </div>
+              </div>
+
+              <div class="text-xs text-slate-400 space-y-1 md:text-right">
+                @if($stripeCustomerId)
+                <div>
+                  <span class="text-slate-500">Customer ID:</span>
+                  <span class="break-all">{{ $stripeCustomerId }}</span>
+                </div>
+                @endif
+
+                @if($stripeSubscriptionId)
+                <div>
+                  <span class="text-slate-500">Subscription ID:</span>
+                  <span class="break-all">{{ $stripeSubscriptionId }}</span>
+                </div>
+                @endif
+              </div>
+
+            </div>
           </div>
-          @endif
 
-          @if($stripeSubscriptionId)
-          <div>
-            <span class="font-medium text-slate-700">Subscription ID:</span>
-            <span>{{ $stripeSubscriptionId }}</span>
+          <div class="rounded-2xl border border-white/10 bg-slate-950/30 backdrop-blur-xl px-6 py-6 shadow-2xl">
+            <div class="flex items-center justify-between gap-6">
+              <div>
+                <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
+                  Zahlungsmethode
+                </h2>
+
+                <p class="mt-4 text-slate-300">
+                  @if($stripeCustomerId)
+                  Zahlungsdaten werden sicher über Stripe verwaltet.
+                  @else
+                  Noch keine Zahlungsmethode hinterlegt.
+                  @endif
+                </p>
+              </div>
+
+              @if($stripeCustomerId)
+              <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+                <input type="hidden" name="action" value="dashboard_open_billing_portal">
+                @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+
+                <button
+                  type="submit"
+                  class="text-sm font-semibold text-brand-primary hover:text-white transition whitespace-nowrap">
+                  Im Stripe Portal verwalten
+                </button>
+              </form>
+              @endif
+            </div>
           </div>
-          @endif
+
+          <div class="rounded-2xl border border-white/10 bg-slate-950/30 backdrop-blur-xl px-6 py-6 shadow-2xl">
+            <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
+              Rechnungsverlauf
+            </h2>
+
+            <div class="mt-5 overflow-hidden rounded-xl border border-white/10">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-white/10 text-slate-300">
+                    <th class="px-4 py-3 text-left font-semibold">Datum</th>
+                    <th class="px-4 py-3 text-left font-semibold">Betrag</th>
+                    <th class="px-4 py-3 text-left font-semibold">Status</th>
+                    <th class="px-4 py-3 text-right font-semibold">PDF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="text-slate-400">
+                    <td class="px-4 py-4">—</td>
+                    <td class="px-4 py-4">—</td>
+                    <td class="px-4 py-4">Noch keine Rechnungen</td>
+                    <td class="px-4 py-4 text-right">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p class="mt-4 text-xs text-slate-500">
+              Rechnungen und Zahlungsbelege sind im Stripe Portal verfügbar.
+            </p>
+          </div>
+
         </div>
+
+        <aside class="lg:pt-8 px-2">
+          <div class="max-w-sm text-white">
+            <p class="text-base font-semibold leading-relaxed">
+              Um Abonnement, Zahlungsdaten oder Rechnungsdetails zu ändern, nutze bitte das sichere Stripe Portal.
+            </p>
+
+            <p class="mt-4 text-sm leading-relaxed text-slate-400">
+              Dort kannst du Zahlungsmethoden aktualisieren, Rechnungen einsehen und dein Abo verwalten.
+            </p>
+
+            @if($stripeRawStatus)
+            <div class="mt-8 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div class="text-xs uppercase tracking-wide text-slate-500">
+                Stripe Status
+              </div>
+              <div class="mt-1 text-sm font-medium text-slate-300">
+                {{ $stripeRawStatus }}
+              </div>
+            </div>
+            @endif
+          </div>
+        </aside>
+
       </div>
-      @endif
 
     </section>
 

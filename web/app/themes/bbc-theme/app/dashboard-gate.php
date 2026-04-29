@@ -1,9 +1,5 @@
 <?php
 
-/**
- * Zentrales Dashboard-Gate.
- * Lässt Login/Register/Password immer zu und Billing trotz payment_required.
- */
 function dashboard_handle_dashboard_gate()
 {
   if (!is_page()) {
@@ -38,13 +34,22 @@ function dashboard_handle_dashboard_gate()
   $isPaymentRequiredPage =
     $slug === 'dashboard-payment-required';
 
-  if (is_user_logged_in() && $isLoginPage) {
-    wp_safe_redirect('/dashboard');
-    exit;
+  if (is_user_logged_in()) {
+    $user = wp_get_current_user();
+
+    if (function_exists('dashboard_user_should_use_wp_admin') && dashboard_user_should_use_wp_admin($user)) {
+      wp_safe_redirect(admin_url());
+      exit;
+    }
   }
 
   if (!is_user_logged_in() && !$isLoginPage) {
     wp_safe_redirect('/dashboard-login');
+    exit;
+  }
+
+  if (is_user_logged_in() && $isLoginPage) {
+    wp_safe_redirect('/dashboard');
     exit;
   }
 

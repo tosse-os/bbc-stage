@@ -1,11 +1,5 @@
 <?php
 
-/**
- * Markt-Import: zweiphasig, deterministisch
- * Phase 1: Terms anlegen / aktualisieren (ohne Parent)
- * Phase 2: Parent-Child-Zuordnung über externe IDs
- */
-
 add_action('admin_init', function () {
 
   if (empty($_FILES['market_json'])) {
@@ -40,7 +34,7 @@ add_action('admin_init', function () {
 
   set_transient('analysis_market_import_log', $log, 120);
 
-  wp_redirect(admin_url('edit.php?post_type=analysis&page=analysis-market-import&import=done'));
+  wp_safe_redirect(admin_url('admin.php?page=analysis-market-import&import=done'));
   exit;
 });
 
@@ -55,11 +49,16 @@ function import_market_phase1(array $item, array &$map, array &$log)
     'taxonomy'   => 'analysis_market',
     'hide_empty' => false,
     'meta_query' => [[
-      'key'   => 'market_uid',
-      'value' => (string) $item['id'],
-      'compare' => '='
-    ]]
+      'key'     => 'market_uid',
+      'value'   => (string) $item['id'],
+      'compare' => '=',
+    ]],
   ]);
+
+  if (is_wp_error($existing)) {
+    $log[] = "❌ Fehler bei Suche nach market_uid {$item['id']}";
+    return;
+  }
 
   if (count($existing) > 1) {
     $log[] = "❌ Mehrdeutige market_uid {$item['id']} – Import übersprungen";
@@ -69,15 +68,20 @@ function import_market_phase1(array $item, array &$map, array &$log)
   if (count($existing) === 1) {
     $term_id = $existing[0]->term_id;
 
-    wp_update_term($term_id, 'analysis_market', [
-      'name' => $item['name'],
-      'slug' => $item['slug'],
+    $updated = wp_update_term($term_id, 'analysis_market', [
+      'name' => sanitize_text_field($item['name']),
+      'slug' => sanitize_title($item['slug']),
     ]);
+
+    if (is_wp_error($updated)) {
+      $log[] = "❌ Fehler bei {$item['name']}: " . $updated->get_error_message();
+      return;
+    }
 
     $log[] = "🔄 aktualisiert: {$item['name']} ({$item['id']})";
   } else {
-    $created = wp_insert_term($item['name'], 'analysis_market', [
-      'slug' => $item['slug'],
+    $created = wp_insert_term(sanitize_text_field($item['name']), 'analysis_market', [
+      'slug' => sanitize_title($item['slug']),
     ]);
 
     if (is_wp_error($created)) {
@@ -93,7 +97,7 @@ function import_market_phase1(array $item, array &$map, array &$log)
 
   if (!empty($item['meta']) && is_array($item['meta'])) {
     foreach ($item['meta'] as $key => $value) {
-      update_term_meta($term_id, $key, $value);
+      update_term_meta($term_id, sanitize_key($key), sanitize_text_field((string) $value));
     }
   }
 
@@ -125,11 +129,15 @@ function import_market_phase2(array $item, array $map, array &$log)
     if (!isset($map[$parent_id])) {
       $log[] = "❌ Ungültiger Parent {$parent_id} für {$id}";
     } else {
-      wp_update_term($map[$id], 'analysis_market', [
+      $updated = wp_update_term($map[$id], 'analysis_market', [
         'parent' => $map[$parent_id],
       ]);
 
-      $log[] = "↳ Parent gesetzt: {$id} → {$parent_id}";
+      if (is_wp_error($updated)) {
+        $log[] = "❌ Parent konnte nicht gesetzt werden: {$id} → {$parent_id}";
+      } else {
+        $log[] = "↳ Parent gesetzt: {$id} → {$parent_id}";
+      }
     }
   }
 

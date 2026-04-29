@@ -12,7 +12,7 @@ Routing: WordPress Templates + Redirects
 State: user_meta + URL Parameter
 ================
 
-Anzahl Dateien: 54
+Anzahl Dateien: 55
 
 Dateistruktur:
 - app/ajax.php
@@ -21,6 +21,7 @@ Dateistruktur:
 - app/analysis-market-import.php
 - app/analysis.php
 - app/dashboard-access.php
+- app/dashboard-admin.php
 - app/dashboard-auth.php
 - app/dashboard-avatar.php
 - app/dashboard-controller.php
@@ -268,31 +269,106 @@ add_action('template_redirect', function () {
 
 <?php
 
-/**
- * Fügt im Analysis-Menü einen Importpunkt hinzu
- * Zugriff ausschließlich für Administratoren
- */
 add_action('admin_menu', function () {
 
+  $assets_overview_slug = 'edit-tags.php?taxonomy=analysis_market&post_type=analysis';
+
+  remove_submenu_page('edit.php?post_type=analysis', $assets_overview_slug);
+  remove_submenu_page('edit.php?post_type=analysis', 'edit-tags.php?taxonomy=analysis_market&amp;post_type=analysis');
+  remove_submenu_page('edit.php?post_type=analysis', 'analysis-market-import');
+  remove_submenu_page('edit.php?post_type=analysis', 'analysis-import-control');
+
+  add_menu_page(
+    'Assets',
+    'Assets',
+    'edit_posts',
+    'analysis-assets',
+    'analysis_assets_redirect_to_overview',
+    'dashicons-chart-line',
+    26
+  );
+
   add_submenu_page(
-    'edit.php?post_type=analysis',
-    'Asset-Import',
-    'Asset-Import',
+    'analysis-assets',
+    'Overview',
+    'Overview',
+    'edit_posts',
+    $assets_overview_slug,
+    ''
+  );
+
+  add_submenu_page(
+    'analysis-assets',
+    'Import New',
+    'Import New',
     'manage_options',
     'analysis-market-import',
     'analysis_market_import_page'
   );
+
+  add_submenu_page(
+    'analysis-assets',
+    'Import-Kontrolle',
+    'Import-Kontrolle',
+    'manage_options',
+    'analysis-import-control',
+    'analysis_import_control_view'
+  );
+
+  remove_submenu_page('analysis-assets', 'analysis-assets');
+}, 999);
+
+function analysis_assets_redirect_to_overview()
+{
+  wp_safe_redirect(admin_url('edit-tags.php?taxonomy=analysis_market&post_type=analysis'));
+  exit;
+}
+
+add_filter('parent_file', function ($parent_file) {
+  $taxonomy = $_GET['taxonomy'] ?? '';
+  $post_type = $_GET['post_type'] ?? '';
+
+  if ($taxonomy === 'analysis_market' && $post_type === 'analysis') {
+    return 'analysis-assets';
+  }
+
+  if (($GLOBALS['plugin_page'] ?? '') === 'analysis-market-import') {
+    return 'analysis-assets';
+  }
+
+  if (($GLOBALS['plugin_page'] ?? '') === 'analysis-import-control') {
+    return 'analysis-assets';
+  }
+
+  return $parent_file;
 });
 
-/**
- * Rendert die Markt-Import-Seite im Admin
- * Enthält Upload-Formular und Import-Log-Ausgabe
- */
+add_filter('submenu_file', function ($submenu_file) {
+  $taxonomy = $_GET['taxonomy'] ?? '';
+  $post_type = $_GET['post_type'] ?? '';
+
+  if ($taxonomy === 'analysis_market' && $post_type === 'analysis') {
+    return 'edit-tags.php?taxonomy=analysis_market&post_type=analysis';
+  }
+
+  if (($GLOBALS['plugin_page'] ?? '') === 'analysis-market-import') {
+    return 'analysis-market-import';
+  }
+
+  if (($GLOBALS['plugin_page'] ?? '') === 'analysis-import-control') {
+    return 'analysis-import-control';
+  }
+
+  return $submenu_file;
+});
+
 function analysis_market_import_page()
 {
+  if (!current_user_can('manage_options')) {
+    wp_die('Nicht erlaubt.');
+  }
 ?>
   <div class="wrap">
-
     <h1>Märkte importieren</h1>
 
     <p>
@@ -311,19 +387,13 @@ function analysis_market_import_page()
     </form>
 
     <?php
-    /**
-     * Gibt das Import-Log aus, falls ein Import durchgeführt wurde
-     */
     if (isset($_GET['import']) && $_GET['import'] === 'done') {
-
       $log = get_transient('analysis_market_import_log');
 
       if ($log && is_array($log)) {
     ?>
         <h2>Import-Protokoll</h2>
-        <pre style="background:#111;color:#0f0;padding:15px;max-height:500px;overflow:auto;">
-<?php echo esc_html(implode("\n", $log)); ?>
-        </pre>
+        <pre style="background:#111;color:#0f0;padding:15px;max-height:500px;overflow:auto;"><?php echo esc_html(implode("\n", $log)); ?></pre>
       <?php
       } else {
       ?>
@@ -332,30 +402,15 @@ function analysis_market_import_page()
       }
     }
     ?>
-
   </div>
-  <?php
+<?php
 }
 
-
-
-
-
-// app/analysis-market-admin.php
-
-add_action('admin_menu', function () {
-  add_submenu_page(
-    'edit.php?post_type=analysis',
-    'Import-Kontrolle',
-    'Import-Kontrolle',
-    'manage_options',
-    'analysis-import-control',
-    'analysis_import_control_view'
-  );
-});
-
-function analysis_import_control_view() {
-  if (!current_user_can('manage_options')) return;
+function analysis_import_control_view()
+{
+  if (!current_user_can('manage_options')) {
+    wp_die('Nicht erlaubt.');
+  }
 
   $search = isset($_GET['s']) ? trim(sanitize_text_field($_GET['s'])) : '';
 
@@ -366,88 +421,71 @@ function analysis_import_control_view() {
     'order'      => 'ASC',
   ]);
 
+  if (is_wp_error($all_terms)) {
+    $all_terms = [];
+  }
+
   $search_lc = mb_strtolower($search);
 
   $terms = [];
-  foreach ($all_terms as $t) {
+
+  foreach ($all_terms as $term) {
     if ($search_lc === '') {
-      $terms[] = $t;
+      $terms[] = $term;
       continue;
     }
 
-    $name_lc = mb_strtolower($t->name);
+    $name_lc = mb_strtolower($term->name);
 
     if (strpos($name_lc, $search_lc) !== false) {
-      $terms[] = $t;
+      $terms[] = $term;
       continue;
     }
 
-    if ($t->parent) {
-      $p = get_term($t->parent, 'analysis_market');
-      if ($p && !is_wp_error($p)) {
-        if (strpos(mb_strtolower($p->name), $search_lc) !== false) {
-          $terms[] = $t;
+    if ($term->parent) {
+      $parent = get_term($term->parent, 'analysis_market');
+
+      if ($parent && !is_wp_error($parent)) {
+        if (strpos(mb_strtolower($parent->name), $search_lc) !== false) {
+          $terms[] = $term;
         }
       }
     }
   }
 
   $terms_by_id = [];
-  foreach ($terms as $t) {
-    $terms_by_id[$t->term_id] = $t;
+
+  foreach ($terms as $term) {
+    $terms_by_id[$term->term_id] = $term;
   }
 
   if ($search_lc !== '') {
-    foreach ($terms as $t) {
-      $pid = $t->parent;
-      while ($pid && !isset($terms_by_id[$pid])) {
-        $p = get_term($pid, 'analysis_market');
-        if (!$p || is_wp_error($p)) break;
-        $terms_by_id[$p->term_id] = $p;
-        $pid = $p->parent;
+    foreach ($terms as $term) {
+      $parent_id = $term->parent;
+
+      while ($parent_id && !isset($terms_by_id[$parent_id])) {
+        $parent = get_term($parent_id, 'analysis_market');
+
+        if (!$parent || is_wp_error($parent)) {
+          break;
+        }
+
+        $terms_by_id[$parent->term_id] = $parent;
+        $parent_id = $parent->parent;
       }
     }
   }
 
   $tree = [];
-  foreach ($terms_by_id as $t) {
-    $tree[$t->parent][] = $t;
+
+  foreach ($terms_by_id as $term) {
+    $tree[$term->parent][] = $term;
   }
-
-  function render_rows($parent_id, $tree, $level = 0) {
-    if (!isset($tree[$parent_id])) return;
-
-    foreach ($tree[$parent_id] as $term) {
-      $indent = str_repeat('— ', $level);
-
-      $lang = '';
-      if (function_exists('pll_get_term_language')) {
-        $lang = pll_get_term_language($term->term_id);
-      } elseif (function_exists('wpml_get_language_information')) {
-        $info = wpml_get_language_information(null, $term->term_id);
-        $lang = $info['language_code'] ?? '';
-      }
-
-      $wkn  = get_term_meta($term->term_id, 'wkn', true);
-      $isin = get_term_meta($term->term_id, 'isin', true);
-      ?>
-      <tr>
-        <td><?php echo esc_html($term->term_id); ?></td>
-        <td><?php echo esc_html($indent . $term->name); ?></td>
-        <td><?php echo esc_html($lang ?: '—'); ?></td>
-        <td><?php echo esc_html($wkn ?: '—'); ?></td>
-        <td><?php echo esc_html($isin ?: '—'); ?></td>
-      </tr>
-      <?php
-      render_rows($term->term_id, $tree, $level + 1);
-    }
-  }
-  ?>
+?>
   <div class="wrap">
     <h1>Import-Kontrolle – Analysis Markets</h1>
 
     <form method="get" style="margin-bottom:12px;">
-      <input type="hidden" name="post_type" value="analysis">
       <input type="hidden" name="page" value="analysis-import-control">
       <input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="Name oder Teilstring">
       <button class="button">Suchen</button>
@@ -464,23 +502,50 @@ function analysis_import_control_view() {
         </tr>
       </thead>
       <tbody>
-        <?php render_rows(0, $tree, 0); ?>
+        <?php analysis_import_control_render_rows(0, $tree); ?>
       </tbody>
     </table>
   </div>
   <?php
 }
 
+function analysis_import_control_render_rows($parent_id, array $tree, int $level = 0): void
+{
+  if (!isset($tree[$parent_id])) {
+    return;
+  }
+
+  foreach ($tree[$parent_id] as $term) {
+    $indent = str_repeat('— ', $level);
+
+    $lang = '';
+
+    if (function_exists('pll_get_term_language')) {
+      $lang = pll_get_term_language($term->term_id);
+    } elseif (function_exists('wpml_get_language_information')) {
+      $info = wpml_get_language_information(null, $term->term_id);
+      $lang = $info['language_code'] ?? '';
+    }
+
+    $wkn = get_term_meta($term->term_id, 'wkn', true);
+    $isin = get_term_meta($term->term_id, 'isin', true);
+  ?>
+    <tr>
+      <td><?php echo esc_html($term->term_id); ?></td>
+      <td><?php echo esc_html($indent . $term->name); ?></td>
+      <td><?php echo esc_html($lang ?: '—'); ?></td>
+      <td><?php echo esc_html($wkn ?: '—'); ?></td>
+      <td><?php echo esc_html($isin ?: '—'); ?></td>
+    </tr>
+<?php
+    analysis_import_control_render_rows($term->term_id, $tree, $level + 1);
+  }
+}
+
 
 ===== app/analysis-market-import.php =====
 
 <?php
-
-/**
- * Markt-Import: zweiphasig, deterministisch
- * Phase 1: Terms anlegen / aktualisieren (ohne Parent)
- * Phase 2: Parent-Child-Zuordnung über externe IDs
- */
 
 add_action('admin_init', function () {
 
@@ -516,7 +581,7 @@ add_action('admin_init', function () {
 
   set_transient('analysis_market_import_log', $log, 120);
 
-  wp_redirect(admin_url('edit.php?post_type=analysis&page=analysis-market-import&import=done'));
+  wp_safe_redirect(admin_url('admin.php?page=analysis-market-import&import=done'));
   exit;
 });
 
@@ -531,11 +596,16 @@ function import_market_phase1(array $item, array &$map, array &$log)
     'taxonomy'   => 'analysis_market',
     'hide_empty' => false,
     'meta_query' => [[
-      'key'   => 'market_uid',
-      'value' => (string) $item['id'],
-      'compare' => '='
-    ]]
+      'key'     => 'market_uid',
+      'value'   => (string) $item['id'],
+      'compare' => '=',
+    ]],
   ]);
+
+  if (is_wp_error($existing)) {
+    $log[] = "❌ Fehler bei Suche nach market_uid {$item['id']}";
+    return;
+  }
 
   if (count($existing) > 1) {
     $log[] = "❌ Mehrdeutige market_uid {$item['id']} – Import übersprungen";
@@ -545,15 +615,20 @@ function import_market_phase1(array $item, array &$map, array &$log)
   if (count($existing) === 1) {
     $term_id = $existing[0]->term_id;
 
-    wp_update_term($term_id, 'analysis_market', [
-      'name' => $item['name'],
-      'slug' => $item['slug'],
+    $updated = wp_update_term($term_id, 'analysis_market', [
+      'name' => sanitize_text_field($item['name']),
+      'slug' => sanitize_title($item['slug']),
     ]);
+
+    if (is_wp_error($updated)) {
+      $log[] = "❌ Fehler bei {$item['name']}: " . $updated->get_error_message();
+      return;
+    }
 
     $log[] = "🔄 aktualisiert: {$item['name']} ({$item['id']})";
   } else {
-    $created = wp_insert_term($item['name'], 'analysis_market', [
-      'slug' => $item['slug'],
+    $created = wp_insert_term(sanitize_text_field($item['name']), 'analysis_market', [
+      'slug' => sanitize_title($item['slug']),
     ]);
 
     if (is_wp_error($created)) {
@@ -569,7 +644,7 @@ function import_market_phase1(array $item, array &$map, array &$log)
 
   if (!empty($item['meta']) && is_array($item['meta'])) {
     foreach ($item['meta'] as $key => $value) {
-      update_term_meta($term_id, $key, $value);
+      update_term_meta($term_id, sanitize_key($key), sanitize_text_field((string) $value));
     }
   }
 
@@ -601,11 +676,15 @@ function import_market_phase2(array $item, array $map, array &$log)
     if (!isset($map[$parent_id])) {
       $log[] = "❌ Ungültiger Parent {$parent_id} für {$id}";
     } else {
-      wp_update_term($map[$id], 'analysis_market', [
+      $updated = wp_update_term($map[$id], 'analysis_market', [
         'parent' => $map[$parent_id],
       ]);
 
-      $log[] = "↳ Parent gesetzt: {$id} → {$parent_id}";
+      if (is_wp_error($updated)) {
+        $log[] = "❌ Parent konnte nicht gesetzt werden: {$id} → {$parent_id}";
+      } else {
+        $log[] = "↳ Parent gesetzt: {$id} → {$parent_id}";
+      }
     }
   }
 
@@ -932,22 +1011,337 @@ function dashboard_payment_required_url(): string
 }
 
 
-===== app/dashboard-auth.php =====
+===== app/dashboard-admin.php =====
 
 <?php
 
-/**
- * User-Meta Konstanten
- */
+if (!function_exists('bbc_editor_dashboard_user_can_view')) {
+  function bbc_editor_dashboard_user_can_view(): bool
+  {
+    if (!is_admin() || !is_user_logged_in()) {
+      return false;
+    }
+
+    if (current_user_can('manage_options') || current_user_can('edit_others_posts')) {
+      return true;
+    }
+
+    $user = wp_get_current_user();
+    $roles = (array) $user->roles;
+
+    return (bool) array_intersect(['administrator', 'editor', 'redakteur'], $roles);
+  }
+}
+
+add_action('wp_dashboard_setup', function () {
+  if (!bbc_editor_dashboard_user_can_view()) {
+    return;
+  }
+
+  remove_action('welcome_panel', 'wp_welcome_panel');
+
+  $widgets = [
+    'dashboard_quick_press',
+    'dashboard_primary',
+    'dashboard_site_health',
+    'dashboard_right_now',
+    'dashboard_activity',
+    'dashboard_recent_comments',
+    'dashboard_incoming_links',
+    'dashboard_plugins',
+    'dashboard_secondary',
+    'dashboard_recent_drafts',
+    'wp_activity_log_dashboard_widget',
+    'wordfence_activity_report_widget',
+  ];
+
+  foreach ($widgets as $widget) {
+    remove_meta_box($widget, 'dashboard', 'normal');
+    remove_meta_box($widget, 'dashboard', 'side');
+  }
+
+  wp_add_dashboard_widget(
+    'bbc_editor_dashboard_overview',
+    'Redaktionsübersicht',
+    'bbc_editor_dashboard_overview_render'
+  );
+}, 999);
+
+add_filter('get_user_option_metaboxhidden_dashboard', function ($hidden) {
+  if (!bbc_editor_dashboard_user_can_view()) {
+    return $hidden;
+  }
+
+  $hidden = is_array($hidden) ? $hidden : [];
+
+  return array_values(array_diff($hidden, ['bbc_editor_dashboard_overview']));
+});
+
+add_filter('get_user_option_screen_layout_dashboard', function ($value) {
+  if (!bbc_editor_dashboard_user_can_view()) {
+    return $value;
+  }
+
+  return 1;
+});
+
+add_action('admin_head-index.php', function () {
+  if (!bbc_editor_dashboard_user_can_view()) {
+    return;
+  }
+
+  echo '<style>
+    #dashboard-widgets .postbox-container {
+      width: 100% !important;
+      float: none !important;
+    }
+
+    #dashboard-widgets #postbox-container-2,
+    #dashboard-widgets #postbox-container-3,
+    #dashboard-widgets #postbox-container-4 {
+      display: none !important;
+    }
+
+    #bbc_editor_dashboard_overview .inside {
+      margin: 0;
+      padding: 0;
+    }
+
+    .bbc-editor-dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 20px;
+      padding: 16px;
+    }
+
+    .bbc-editor-dashboard-panel {
+      min-width: 0;
+      border: 1px solid #dcdcde;
+      background: #fff;
+    }
+
+    .bbc-editor-dashboard-panel h3 {
+      margin: 0;
+      padding: 12px 14px;
+      border-bottom: 1px solid #dcdcde;
+      background: #f6f7f7;
+      font-size: 14px;
+    }
+
+    .bbc-editor-dashboard-table-wrap {
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    .bbc-editor-dashboard-table {
+      width: 100%;
+      min-width: 560px;
+      border: 0;
+    }
+
+    .bbc-editor-dashboard-table th,
+    .bbc-editor-dashboard-table td {
+      vertical-align: top;
+      line-height: 1.45;
+    }
+
+    .bbc-editor-dashboard-title {
+      max-width: 260px;
+      font-weight: 600;
+    }
+
+    .bbc-editor-dashboard-meta {
+      color: #50575e;
+    }
+
+    .bbc-editor-dashboard-actions {
+      width: 96px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .bbc-editor-dashboard-empty {
+      padding: 14px;
+      margin: 0;
+      color: #646970;
+    }
+
+    @media screen and (max-width: 1300px) {
+      .bbc-editor-dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .bbc-editor-dashboard-table {
+        min-width: 680px;
+      }
+    }
+  </style>';
+});
+
+function bbc_editor_dashboard_overview_render(): void
+{
+  echo '<div class="bbc-editor-dashboard-grid">';
+
+  echo '<section class="bbc-editor-dashboard-panel">';
+  echo '<h3>Letzte Analysen</h3>';
+  bbc_editor_dashboard_render_table(
+    bbc_editor_dashboard_get_posts('analysis'),
+    'analysis'
+  );
+  echo '</section>';
+
+  echo '<section class="bbc-editor-dashboard-panel">';
+  echo '<h3>Letzte Media Entries</h3>';
+  bbc_editor_dashboard_render_table(
+    bbc_editor_dashboard_get_posts('media_entry'),
+    'media_entry'
+  );
+  echo '</section>';
+
+  echo '</div>';
+}
+
+function bbc_editor_dashboard_get_posts(string $post_type): array
+{
+  return get_posts([
+    'post_type' => $post_type,
+    'post_status' => ['publish', 'draft', 'pending', 'future', 'private'],
+    'posts_per_page' => 20,
+    'orderby' => 'date',
+    'order' => 'DESC',
+  ]);
+}
+
+function bbc_editor_dashboard_render_table(array $posts, string $type): void
+{
+  if (empty($posts)) {
+    echo '<p class="bbc-editor-dashboard-empty">Keine Einträge gefunden.</p>';
+    return;
+  }
+
+  echo '<div class="bbc-editor-dashboard-table-wrap">';
+  echo '<table class="widefat striped bbc-editor-dashboard-table">';
+  echo '<thead>';
+  echo '<tr>';
+  echo '<th>Titel</th>';
+
+  if ($type === 'analysis') {
+    echo '<th>Asset</th>';
+    echo '<th>Datum</th>';
+  }
+
+  if ($type === 'media_entry') {
+    echo '<th>Typ</th>';
+    echo '<th>Datum</th>';
+  }
+
+  echo '<th>Status</th>';
+  echo '<th></th>';
+  echo '</tr>';
+  echo '</thead>';
+  echo '<tbody>';
+
+  foreach ($posts as $post) {
+    $post_id = (int) $post->ID;
+    $title = get_the_title($post_id);
+    $title = $title !== '' ? $title : '(Ohne Titel)';
+    $edit_link = get_edit_post_link($post_id);
+    $status_object = get_post_status_object($post->post_status);
+    $status_label = $status_object ? $status_object->label : $post->post_status;
+
+    echo '<tr>';
+    echo '<td class="bbc-editor-dashboard-title">' . esc_html($title) . '</td>';
+
+    if ($type === 'analysis') {
+      echo '<td class="bbc-editor-dashboard-meta">' . esc_html(bbc_editor_dashboard_get_analysis_asset($post_id) ?: '—') . '</td>';
+      echo '<td class="bbc-editor-dashboard-meta">' . esc_html(bbc_editor_dashboard_get_analysis_date($post_id)) . '</td>';
+    }
+
+    if ($type === 'media_entry') {
+      $media_type = get_post_meta($post_id, 'media_type', true);
+
+      echo '<td class="bbc-editor-dashboard-meta">' . esc_html($media_type ?: '—') . '</td>';
+      echo '<td class="bbc-editor-dashboard-meta">' . esc_html(get_the_date('d.m.Y', $post_id)) . '</td>';
+    }
+
+    echo '<td class="bbc-editor-dashboard-meta">' . esc_html($status_label) . '</td>';
+
+    if ($edit_link && current_user_can('edit_post', $post_id)) {
+      echo '<td class="bbc-editor-dashboard-actions"><a class="button button-small" href="' . esc_url($edit_link) . '">Bearbeiten</a></td>';
+    } else {
+      echo '<td class="bbc-editor-dashboard-actions"></td>';
+    }
+
+    echo '</tr>';
+  }
+
+  echo '</tbody>';
+  echo '</table>';
+  echo '</div>';
+}
+
+function bbc_editor_dashboard_get_analysis_asset(int $post_id): string
+{
+  $asset = (string) get_post_meta($post_id, 'report_asset_name', true);
+
+  if ($asset !== '') {
+    return $asset;
+  }
+
+  $terms = get_the_terms($post_id, 'analysis_market');
+
+  if (empty($terms) || is_wp_error($terms)) {
+    return '';
+  }
+
+  foreach ($terms as $term) {
+    if ((int) $term->parent !== 0) {
+      return html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+  }
+
+  return html_entity_decode($terms[0]->name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
+function bbc_editor_dashboard_get_analysis_date(int $post_id): string
+{
+  $publish_date = (string) get_post_meta($post_id, 'publish_date', true);
+
+  if ($publish_date !== '') {
+    $timestamp = strtotime($publish_date);
+
+    if ($timestamp) {
+      return date_i18n('d.m.Y', $timestamp);
+    }
+  }
+
+  return get_the_date('d.m.Y', $post_id);
+}
+
+
+===== app/dashboard-auth.php =====
+
+<?php
 
 const USER_META_TRIAL_START = 'trial_started_at';
 const USER_META_TRIAL_END   = 'trial_ends_at';
 const USER_META_SUB_STATUS  = 'subscription_status';
 const USER_META_THEME       = 'dashboard_theme';
 
-/**
- * Initialisiert Trial beim Registrieren
- */
+function dashboard_user_should_use_wp_admin($user): bool
+{
+  if (!$user || is_wp_error($user)) {
+    return false;
+  }
+
+  $roles = (array) $user->roles;
+
+  if (in_array('subscriber', $roles, true) || in_array('abonnent', $roles, true)) {
+    return false;
+  }
+
+  return !empty($roles);
+}
 
 add_action('user_register', function ($user_id) {
   $now = current_time('timestamp');
@@ -958,17 +1352,13 @@ add_action('user_register', function ($user_id) {
   update_user_meta($user_id, USER_META_THEME, 'light');
 });
 
-/**
- * Dashboard Login
- */
-
 add_action('admin_post_nopriv_dashboard_login', function () {
   $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
   $key = 'login_attempts_' . md5($ip);
   $attempts = (int) get_transient($key);
 
   if ($attempts >= 5) {
-    wp_redirect('/dashboard-login?error=too_many_attempts');
+    wp_safe_redirect('/dashboard-login?error=too_many_attempts');
     exit;
   }
 
@@ -976,13 +1366,13 @@ add_action('admin_post_nopriv_dashboard_login', function () {
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_login')
   ) {
-    wp_redirect('/dashboard-login?error=invalid_request');
+    wp_safe_redirect('/dashboard-login?error=invalid_request');
     exit;
   }
 
   $creds = [
-    'user_login'    => sanitize_email($_POST['email']),
-    'user_password' => $_POST['password'],
+    'user_login'    => sanitize_email($_POST['email'] ?? ''),
+    'user_password' => $_POST['password'] ?? '',
     'remember'      => true,
   ];
 
@@ -990,18 +1380,20 @@ add_action('admin_post_nopriv_dashboard_login', function () {
 
   if (is_wp_error($user)) {
     set_transient($key, $attempts + 1, 15 * MINUTE_IN_SECONDS);
-    wp_redirect('/dashboard-login?error=1');
+    wp_safe_redirect('/dashboard-login?error=1');
     exit;
   }
 
   delete_transient($key);
-  wp_redirect('/dashboard');
+
+  if (dashboard_user_should_use_wp_admin($user)) {
+    wp_safe_redirect(admin_url());
+    exit;
+  }
+
+  wp_safe_redirect('/dashboard');
   exit;
 });
-
-/**
- * Dashboard Registrierung
- */
 
 add_action('admin_post_nopriv_dashboard_register', function () {
 
@@ -1009,59 +1401,64 @@ add_action('admin_post_nopriv_dashboard_register', function () {
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register')
   ) {
-    wp_redirect('/dashboard-register?error=invalid_request');
+    wp_safe_redirect('/dashboard-register?error=invalid_request');
     exit;
   }
 
-  $email = sanitize_email($_POST['email']);
+  $email = sanitize_email($_POST['email'] ?? '');
   $password = $_POST['password'] ?? '';
+  $name = sanitize_text_field($_POST['name'] ?? '');
 
   if (strlen($password) < 8) {
-    wp_redirect('/dashboard-register?error=weak_password');
+    wp_safe_redirect('/dashboard-register?error=weak_password');
     exit;
   }
 
   if (!is_email($email)) {
-    wp_redirect('/dashboard-register?error=email');
+    wp_safe_redirect('/dashboard-register?error=email');
     exit;
   }
 
   if (email_exists($email)) {
-    wp_redirect('/dashboard-register?error=exists');
+    wp_safe_redirect('/dashboard-register?error=exists');
     exit;
   }
 
-  $user_id = wp_create_user(
-    $email,
-    $password,
-    $email
-  );
+  $user_id = wp_create_user($email, $password, $email);
+
+  if (is_wp_error($user_id)) {
+    wp_safe_redirect('/dashboard-register?error=create_failed');
+    exit;
+  }
 
   wp_update_user([
     'ID' => $user_id,
-    'display_name' => sanitize_text_field($_POST['name']),
+    'display_name' => $name,
   ]);
 
   wp_set_current_user($user_id);
   wp_set_auth_cookie($user_id);
 
-  wp_redirect('/dashboard');
+  $user = get_user_by('id', $user_id);
+
+  if (dashboard_user_should_use_wp_admin($user)) {
+    wp_safe_redirect(admin_url());
+    exit;
+  }
+
+  wp_safe_redirect('/dashboard');
   exit;
 });
 
-/**
- * Erzwingt sauberen Logout-Redirect
- */
-
 add_action('wp_logout', function () {
-  wp_redirect('/dashboard-login');
+  wp_safe_redirect('/dashboard-login');
   exit;
 });
 
 add_action('admin_post_dashboard_update_account', function () {
 
   if (!is_user_logged_in()) {
-    wp_redirect('/dashboard-login');
+    wp_safe_redirect('/dashboard-login');
     exit;
   }
 
@@ -1069,7 +1466,7 @@ add_action('admin_post_dashboard_update_account', function () {
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_update_account')
   ) {
-    wp_redirect('/dashboard-settings?tab=account&error=invalid_request');
+    wp_safe_redirect('/dashboard-settings?tab=account&error=invalid_request');
     exit;
   }
 
@@ -1087,14 +1484,14 @@ add_action('admin_post_dashboard_update_account', function () {
 
   update_user_meta($user->ID, 'phone_number', $phone);
 
-  wp_redirect('/dashboard-settings?tab=account&success=1');
+  wp_safe_redirect('/dashboard-settings?tab=account&success=1');
   exit;
 });
 
 add_action('admin_post_dashboard_update_password', function () {
 
   if (!is_user_logged_in()) {
-    wp_redirect('/dashboard-login');
+    wp_safe_redirect('/dashboard-login');
     exit;
   }
 
@@ -1102,7 +1499,7 @@ add_action('admin_post_dashboard_update_password', function () {
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_update_password')
   ) {
-    wp_redirect('/dashboard-settings?tab=password&error=invalid_request');
+    wp_safe_redirect('/dashboard-settings?tab=password&error=invalid_request');
     exit;
   }
 
@@ -1113,19 +1510,24 @@ add_action('admin_post_dashboard_update_password', function () {
   $confirm = $_POST['new_password_confirm'] ?? '';
 
   if (!wp_check_password($current, $user->user_pass, $user->ID)) {
-    wp_redirect('/dashboard-settings?tab=password&error=wrong_password');
+    wp_safe_redirect('/dashboard-settings?tab=password&error=wrong_password');
     exit;
   }
 
   if ($new === '' || $new !== $confirm) {
-    wp_redirect('/dashboard-settings?tab=password&error=mismatch');
+    wp_safe_redirect('/dashboard-settings?tab=password&error=mismatch');
+    exit;
+  }
+
+  if (strlen($new) < 8) {
+    wp_safe_redirect('/dashboard-settings?tab=password&error=weak_password');
     exit;
   }
 
   wp_set_password($new, $user->ID);
   wp_set_auth_cookie($user->ID);
 
-  wp_redirect('/dashboard-settings?tab=password&success=1');
+  wp_safe_redirect('/dashboard-settings?tab=password&success=1');
   exit;
 });
 
@@ -1251,10 +1653,6 @@ add_action('wp_ajax_dashboard_upload_avatar', function () {
 
 <?php
 
-/**
- * Zentrales Dashboard-Gate.
- * Lässt Login/Register/Password immer zu und Billing trotz payment_required.
- */
 function dashboard_handle_dashboard_gate()
 {
   if (!is_page()) {
@@ -1289,13 +1687,22 @@ function dashboard_handle_dashboard_gate()
   $isPaymentRequiredPage =
     $slug === 'dashboard-payment-required';
 
-  if (is_user_logged_in() && $isLoginPage) {
-    wp_safe_redirect('/dashboard');
-    exit;
+  if (is_user_logged_in()) {
+    $user = wp_get_current_user();
+
+    if (function_exists('dashboard_user_should_use_wp_admin') && dashboard_user_should_use_wp_admin($user)) {
+      wp_safe_redirect(admin_url());
+      exit;
+    }
   }
 
   if (!is_user_logged_in() && !$isLoginPage) {
     wp_safe_redirect('/dashboard-login');
+    exit;
+  }
+
+  if (is_user_logged_in() && $isLoginPage) {
+    wp_safe_redirect('/dashboard');
     exit;
   }
 
@@ -1808,6 +2215,7 @@ require_once __DIR__ . '/filters.php';
 require_once __DIR__ . '/translations.php';
 
 require_once __DIR__ . '/helper/dashboard.php';
+require_once __DIR__ . '/dashboard-admin.php';
 require_once __DIR__ . '/dashboard-subscription.php';
 require_once __DIR__ . '/stripe-checkout.php';
 require_once __DIR__ . '/stripe-webhook.php';
@@ -2554,16 +2962,19 @@ function dashboard_stripe_env(string $key): string
  */
 function dashboard_stripe_vendor_autoload_path(): string
 {
-  return __DIR__ . '/../vendor/autoload.php';
+  return get_stylesheet_directory() . '/vendor/autoload.php';
 }
 
-/**
- * Lädt das Stripe-SDK und bootet die API.
- */
 function dashboard_stripe_boot(): bool
 {
   static $booted = false;
   static $ok = false;
+
+  error_log('Stripe DEBUG __DIR__: ' . __DIR__);
+  error_log('Stripe DEBUG stylesheet: ' . get_stylesheet_directory());
+  error_log('Stripe DEBUG template: ' . get_template_directory());
+  error_log('Stripe DEBUG ABSPATH: ' . ABSPATH);
+  error_log('Stripe DEBUG autoload: ' . dashboard_stripe_vendor_autoload_path());
 
   if ($booted) {
     return $ok;
@@ -2573,17 +2984,25 @@ function dashboard_stripe_boot(): bool
 
   $autoload = dashboard_stripe_vendor_autoload_path();
 
+  error_log('Stripe autoload path: ' . $autoload);
+  error_log('Stripe autoload exists: ' . (file_exists($autoload) ? 'yes' : 'no'));
+  error_log('Stripe autoload readable: ' . (is_readable($autoload) ? 'yes' : 'no'));
+
   if (!file_exists($autoload)) {
     return false;
   }
 
   require_once $autoload;
 
+  error_log('Stripe class exists: ' . (class_exists('\Stripe\Stripe') ? 'yes' : 'no'));
+
   if (!class_exists('\Stripe\Stripe')) {
     return false;
   }
 
   $secretKey = dashboard_stripe_secret_key();
+
+  error_log('Stripe secret key set: ' . ($secretKey !== '' ? 'yes' : 'no'));
 
   if ($secretKey !== '') {
     \Stripe\Stripe::setApiKey($secretKey);
@@ -5343,7 +5762,6 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
       Analyses Overview
     </h1>
 
-    {{-- View Switcher --}}
     @php
     $view = request()->get('view', 'default');
     if (!in_array($view, ['default', 'grid', 'list'], true)) {
@@ -5351,37 +5769,24 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
     }
     @endphp
 
-    <div class="inline-flex items-center gap-1
-            rounded-xl border border-brand-primary/30
-            bg-white/70 backdrop-blur
-            p-1 shadow-sm">
+    <div class="inline-flex items-center gap-1 rounded-xl border border-brand-primary/30 bg-white/70 backdrop-blur p-1 shadow-sm">
 
       <a href="{{ request()->fullUrlWithQuery(['view' => 'default']) }}"
-        class="p-2 rounded-lg transition
-            {{ $view === 'default'
-              ? 'bg-brand-primary text-white'
-              : 'text-brand-primary hover:bg-brand-primary/10' }}">
+        class="p-2 rounded-lg transition {{ $view === 'default' ? 'bg-brand-primary text-white' : 'text-brand-primary hover:bg-brand-primary/10' }}">
         @include('dashboard.icons.view-table')
       </a>
 
       <a href="{{ request()->fullUrlWithQuery(['view' => 'grid']) }}"
-        class="p-2 rounded-lg transition
-            {{ $view === 'grid'
-              ? 'bg-brand-primary text-white'
-              : 'text-brand-primary hover:bg-brand-primary/10' }}">
+        class="p-2 rounded-lg transition {{ $view === 'grid' ? 'bg-brand-primary text-white' : 'text-brand-primary hover:bg-brand-primary/10' }}">
         @include('dashboard.icons.view-grid')
       </a>
 
       <a href="{{ request()->fullUrlWithQuery(['view' => 'list']) }}"
-        class="p-2 rounded-lg transition
-            {{ $view === 'list'
-              ? 'bg-brand-primary text-white'
-              : 'text-brand-primary hover:bg-brand-primary/10' }}">
+        class="p-2 rounded-lg transition {{ $view === 'list' ? 'bg-brand-primary text-white' : 'text-brand-primary hover:bg-brand-primary/10' }}">
         @include('dashboard.icons.view-list')
       </a>
 
     </div>
-
   </header>
 
   @php
@@ -5415,9 +5820,6 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
   @include('dashboard.analyses.filters')
 
-  {{-- ===================== --}}
-  {{-- DEFAULT VIEW (TABELLE) --}}
-  {{-- ===================== --}}
   @if ($view === 'default')
 
   <div class="bg-white rounded-xl shadow-sm overflow-hidden hidden md:block">
@@ -5447,9 +5849,15 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
       }
       @endphp
 
-      <div class="grid grid-cols-[160px_140px_1fr_140px_160px] px-6 py-5 gap-4 element-border-t first:border-t-0 hover:bg-slate-50/80 transition-colors group">
+      <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+        class="grid grid-cols-[160px_140px_1fr_140px_160px] px-6 py-5 gap-4 element-border-t first:border-t-0
+               hover:bg-slate-50/80 transition-all duration-200 group cursor-pointer
+               hover:-translate-y-0.5 hover:shadow-sm
+               focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
 
-        <div class="font-medium text-slate-900">{{ $primaryMarket?->name }}</div>
+        <div class="font-medium text-slate-900 group-hover:text-brand-primary transition-colors">
+          {{ $primaryMarket?->name }}
+        </div>
 
         <div class="chart-preview">
           @if ($image = get_field('chart_image'))
@@ -5468,13 +5876,14 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
         </div>
 
         <div class="flex items-center justify-end">
-          <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
-            class="text-sm font-medium text-brand-primary border border-brand-primary/20 bg-brand-primary/5 hover:bg-brand-primary hover:text-white px-4 py-2 rounded-lg transition-all shadow-sm">
+          <span
+            class="text-sm font-medium text-brand-primary border border-brand-primary/20 bg-brand-primary/5
+                   group-hover:bg-brand-primary group-hover:text-white px-4 py-2 rounded-lg transition-all shadow-sm">
             View Analysis →
-          </a>
+          </span>
         </div>
 
-      </div>
+      </a>
       @endwhile
     </div>
     @php wp_reset_postdata(); @endphp
@@ -5499,9 +5908,14 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
     }
     @endphp
 
-    <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+    <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+      class="block bg-white rounded-xl shadow-sm p-4 space-y-3 group
+             transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg
+             focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
 
-      <div class="font-semibold text-slate-900">{{ $primaryMarket?->name }}</div>
+      <div class="font-semibold text-slate-900 group-hover:text-brand-primary transition-colors">
+        {{ $primaryMarket?->name }}
+      </div>
 
       @if ($image = get_field('chart_image'))
       <img src="{{ $image['sizes']['medium'] }}" class="rounded-md">
@@ -5513,12 +5927,12 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
       <div class="flex items-center justify-between text-sm text-slate-500">
         <span>{{ date_i18n('d M, Y', strtotime(get_field('publish_date'))) }}</span>
-        <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}" class="text-brand-primary font-medium">
+        <span class="text-brand-primary font-medium transition-transform duration-200 group-hover:translate-x-1">
           View →
-        </a>
+        </span>
       </div>
 
-    </div>
+    </a>
     @endwhile
 
     @php wp_reset_postdata(); @endphp
@@ -5526,9 +5940,6 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
   @endif
 
-  {{-- ================= --}}
-  {{-- GRID VIEW (2-SPALTIG) --}}
-  {{-- ================= --}}
   @if ($view === 'grid')
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -5547,9 +5958,14 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
     }
     @endphp
 
-    <div class="bg-white rounded-xl shadow-sm p-5 space-y-3">
+    <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+      class="block bg-white rounded-xl shadow-sm p-5 space-y-3 group
+             transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg
+             focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
 
-      <div class="font-semibold">{{ $primaryMarket?->name }}</div>
+      <div class="font-semibold group-hover:text-brand-primary transition-colors">
+        {{ $primaryMarket?->name }}
+      </div>
 
       @if ($image = get_field('chart_image'))
       <img src="{{ $image['sizes']['medium'] }}" class="rounded-md">
@@ -5563,23 +5979,19 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
         {{ date_i18n('d M, Y', strtotime(get_field('publish_date'))) }}
       </div>
 
-      <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
-        class="text-sm text-brand-primary font-medium">
+      <span class="inline-block text-sm text-brand-primary font-medium transition-transform duration-200 group-hover:translate-x-1">
         View Report →
-      </a>
+      </span>
 
-    </div>
+    </a>
     @endwhile
     @php wp_reset_postdata(); @endphp
   </div>
   @endif
 
-  {{-- ================= --}}
-  {{-- LIST VIEW (TEXT ONLY) --}}
-  {{-- ================= --}}
   @if ($view === 'list')
 
-  <div class="bg-white rounded-xl shadow-sm divide-y">
+  <div class="bg-white rounded-xl shadow-sm divide-y overflow-hidden">
     @while ($query->have_posts())
     @php
     $query->the_post();
@@ -5595,21 +6007,25 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
     }
     @endphp
 
-    <div class="px-6 py-4 flex items-center justify-between">
+    <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+      class="px-6 py-4 flex items-center justify-between group
+             transition-all duration-200 hover:bg-slate-50
+             focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
 
       <div>
-        <div class="font-medium">{{ $primaryMarket?->name }}</div>
+        <div class="font-medium group-hover:text-brand-primary transition-colors">
+          {{ $primaryMarket?->name }}
+        </div>
         <div class="text-sm text-slate-500">
           {{ date_i18n('d M, Y', strtotime(get_field('publish_date'))) }}
         </div>
       </div>
 
-      <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
-        class="text-sm text-brand-primary">
+      <span class="text-sm text-brand-primary transition-transform duration-200 group-hover:translate-x-1">
         View →
-      </a>
+      </span>
 
-    </div>
+    </a>
     @endwhile
     @php wp_reset_postdata(); @endphp
   </div>
@@ -6062,16 +6478,21 @@ $state = dashboard_access_state(get_current_user_id());
       $publish_date = get_post_meta($post_id, 'publish_date', true);
       @endphp
 
-      <div class="dashboard-card rounded-xl p-5 flex items-center justify-between">
+      <a
+        href="/analysis/{{ get_post_field('post_name', $post_id) }}"
+        class="dashboard-card group rounded-xl p-5 flex items-center justify-between gap-4
+         transition-all duration-200 cursor-pointer
+         hover:-translate-y-0.5 hover:shadow-lg
+         focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4 min-w-0">
           @if($image_url)
           <img src="{{ $image_url }}"
-            class="w-16 h-16 object-cover rounded-lg">
+            class="w-16 h-16 object-cover rounded-lg flex-shrink-0">
           @endif
 
-          <div>
-            <div class="break-all line-clamp-2 font-medium text-heading">
+          <div class="min-w-0">
+            <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors">
               {{ get_the_title() }}
             </div>
             <div class="text-sm text-meta">
@@ -6080,12 +6501,12 @@ $state = dashboard_access_state(get_current_user_id());
           </div>
         </div>
 
-        <a href="/analysis/{{ get_post_field('post_name', $post_id) }}"
-          class="text-sm text-brand-primary">
+        <span class="text-sm text-brand-primary whitespace-nowrap transition-transform duration-200 group-hover:translate-x-1">
           View →
-        </a>
+        </span>
 
-      </div>
+      </a>
+
       @endwhile
       @php wp_reset_postdata(); @endphp
     </div>
@@ -6136,13 +6557,18 @@ $state = dashboard_access_state(get_current_user_id());
       : get_theme_file_uri('resources/images/dashboard/default-cover.jpg');
       @endphp
 
-      <div class="dashboard-card rounded-xl p-5 flex items-center gap-4">
+      <a
+        href="/dashboard-media"
+        class="dashboard-card group rounded-xl p-5 flex items-center gap-4
+         transition-all duration-200 cursor-pointer
+         hover:-translate-y-0.5 hover:shadow-lg
+         focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
         <img src="{{ $coverUrl }}"
-          class="w-16 h-16 object-cover rounded-lg">
+          class="w-16 h-16 object-cover rounded-lg flex-shrink-0">
 
-        <div class="flex-1">
-          <div class="break-all line-clamp-2 font-medium text-heading">
+        <div class="flex-1 min-w-0">
+          <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors">
             {{ get_the_title() }}
           </div>
           <div class="text-sm text-meta">
@@ -6150,12 +6576,11 @@ $state = dashboard_access_state(get_current_user_id());
           </div>
         </div>
 
-        <a href="/dashboard-media"
-          class="text-sm text-brand-primary">
+        <span class="text-sm text-brand-primary whitespace-nowrap transition-transform duration-200 group-hover:translate-x-1">
           View →
-        </a>
+        </span>
 
-      </div>
+      </a>
 
       @endwhile
       @php wp_reset_postdata(); @endphp
@@ -6905,106 +7330,247 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
     @php
     $subscriptionState = get_user_meta($user->ID, USER_META_SUB_STATUS, true) ?: 'payment_required';
-    $subscriptionStateLabel = dashboard_stripe_subscription_state_label($subscriptionState);
     $stripeCustomerId = get_user_meta($user->ID, 'stripe_customer_id', true);
     $stripeSubscriptionId = get_user_meta($user->ID, 'stripe_subscription_id', true);
     $stripeRawStatus = get_user_meta($user->ID, 'stripe_subscription_status', true);
+    $currentPeriodEnd = (int) get_user_meta($user->ID, 'stripe_current_period_end', true);
+    $cancelAtPeriodEnd = get_user_meta($user->ID, 'stripe_cancel_at_period_end', true) === '1';
     $billingErrorCode = trim((string) request()->get('error', ''));
     $billingErrorMessage = $billingErrorCode !== '' ? dashboard_stripe_billing_error_message($billingErrorCode) : '';
+
+    $isActive = $subscriptionState === 'active';
+    $isTrial = $subscriptionState === 'trial';
+
+    $stateText = match ($subscriptionState) {
+    'active' => 'Aktiv',
+    'trial' => 'Testphase',
+    'past_due' => 'Zahlung überfällig',
+    'canceled' => 'Gekündigt',
+    default => 'Zahlung erforderlich',
+    };
+
+    $badgeClass = $isActive || $isTrial
+    ? 'bg-emerald-400/20 text-emerald-200 border-emerald-300/20'
+    : 'bg-amber-400/20 text-amber-200 border-amber-300/20';
     @endphp
 
-    <section class="max-w-3xl space-y-6">
+    <section class="max-w-6xl text-white">
 
       @if(request()->get('stripe') === 'success')
-      <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-        Checkout completed. Your subscription status will update automatically in a moment.
+      <div class="mb-6 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+        Checkout abgeschlossen. Dein Abo-Status wird automatisch aktualisiert.
       </div>
       @endif
 
       @if(request()->get('stripe') === 'cancel')
-      <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-        Checkout was cancelled.
+      <div class="mb-6 rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        Checkout wurde abgebrochen.
       </div>
       @endif
 
       @if($billingErrorMessage !== '')
-      <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <div class="mb-6 rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
         {{ $billingErrorMessage }}
       </div>
       @endif
 
-      <div class="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
-        <div class="mb-6">
-          <h2 class="text-lg font-semibold text-slate-900">Subscription</h2>
-          <p class="mt-1 text-sm text-slate-500">
-            Current dashboard access status:
-            <span class="font-medium text-slate-700">{{ $subscriptionStateLabel }}</span>
-          </p>
+      <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,680px)_minmax(260px,1fr)] gap-8 items-start">
 
-          @if($stripeRawStatus)
-          <p class="mt-1 text-sm text-slate-500">
-            Stripe subscription status:
-            <span class="font-medium text-slate-700">{{ $stripeRawStatus }}</span>
-          </p>
-          @endif
-        </div>
+        <div class="space-y-6">
 
-        <div class="flex flex-wrap gap-3">
-          @if($subscriptionState !== 'active')
-          <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
-            <input type="hidden" name="action" value="dashboard_start_checkout">
-            @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
+          <div class="rounded-2xl border border-white/10 bg-slate-950/35 backdrop-blur-xl px-6 py-6 shadow-2xl">
+            <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-8 items-end">
 
-            <button
-              type="submit"
-              class="inline-flex items-center px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
-              Start subscription
-            </button>
-          </form>
-          @endif
+              <div>
+                <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
+                  Aktuelles Abonnement
+                </h2>
 
-          @if($stripeCustomerId)
-          <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
-            <input type="hidden" name="action" value="dashboard_open_billing_portal">
-            @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+                <span class="mt-3 inline-flex items-center rounded-lg border px-3 py-1 text-xs font-semibold {{ $badgeClass }}">
+                  {{ $stateText }}
+                </span>
 
-            <button
-              type="submit"
-              class="inline-flex items-center px-6 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition">
-              Open billing portal
-            </button>
-          </form>
-          @endif
-        </div>
+                <div class="mt-5">
+                  <div class="text-lg font-semibold text-white">
+                    Premium Analysen Zugang
+                  </div>
 
-        @if($subscriptionState === 'active' && !$stripeCustomerId)
-        <div class="mt-4 text-sm text-slate-600">
-          Your subscription is already active.
-        </div>
-        @endif
-      </div>
+                  <div class="text-slate-300">
+                    €29,99 / Monat
+                  </div>
 
-      @if($stripeCustomerId || $stripeSubscriptionId)
-      <div class="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
-        <h3 class="text-sm font-semibold text-slate-900 mb-4">Stripe</h3>
+                  @if($currentPeriodEnd)
+                  <div class="text-sm text-slate-400">
+                    Nächste Rechnung: {{ date_i18n('d.m.Y', $currentPeriodEnd) }}
+                  </div>
+                  @endif
 
-        <div class="space-y-3 text-sm text-slate-600">
-          @if($stripeCustomerId)
-          <div>
-            <span class="font-medium text-slate-700">Customer ID:</span>
-            <span>{{ $stripeCustomerId }}</span>
+                  @if($cancelAtPeriodEnd)
+                  <div class="text-sm text-amber-300">
+                    Kündigung zum Periodenende vorgemerkt.
+                  </div>
+                  @elseif($isActive)
+                  <div class="text-sm text-slate-400">
+                    Abonnement aktiv.
+                  </div>
+                  @elseif($isTrial)
+                  <div class="text-sm text-slate-400">
+                    Testphase aktiv.
+                  </div>
+                  @else
+                  <div class="text-sm text-slate-400">
+                    Kein aktives Abonnement.
+                  </div>
+                  @endif
+                </div>
+
+                <div class="mt-6 flex flex-wrap gap-3">
+                  @if(!$isActive)
+                  <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+                    <input type="hidden" name="action" value="dashboard_start_checkout">
+                    @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
+
+                    <button
+                      type="submit"
+                      class="inline-flex items-center px-5 py-2.5 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
+                      Abo starten
+                    </button>
+                  </form>
+                  @endif
+
+                  @if($stripeCustomerId)
+                  <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+                    <input type="hidden" name="action" value="dashboard_open_billing_portal">
+                    @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+
+                    <button
+                      type="submit"
+                      class="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-white/10 bg-white/5 text-white text-sm font-semibold hover:bg-white/10 transition leading-none whitespace-nowrap">
+                      <svg xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="w-4 h-4 flex-shrink-0 text-brand-primary">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1z"></path>
+                      </svg>
+                      Im Stripe Portal verwalten
+                    </button>
+                  </form>
+                  @endif
+                </div>
+              </div>
+
+              <div class="text-xs text-slate-400 space-y-1 md:text-right">
+                @if($stripeCustomerId)
+                <div>
+                  <span class="text-slate-500">Customer ID:</span>
+                  <span class="break-all">{{ $stripeCustomerId }}</span>
+                </div>
+                @endif
+
+                @if($stripeSubscriptionId)
+                <div>
+                  <span class="text-slate-500">Subscription ID:</span>
+                  <span class="break-all">{{ $stripeSubscriptionId }}</span>
+                </div>
+                @endif
+              </div>
+
+            </div>
           </div>
-          @endif
 
-          @if($stripeSubscriptionId)
-          <div>
-            <span class="font-medium text-slate-700">Subscription ID:</span>
-            <span>{{ $stripeSubscriptionId }}</span>
+          <div class="rounded-2xl border border-white/10 bg-slate-950/30 backdrop-blur-xl px-6 py-6 shadow-2xl">
+            <div class="flex items-center justify-between gap-6">
+              <div>
+                <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
+                  Zahlungsmethode
+                </h2>
+
+                <p class="mt-4 text-slate-300">
+                  @if($stripeCustomerId)
+                  Zahlungsdaten werden sicher über Stripe verwaltet.
+                  @else
+                  Noch keine Zahlungsmethode hinterlegt.
+                  @endif
+                </p>
+              </div>
+
+              @if($stripeCustomerId)
+              <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+                <input type="hidden" name="action" value="dashboard_open_billing_portal">
+                @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+
+                <button
+                  type="submit"
+                  class="text-sm font-semibold text-brand-primary hover:text-white transition whitespace-nowrap">
+                  Im Stripe Portal verwalten
+                </button>
+              </form>
+              @endif
+            </div>
           </div>
-          @endif
+
+          <div class="rounded-2xl border border-white/10 bg-slate-950/30 backdrop-blur-xl px-6 py-6 shadow-2xl">
+            <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
+              Rechnungsverlauf
+            </h2>
+
+            <div class="mt-5 overflow-hidden rounded-xl border border-white/10">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-white/10 text-slate-300">
+                    <th class="px-4 py-3 text-left font-semibold">Datum</th>
+                    <th class="px-4 py-3 text-left font-semibold">Betrag</th>
+                    <th class="px-4 py-3 text-left font-semibold">Status</th>
+                    <th class="px-4 py-3 text-right font-semibold">PDF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="text-slate-400">
+                    <td class="px-4 py-4">—</td>
+                    <td class="px-4 py-4">—</td>
+                    <td class="px-4 py-4">Noch keine Rechnungen</td>
+                    <td class="px-4 py-4 text-right">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p class="mt-4 text-xs text-slate-500">
+              Rechnungen und Zahlungsbelege sind im Stripe Portal verfügbar.
+            </p>
+          </div>
+
         </div>
+
+        <aside class="xl:pt-8 px-2">
+          <div class="max-w-sm text-white">
+            <p class="text-base font-semibold leading-relaxed">
+              Um Abonnement, Zahlungsdaten oder Rechnungsdetails zu ändern, nutze bitte das sichere Stripe Portal.
+            </p>
+
+            <p class="mt-4 text-sm leading-relaxed text-slate-400">
+              Dort kannst du Zahlungsmethoden aktualisieren, Rechnungen einsehen und dein Abo verwalten.
+            </p>
+
+            @if($stripeRawStatus)
+            <div class="mt-8 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div class="text-xs uppercase tracking-wide text-slate-500">
+                Stripe Status
+              </div>
+              <div class="mt-1 text-sm font-medium text-slate-300">
+                {{ $stripeRawStatus }}
+              </div>
+            </div>
+            @endif
+          </div>
+        </aside>
+
       </div>
-      @endif
 
     </section>
 
