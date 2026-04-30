@@ -121,8 +121,7 @@
 
         <div class="flex items-center justify-end">
           <span
-            class="text-sm font-medium text-brand-primary border border-brand-primary/20 bg-brand-primary/5
-                   group-hover:bg-brand-primary group-hover:text-white px-4 py-2 rounded-lg transition-all shadow-sm">
+            class="btn btn-primary btn-md">
             View Analysis →
           </span>
         </div>

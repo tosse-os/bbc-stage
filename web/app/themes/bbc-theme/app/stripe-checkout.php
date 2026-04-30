@@ -160,3 +160,96 @@ function dashboard_get_or_create_stripe_customer($user)
 
   return $customer;
 }
+
+add_action('admin_post_nopriv_dashboard_register_and_checkout', 'dashboard_handle_register_and_checkout');
+
+function dashboard_handle_register_and_checkout()
+{
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register_checkout')
+  ) {
+    wp_safe_redirect('/subscribe-trial/?error=invalid_request');
+    exit;
+  }
+
+  $email = sanitize_email($_POST['email'] ?? '');
+  $password = $_POST['password'] ?? '';
+  $name = sanitize_text_field($_POST['name'] ?? '');
+
+  if (!is_email($email)) {
+    wp_safe_redirect('/subscribe-trial/?error=email');
+    exit;
+  }
+
+  if (strlen($password) < 8) {
+    wp_safe_redirect('/subscribe-trial/?error=weak_password');
+    exit;
+  }
+
+  if (email_exists($email)) {
+    wp_safe_redirect('/subscribe-trial/?error=exists');
+    exit;
+  }
+
+  if (!dashboard_stripe_boot()) {
+    wp_safe_redirect('/subscribe-trial/?error=stripe_sdk_missing');
+    exit;
+  }
+
+  if (dashboard_stripe_checkout_config_error() !== '') {
+    wp_safe_redirect('/subscribe-trial/?error=stripe_not_configured');
+    exit;
+  }
+
+  $user_id = wp_create_user($email, $password, $email);
+
+  if (is_wp_error($user_id)) {
+    wp_safe_redirect('/subscribe-trial/?error=create_failed');
+    exit;
+  }
+
+  wp_update_user([
+    'ID' => $user_id,
+    'display_name' => $name,
+  ]);
+
+  dashboard_set_subscription_state($user_id, 'payment_required');
+
+  wp_set_current_user($user_id);
+  wp_set_auth_cookie($user_id);
+
+  $user = get_user_by('id', $user_id);
+
+  try {
+    $customer = dashboard_get_or_create_stripe_customer($user);
+
+    $session = \Stripe\Checkout\Session::create([
+      'mode' => 'subscription',
+      'customer' => $customer->id,
+      'line_items' => [[
+        'price' => dashboard_stripe_price_id(),
+        'quantity' => 1,
+      ]],
+      'success_url' => home_url('/dashboard?checkout=success'),
+      'cancel_url' => home_url('/subscribe-trial/?checkout=cancel'),
+      'client_reference_id' => (string) $user_id,
+      'metadata' => [
+        'wp_user_id' => (string) $user_id,
+      ],
+      'subscription_data' => [
+        'trial_period_days' => 14,
+        'metadata' => [
+          'wp_user_id' => (string) $user_id,
+        ],
+      ],
+      'allow_promotion_codes' => true,
+    ]);
+
+    wp_safe_redirect($session->url);
+    exit;
+  } catch (\Throwable $e) {
+    wp_safe_redirect('/subscribe-trial/?error=stripe_checkout_failed');
+    exit;
+  }
+}

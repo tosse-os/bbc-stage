@@ -48,8 +48,8 @@
       <a
         href="/analysis/{{ get_post_field('post_name', $post_id) }}"
         class="dashboard-card group rounded-xl p-5 flex items-center justify-between gap-4
-         transition-all duration-200 cursor-pointer
-         hover:-translate-y-0.5 hover:shadow-lg
+         transition-[background-color,box-shadow,transform] duration-300 ease-in-out cursor-pointer
+         hover:bg-slate-50/80 hover:-translate-y-0.5 hover:shadow-lg
          focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
         <div class="flex items-center gap-4 min-w-0">
@@ -59,7 +59,7 @@
           @endif
 
           <div class="min-w-0">
-            <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors">
+            <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors duration-300 ease-in-out">
               {{ get_the_title() }}
             </div>
             <div class="text-sm text-meta">
@@ -68,7 +68,7 @@
           </div>
         </div>
 
-        <span class="text-sm text-brand-primary whitespace-nowrap transition-transform duration-200 group-hover:translate-x-1">
+        <span class="text-sm btn btn-primary btn-sm whitespace-nowrap">
           View →
         </span>
 
@@ -125,10 +125,11 @@
       @endphp
 
       <a
+        <a
         href="/dashboard-media"
         class="dashboard-card group rounded-xl p-5 flex items-center gap-4
-         transition-all duration-200 cursor-pointer
-         hover:-translate-y-0.5 hover:shadow-lg
+         transition-all duration-300 ease-in-out cursor-pointer
+         hover:bg-slate-50/80 hover:-translate-y-0.5 hover:shadow-lg
          focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
         <img src="{{ $coverUrl }}"
@@ -143,7 +144,8 @@
           </div>
         </div>
 
-        <span class="text-sm text-brand-primary whitespace-nowrap transition-transform duration-200 group-hover:translate-x-1">
+        <span class="text-sm whitespace-nowrap
+        btn btn-primary btn-sm">
           View →
         </span>
 

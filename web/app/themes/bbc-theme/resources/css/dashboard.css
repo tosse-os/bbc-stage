@@ -586,3 +586,55 @@ body.sidebar-collapsed [data-sidebar-icon] {
   transform: translate(-50%, -8px);
 }
 
+
+/* FORM & ELEMENTS */
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-medium border shadow-sm disabled:pointer-events-none disabled:opacity-50;
+    transition-property: background-color, color, border-color, transform;
+    transition-duration: 300ms;
+    transition-timing-function: ease-in-out;
+  }
+
+  .btn-primary {
+    @apply text-white border-brand-primary/20 bg-brand-primary/60 hover:bg-brand-primary hover:text-white group-hover:bg-brand-primary group-hover:text-white;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .btn-md {
+    @apply px-4 py-2 text-sm;
+  }
+
+  .btn-lg {
+    @apply px-5 py-2.5 text-base;
+  }
+}
+
+.player-wrapper .player-card {
+  transition:
+    background-color 300ms ease,
+    border-color 300ms ease,
+    box-shadow 300ms ease,
+    transform 300ms ease;
+}
+
+.player-wrapper .player-glow {
+  transition:
+    opacity 300ms ease,
+    background 300ms ease;
+}
+
+.player-wrapper.is-playing .player-card {
+  border-color: rgba(0, 255, 255, 0.4);
+  box-shadow: 0 0 24px rgba(0, 255, 255, 0.16);
+  background-color: rgba(15, 23, 42, 0.42);
+}
+
+.player-wrapper.is-playing .player-glow {
+  opacity: 1;
+  background: radial-gradient(circle at top left, rgba(0, 255, 255, 0.28), transparent 55%);
+}

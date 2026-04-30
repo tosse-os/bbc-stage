@@ -174,11 +174,16 @@
   </div>
   @endif
 
-  <div class="dashboard-card rounded-xl px-6 py-6 shadow-sm">
+  <div class="dashboard-card rounded-xl px-6 py-6 shadow-sm max-w-4xl mx-auto max-w-[600px]">
     <div class="prose prose-lg max-w-none">
       {!! get_field('content_text') !!}
     </div>
   </div>
+  <!-- <div class="dashboard-card rounded-xl px-6 py-6 shadow-sm">
+    <div class="prose prose-lg max-w-none lg:columns-2 lg:gap-x-12">
+      {!! get_field('content_text') !!}
+    </div>
+  </div> -->
 
 </article>
 

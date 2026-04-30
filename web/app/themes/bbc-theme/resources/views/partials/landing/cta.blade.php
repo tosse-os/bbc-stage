@@ -26,7 +26,7 @@
     {{-- CTA --}}
     <div class="mt-14 flex flex-col items-center gap-4">
 
-      <a href="#"
+      <a href="/subscribe-trial"
         class="inline-flex items-center justify-center rounded-full bg-gradient-to-b from-[#5aaec4] to-[#3f879c] px-10 py-4 text-base font-semibold text-white shadow-[0_18px_50px_rgba(63,135,156,0.55)] transition-all duration-300 hover:from-[#3f879c] hover:to-[#35788b] hover:shadow-[0_22px_60px_rgba(63,135,156,0.6)]">
         Kostenlose Analysen sichern
       </a>

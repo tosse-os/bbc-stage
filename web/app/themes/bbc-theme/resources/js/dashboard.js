@@ -301,6 +301,41 @@ function initCustomAudioPlayers() {
     const muteBtn = wrapper.querySelector('.mute-btn');
     const currentTimeEl = wrapper.querySelector('.current-time');
     const durationEl = wrapper.querySelector('.duration');
+    const playerWrapper = wrapper.closest('.player-wrapper');
+
+    function setPlayIcon(button) {
+      button.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    }
+
+    function setPauseIcon(button) {
+      button.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+    }
+
+    function pauseOtherPlayers() {
+      document.querySelectorAll('.custom-audio-wrapper').forEach(otherWrapper => {
+
+        if (otherWrapper === wrapper) return;
+
+        const otherAudio = otherWrapper.querySelector('.hidden-audio');
+        const otherPlayBtn = otherWrapper.querySelector('.play-btn');
+        const otherPlayerWrapper = otherWrapper.closest('.player-wrapper');
+
+        if (!otherAudio || !otherPlayBtn) return;
+
+        otherAudio.pause();
+        setPlayIcon(otherPlayBtn);
+
+        if (otherPlayerWrapper) {
+          otherPlayerWrapper.classList.remove('is-playing');
+        }
+
+      });
+    }
+
+    function setPlayerActive(active) {
+      if (!playerWrapper) return;
+      playerWrapper.classList.toggle('is-playing', active);
+    }
 
     seekBar.oninput = () => {
       const seekTo = audio.duration * (seekBar.value / 100);
@@ -314,12 +349,38 @@ function initCustomAudioPlayers() {
 
     playBtn.onclick = () => {
       if (audio.paused) {
-        audio.play();
-        playBtn.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+        pauseOtherPlayers();
+
+        const playPromise = audio.play();
+
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            setPauseIcon(playBtn);
+            setPlayerActive(true);
+          }).catch(() => {
+            setPlayIcon(playBtn);
+            setPlayerActive(false);
+          });
+        } else {
+          setPauseIcon(playBtn);
+          setPlayerActive(true);
+        }
+
       } else {
         audio.pause();
-        playBtn.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        setPlayIcon(playBtn);
+        setPlayerActive(false);
       }
+    };
+
+    audio.onpause = () => {
+      setPlayIcon(playBtn);
+      setPlayerActive(false);
+    };
+
+    audio.onended = () => {
+      setPlayIcon(playBtn);
+      setPlayerActive(false);
     };
 
     audio.ontimeupdate = () => {
@@ -361,6 +422,8 @@ function initVideoModal() {
 
   if (!modal || !frame) return;
 
+  let activeVideoWrapper = null;
+
   function buildYouTubeEmbed(url) {
     const videoId = new URL(url).searchParams.get('v');
     if (!videoId) return null;
@@ -375,11 +438,43 @@ function initVideoModal() {
 
   function pauseCurrentVideo() {
     frame.src = '';
+
+    if (activeVideoWrapper) {
+      activeVideoWrapper.classList.remove('is-playing');
+      activeVideoWrapper = null;
+    }
   }
 
-  function openModal(embedUrl) {
+  function pauseAllAudioPlayers() {
+    document.querySelectorAll('.custom-audio-wrapper').forEach(wrapper => {
 
+      const audio = wrapper.querySelector('.hidden-audio');
+      const playBtn = wrapper.querySelector('.play-btn');
+      const playerWrapper = wrapper.closest('.player-wrapper');
+
+      if (!audio || !playBtn) return;
+
+      audio.pause();
+      playBtn.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+
+      if (playerWrapper) {
+        playerWrapper.classList.remove('is-playing');
+      }
+
+    });
+  }
+
+  function openModal(embedUrl, playerWrapper) {
+
+    pauseAllAudioPlayers();
     pauseCurrentVideo();
+
+    activeVideoWrapper = playerWrapper;
+
+    if (activeVideoWrapper) {
+      activeVideoWrapper.classList.add('is-playing');
+    }
+
     frame.src = embedUrl;
 
     modal.classList.remove('hidden');
@@ -430,7 +525,7 @@ function initVideoModal() {
 
     if (!embedUrl) return;
 
-    openModal(embedUrl);
+    openModal(embedUrl, trigger.closest('.player-wrapper'));
 
   });
 

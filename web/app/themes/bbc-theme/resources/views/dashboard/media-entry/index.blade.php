@@ -31,11 +31,11 @@
     @endphp
 
     {{-- Glassmorphism Card --}}
-    <div class="relative group p-[1px] rounded-3xl transition-all duration-500 hover:scale-[1.01]">
+    <div class="player-wrapper relative group p-[1px] rounded-3xl transition-all duration-500 hover:scale-[1.01]">
       {{-- Glow Effekt --}}
-      <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/10 to-transparent opacity-30"></div>
+      <div class="player-glow absolute inset-0 rounded-3xl bg-gradient-to-br from-white/10 to-transparent opacity-30"></div>
 
-      <div class="relative bg-slate-900/60 backdrop-blur-xl rounded-[23px] p-5 border border-white/5 shadow-2xl flex flex-col md:flex-row items-stretch gap-6">
+      <div class="player-card relative bg-slate-900/60 backdrop-blur-xl rounded-[23px] p-5 border border-white/5 shadow-2xl flex flex-col md:flex-row items-stretch gap-6">
 
         {{-- Cover: Die Klasse items-stretch am Parent und h-full hier sorgt für den bündigen Abschluss --}}
         <div class="relative w-full md:w-36 flex-shrink-0">
