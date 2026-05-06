@@ -12,7 +12,7 @@ Routing: WordPress Templates + Redirects
 State: user_meta + URL Parameter
 ================
 
-Anzahl Dateien: 55
+Anzahl Dateien: 61
 
 Dateistruktur:
 - app/ajax.php
@@ -36,9 +36,14 @@ Dateistruktur:
 - app/stripe-checkout.php
 - app/stripe-webhook.php
 - app/stripe.php
+- app/translations.php
+- resources/css/admin.css
 - resources/css/dashboard-app.css
 - resources/css/dashboard-theme.css
 - resources/css/dashboard.css
+- resources/css/editor.css
+- resources/css/landingpage-app.css
+- resources/css/landingpage.css
 - resources/js/dashboard-filters.js
 - resources/js/dashboard.js
 - resources/js/editor.js
@@ -70,6 +75,7 @@ Dateistruktur:
 - resources/views/page-dashboard-reports.blade.php
 - resources/views/page-dashboard-settings.blade.php
 - resources/views/page-dashboard.blade.php
+- resources/views/pages/page-trial.blade.php
 
 ========================
 
@@ -2701,6 +2707,99 @@ function dashboard_get_or_create_stripe_customer($user)
   return $customer;
 }
 
+add_action('admin_post_nopriv_dashboard_register_and_checkout', 'dashboard_handle_register_and_checkout');
+
+function dashboard_handle_register_and_checkout()
+{
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register_checkout')
+  ) {
+    wp_safe_redirect('/subscribe-trial/?error=invalid_request');
+    exit;
+  }
+
+  $email = sanitize_email($_POST['email'] ?? '');
+  $password = $_POST['password'] ?? '';
+  $name = sanitize_text_field($_POST['name'] ?? '');
+
+  if (!is_email($email)) {
+    wp_safe_redirect('/subscribe-trial/?error=email');
+    exit;
+  }
+
+  if (strlen($password) < 8) {
+    wp_safe_redirect('/subscribe-trial/?error=weak_password');
+    exit;
+  }
+
+  if (email_exists($email)) {
+    wp_safe_redirect('/subscribe-trial/?error=exists');
+    exit;
+  }
+
+  if (!dashboard_stripe_boot()) {
+    wp_safe_redirect('/subscribe-trial/?error=stripe_sdk_missing');
+    exit;
+  }
+
+  if (dashboard_stripe_checkout_config_error() !== '') {
+    wp_safe_redirect('/subscribe-trial/?error=stripe_not_configured');
+    exit;
+  }
+
+  $user_id = wp_create_user($email, $password, $email);
+
+  if (is_wp_error($user_id)) {
+    wp_safe_redirect('/subscribe-trial/?error=create_failed');
+    exit;
+  }
+
+  wp_update_user([
+    'ID' => $user_id,
+    'display_name' => $name,
+  ]);
+
+  dashboard_set_subscription_state($user_id, 'payment_required');
+
+  wp_set_current_user($user_id);
+  wp_set_auth_cookie($user_id);
+
+  $user = get_user_by('id', $user_id);
+
+  try {
+    $customer = dashboard_get_or_create_stripe_customer($user);
+
+    $session = \Stripe\Checkout\Session::create([
+      'mode' => 'subscription',
+      'customer' => $customer->id,
+      'line_items' => [[
+        'price' => dashboard_stripe_price_id(),
+        'quantity' => 1,
+      ]],
+      'success_url' => home_url('/dashboard?checkout=success'),
+      'cancel_url' => home_url('/subscribe-trial/?checkout=cancel'),
+      'client_reference_id' => (string) $user_id,
+      'metadata' => [
+        'wp_user_id' => (string) $user_id,
+      ],
+      'subscription_data' => [
+        'trial_period_days' => 14,
+        'metadata' => [
+          'wp_user_id' => (string) $user_id,
+        ],
+      ],
+      'allow_promotion_codes' => true,
+    ]);
+
+    wp_safe_redirect($session->url);
+    exit;
+  } catch (\Throwable $e) {
+    wp_safe_redirect('/subscribe-trial/?error=stripe_checkout_failed');
+    exit;
+  }
+}
+
 
 ===== app/stripe-webhook.php =====
 
@@ -3382,6 +3481,213 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
   }
 
   dashboard_set_subscription_state($userId, 'payment_required');
+}
+
+
+===== app/translations.php =====
+
+<?php
+
+/**
+ * Registriert Footer- und Dashboard-Texte für Polylang.
+ */
+add_action('init', function () {
+
+  /* Footer */
+  pll_register_string('footer_follow', 'Follow Us', 'Footer');
+  pll_register_string('footer_about', 'About', 'Footer');
+  pll_register_string('footer_services', 'Services', 'Footer');
+  pll_register_string('footer_contact', 'Contact', 'Footer');
+  pll_register_string('footer_privacy', 'Privacy policy', 'Footer');
+  pll_register_string('footer_imprint', 'Imprint', 'Footer');
+
+  /* Dashboard */
+  pll_register_string('dashboard_copy', 'Kopieren', 'Dashboard');
+  pll_register_string('dashboard_copied', 'Kopiert!', 'Dashboard');
+});
+
+
+===== resources/css/admin.css =====
+
+/* ACF Admin UI Redesign */
+
+.acf-postbox {
+  border: none !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08) !important;
+  margin-bottom: 28px !important;
+}
+
+/* Section Header */
+.acf-postbox .postbox-header {
+  background: linear-gradient(180deg, #eaf4f6 0%, #d7e9ee 100%) !important;
+  border-bottom: 1px solid #d0e3e8 !important;
+  padding: 16px 20px !important;
+}
+
+.acf-postbox .postbox-header h2 {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #2c5c6a !important;
+}
+
+/* Content */
+.acf-postbox .inside {
+  background: #f8fbfc !important;
+  padding: 18px !important;
+}
+
+/* Feature Cards */
+.acf-field[data-name^="feature_"] {
+  background: #ffffff !important;
+  border-radius: 14px !important;
+  padding: 16px !important;
+  margin-bottom: 16px !important;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #e4eef2 !important;
+}
+
+/* Labels */
+.acf-label label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #3f6b78 !important;
+}
+
+/* Inputs */
+.acf-input input,
+.acf-input textarea {
+  border-radius: 10px !important;
+  border: 1px solid #cfe3ea !important;
+  padding: 10px 12px !important;
+  font-size: 14px !important;
+}
+
+.acf-input input:focus,
+.acf-input textarea:focus {
+  border-color: #35788b !important;
+  box-shadow: 0 0 0 3px rgba(63, 135, 156, 0.2) !important;
+}
+
+/* Tabs */
+.acf-tab-group {
+  border-bottom: none !important;
+  margin-bottom: 10px !important;
+}
+
+.acf-tab-button {
+  border-radius: 10px !important;
+  background: #eef6f8 !important;
+  color: #3f6b78 !important;
+  padding: 6px 12px !important;
+  margin-right: 6px !important;
+}
+
+.acf-tab-button.-active {
+  background: #3f879c !important;
+  color: #fff !important;
+}
+
+/* Spacing */
+.acf-field {
+  margin-bottom: 12px !important;
+}
+
+/* Collapse animation smoother */
+.postbox .inside {
+  transition: all 0.3s ease !important;
+}
+
+/* Admin Background soften */
+#wpbody-content {
+  background: #f4f8f9;
+}
+
+
+
+/* Feature Cards (Group-Level) */
+.acf-field[data-name^="feature_"] {
+  border: 1px solid #e3e7ea;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+/* Hover */
+.acf-field[data-name^="feature_"]:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+/* Accordion Header */
+.acf-field[data-name^="feature_"] .acf-accordion-title {
+  background: #f4f7f9;
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  border-bottom: 1px solid #e3e7ea;
+}
+
+/* Active */
+.acf-field[data-name^="feature_"] .acf-accordion.-open .acf-accordion-title {
+  background: #e3edf5;
+}
+
+/* Content */
+.acf-field[data-name^="feature_"] .acf-fields {
+  padding: 16px;
+  background: #fafbfc;
+}
+
+/* Labels */
+.acf-field[data-name^="feature_"] .acf-label label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #6b7c93;
+}
+
+/* Inputs */
+.acf-field[data-name^="feature_"] input,
+.acf-field[data-name^="feature_"] textarea {
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  padding: 8px 10px;
+}
+
+/* Textarea */
+.acf-field[data-name^="feature_"] textarea {
+  min-height: 120px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Sticky Publish Box */
+#postbox-container-1 {
+  position: sticky;
+  top: 20px;
+}
+
+#submitdiv {
+  position: fixed;
+  bottom: 10px;
+  z-index: 5;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
 
@@ -4244,6 +4550,737 @@ body.sidebar-collapsed [data-sidebar-icon] {
 }
 
 
+/* FORM & ELEMENTS */
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-medium border shadow-sm disabled:pointer-events-none disabled:opacity-50;
+    transition-property: background-color, color, border-color, transform;
+    transition-duration: 300ms;
+    transition-timing-function: ease-in-out;
+  }
+
+  .btn-primary {
+    @apply text-white border-brand-primary/20 bg-brand-primary/60 hover:bg-brand-primary hover:text-white group-hover:bg-brand-primary group-hover:text-white;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .btn-md {
+    @apply px-4 py-2 text-sm;
+  }
+
+  .btn-lg {
+    @apply px-5 py-2.5 text-base;
+  }
+}
+
+.player-wrapper .player-card {
+  transition:
+    background-color 300ms ease,
+    border-color 300ms ease,
+    box-shadow 300ms ease,
+    transform 300ms ease;
+}
+
+.player-wrapper .player-glow {
+  transition:
+    opacity 300ms ease,
+    background 300ms ease;
+}
+
+.player-wrapper.is-playing .player-card {
+  border-color: rgba(0, 255, 255, 0.4);
+  box-shadow: 0 0 24px rgba(0, 255, 255, 0.16);
+  background-color: rgba(15, 23, 42, 0.42);
+}
+
+.player-wrapper.is-playing .player-glow {
+  opacity: 1;
+  background: radial-gradient(circle at top left, rgba(0, 255, 255, 0.28), transparent 55%);
+}
+
+
+===== resources/css/editor.css =====
+
+@import "tailwindcss";
+
+/* .acf-postbox .postbox-header {
+  background: #acdbe5!important;
+} */
+
+/* 1. Den Standard-Zustand erzwingen */
+.postbox .inside {
+  display: block !important;
+  /* Verhindert das harte Ausblenden durch WP */
+  overflow: hidden !important;
+  max-height: 2000px;
+  opacity: 1;
+  transition: max-height 0.4s ease-in-out, opacity 0.3s ease, padding 0.4s ease !important;
+}
+
+/* 2. Den geschlossenen Zustand erzwingen */
+.postbox.closed .inside {
+  display: block !important;
+  /* Bleibt im DOM für die Animation */
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* 3. Verhindert das "Springen" von Inhalten */
+.postbox .inside>* {
+  min-height: 0;
+}
+
+
+/* fix hover bug */
+.edit-post-meta-boxes-area .postbox .handlediv {
+  height: auto!important;
+  width: 44px;
+}
+
+
+/* Admin Backend  - obsolet weil Gutenberg? */
+
+.wp-list-table .column-page_template {
+  width: 220px;
+  white-space: nowrap;
+}
+
+.acf-image-uploader .image-wrap img {
+  max-height: 140px !important;
+}
+
+.edit-post-sidebar {
+  background: #f8fafc;
+}
+
+.components-panel {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.components-panel__header {
+  background: #eef2f7;
+  font-weight: 600;
+}
+
+.interface-interface-skeleton__sidebar {
+  width: 320px;
+}
+
+.acf-flexible-content .layout {
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.acf-flexible-content .layout .acf-fc-layout-handle {
+  font-size: 16px;
+  font-weight: 600;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.acf-fields>.acf-field {
+  padding: 12px 16px;
+}
+
+.acf-label label {
+  font-weight: 500;
+}
+
+
+===== resources/css/landingpage-app.css =====
+
+@config "../../tailwind.config.js";
+
+@import "tailwindcss";
+
+@source "../views/";
+@source "../../app/";
+
+@import "./landingpage.css";/* customizing */
+
+/*@import "./responsive.css";*/
+
+@layer base {
+  body {
+    @apply font-sans;
+  }
+}
+
+@layer utilities {
+  .container-content {
+    @apply mx-auto w-full max-w-content px-6;
+  }
+}
+
+/* base setup and reset */
+.sr-only:not(:focus):not(:active) {
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  position: absolute;
+  overflow: hidden;
+}
+
+/* layout */
+body {
+  overflow-x: clip;
+}
+
+.full-bleed {
+  width: 99.45vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}
+
+
+===== resources/css/landingpage.css =====
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-300.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('../fonts/open-sans-v43-latin-800.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* sections */
+#about {
+  background: #f8f6f7;
+}
+
+/* contact */
+
+/* .bg-contact {
+  background:
+    radial-gradient(ellipse at 60% 65%,
+      rgba(230, 245, 248, 0.9) 0%,
+      rgba(210, 232, 239, 0.95) 40%,
+      rgba(190, 220, 230, 1) 70%,
+      rgba(165, 205, 218, 1) 100%),
+    linear-gradient(180deg,
+      rgba(140, 190, 205, 1) 0%,
+      rgba(170, 210, 222, 1) 35%,
+      rgba(205, 230, 238, 1) 100%);
+} */
+
+/* .bg-contact {
+  background: linear-gradient(180deg,
+      #8cbecd 0%,
+      #9fc9d6 18%,
+      #b6d8e2 42%,
+      #cfe6ed 70%,
+      #b5d5de 100%);
+} */
+
+.bg-contact {
+  width: 100%;
+    height: 100%;
+    background:
+      radial-gradient(ellipse at center,
+        rgba(223, 239, 243, 0.85) 0%,
+        rgba(225, 242, 247, 0.95) 35%,
+        rgba(198, 224, 232, 1) 70%,
+        rgba(170, 205, 216, 1) 100%);
+}
+
+.contact-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.contact-card-soft {
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(244, 250, 252, 0.70) 40%,
+      rgba(233, 244, 248, 0.68) 70%,
+      rgba(227, 240, 245, 0.36) 100%);
+  /* backdrop-filter: blur(2px); */
+}
+
+/* contact form */
+
+.input-focus-premium {
+  @apply transition-all duration-300 outline-none;
+}
+
+.input-focus-premium:hover {
+  @apply border-[#5fa6bb];
+}
+
+.input-focus-premium:focus {
+  /* Intensivere Markenfarbe für den Rahmen */
+  border-color: #35788b !important;
+  /* Kräftigerer Glow-Ring (20% Deckkraft für mehr Intensität) */
+  box-shadow: 0 0 0 4px rgba(63, 135, 156, 0.25);
+}
+
+
+/* team */
+
+.bg-team {
+  background: linear-gradient(180deg,
+      #d7e9ee 0%,
+      #c4dee6 45%,
+      #80afbf 100%);
+}
+
+.team-pattern {
+  width: 100%;
+    height: 100%;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    background-size: 48px 48px;
+}
+
+.team-photo-wrapper {
+  position: relative;
+  width: 220px;
+  margin: 0 auto;
+  border-radius: 26px;
+  overflow: hidden;
+  transition: transform 300ms ease, box-shadow 300ms ease;
+  box-shadow: 0 18px 45px rgba(15, 70, 85, 0.22);
+}
+
+.group:hover .team-photo-wrapper {
+  transform: translateY(-4px);
+  box-shadow: 0 32px 80px rgba(15, 70, 85, 0.35);
+}
+
+.team-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 300ms ease;
+}
+
+.group:hover .team-photo {
+  transform: scale(1.06);
+}
+
+
+/* market insights */
+.bg-market-insights {
+  background: linear-gradient(180deg,
+      #d7e9ee 0%,
+      #eaf4f6 100%);
+}
+
+.market-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.market-insights-bg {
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at center,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(225, 242, 247, 0.95) 35%,
+      rgba(198, 224, 232, 1) 70%,
+      rgba(170, 205, 216, 1) 100%);
+}
+
+.market-insight--premium {
+  position: relative;
+}
+
+/* meine gute alte */
+ .market-insight--premium .premium-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  background: linear-gradient(to right,
+      rgba(20, 120, 160, 0.15),
+      rgba(20, 120, 160, 0.55),
+      rgba(20, 120, 160, 0.15));
+
+  backdrop-filter: blur(6px);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  pointer-events: none;
+
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* gülden */
+/* .market-insight--premium .premium-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 60px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  background:
+    radial-gradient(ellipse at center,
+      rgba(255, 225, 150, 0.64) 0%,
+      rgba(195, 155, 80, 0.48) 40%,
+      rgba(120, 95, 50, 0.32) 75%,
+      rgba(120, 95, 50, 0.26) 100%);
+
+  backdrop-filter: blur(18px) saturate(1.32) brightness(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.32) brightness(1.05);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.26);
+
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+
+  pointer-events: none;
+} */
+
+.market-insight--premium .premium-banner svg {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+  width: 35px;
+  height: 35px;
+  fill: currentColor;
+}
+
+.crown {
+  background: linear-gradient(180deg,
+      #fff1b8 0%,
+      #e6c36a 35%,
+      #cfa23f 65%,
+      #a97c1f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* all pattern sections */
+.pattern-section {
+  position: relative;
+  mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+}
+
+
+
+
+
+/* CTA Section */
+
+.bg-cta {
+background: radial-gradient(ellipse at center,
+  #eef7f9 0%,
+    #cfe3e9 30%,
+    #8fb6c3 65%,
+    #6f9eae 100%);
+}
+
+.cta-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.10) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+
+
+
+
+/* standard pages */
+.page-template-template-plain #siteHeader {
+  background-color: rgba(2, 6, 23, 0.75);
+}
+
+.bg-standard {
+  background: linear-gradient(180deg,
+      #d7e9ee 0%,
+      #c4dee6 45%,
+      #80afbf 100%);
+}
+
+.standard-pattern {
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+
+/* content */
+body {
+  color: #323232;
+}
+
+a {
+  text-decoration: none;
+}
+
+.nav-link.is-active {
+  @apply text-brand-primary;
+}
+
+.nav-link {
+  @apply transition-colors duration-200 ease-in-out;
+}
+
+.nav-link:hover {
+  @apply text-slate-400;
+}
+
+/* effects */
+:root {
+  --glow-color: 72, 146, 168;
+  --glow-opacity-strong: 0.55;
+  --glow-opacity-mid: 0.35;
+  --glow-opacity-soft: 0.15;
+}
+
+.glow-icon {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glow-icon::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at center,
+      rgba(var(--glow-color), var(--glow-opacity-strong)) 0%,
+      rgba(var(--glow-color), var(--glow-opacity-mid)) 35%,
+      rgba(var(--glow-color), var(--glow-opacity-soft)) 55%,
+      transparent 70%);
+  filter: blur(6px);
+  opacity: 0.75;
+  z-index: 0;
+}
+
+.glow-icon svg {
+  position: relative;
+  z-index: 1;
+}
+
+.glow-icon::before {
+  transition:
+    opacity 220ms ease,
+    filter 220ms ease,
+    inset 220ms ease;
+}
+
+.glow-icon:hover::before {
+  opacity: 1;
+  filter: blur(8px);
+  inset: -8px;
+}
+
+
+/* top navbar effects */
+#siteHeader {
+  background-color: rgba(2, 6, 23, 0.35);
+}
+
+#siteHeader.is-scrolled {
+  background-color: rgba(2, 6, 23, 0.75);
+}
+
+.reveal-text {
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.reveal-media {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 600ms ease,
+    transform 600ms ease;
+}
+
+.reveal-text.is-visible {
+  opacity: 1;
+}
+
+.reveal-media.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+@keyframes reveal-float-once {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.reveal-float-once {
+  animation: reveal-float-once 1.2s ease-out 1;
+}
+
+
+
+/* footer */
+
+ul.footer-nav {
+  display: flex !important;
+  flex-direction: row !important;
+  /* Von Spalte auf Reihe umschalten */
+  flex-wrap: wrap !important;
+  /* WICHTIG: Erlaubt den Umbruch in neue Zeilen */
+  justify-content: flex-end;
+  /* Alles bleibt rechtsbündig */
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.footer-nav li.footer-main {
+  width: 100%;
+  /* 100% Breite erzwingt, dass der nächste Link darunter landet */
+  text-align: right;
+  margin-bottom: 13px;
+}
+
+.footer-nav li.footer-main a {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgb(226 232 240);
+  transition: color 0.2s ease;
+}
+
+.footer-nav li.footer-legal {
+  display: inline-flex;
+  /* Erlaubt horizontales Nebeneinanderstehen */
+  align-items: center;
+  /* Zentriert den Inhalt (Link und Punkt) vertikal */
+  height: auto;
+  /* Verhindert eine erzwungene Höhe */
+  vertical-align: middle;
+  /* Zusätzliche Absicherung für Inline-Elemente */
+  margin-top: 20px;
+}
+
+.footer-nav li.footer-legal a {
+  font-size: 12px;
+  color: rgb(148 163 184);
+  white-space: nowrap;
+}
+
+.footer-nav li.footer-legal a:hover {
+  color:#fff;
+}
+
+/* 4. DER TRENNPUNKT: Nur zwischen den Legal-Links */
+.footer-nav li.footer-legal+li.footer-legal::before {
+  content: "·";
+  margin: 0 8px;
+  /* Der Punkt bekommt links und rechts Platz */
+  color: rgb(148 163 184);
+}
+
+
 
 ===== resources/js/dashboard-filters.js =====
 
@@ -4685,6 +5722,41 @@ function initCustomAudioPlayers() {
     const muteBtn = wrapper.querySelector('.mute-btn');
     const currentTimeEl = wrapper.querySelector('.current-time');
     const durationEl = wrapper.querySelector('.duration');
+    const playerWrapper = wrapper.closest('.player-wrapper');
+
+    function setPlayIcon(button) {
+      button.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    }
+
+    function setPauseIcon(button) {
+      button.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+    }
+
+    function pauseOtherPlayers() {
+      document.querySelectorAll('.custom-audio-wrapper').forEach(otherWrapper => {
+
+        if (otherWrapper === wrapper) return;
+
+        const otherAudio = otherWrapper.querySelector('.hidden-audio');
+        const otherPlayBtn = otherWrapper.querySelector('.play-btn');
+        const otherPlayerWrapper = otherWrapper.closest('.player-wrapper');
+
+        if (!otherAudio || !otherPlayBtn) return;
+
+        otherAudio.pause();
+        setPlayIcon(otherPlayBtn);
+
+        if (otherPlayerWrapper) {
+          otherPlayerWrapper.classList.remove('is-playing');
+        }
+
+      });
+    }
+
+    function setPlayerActive(active) {
+      if (!playerWrapper) return;
+      playerWrapper.classList.toggle('is-playing', active);
+    }
 
     seekBar.oninput = () => {
       const seekTo = audio.duration * (seekBar.value / 100);
@@ -4698,12 +5770,38 @@ function initCustomAudioPlayers() {
 
     playBtn.onclick = () => {
       if (audio.paused) {
-        audio.play();
-        playBtn.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+        pauseOtherPlayers();
+
+        const playPromise = audio.play();
+
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            setPauseIcon(playBtn);
+            setPlayerActive(true);
+          }).catch(() => {
+            setPlayIcon(playBtn);
+            setPlayerActive(false);
+          });
+        } else {
+          setPauseIcon(playBtn);
+          setPlayerActive(true);
+        }
+
       } else {
         audio.pause();
-        playBtn.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        setPlayIcon(playBtn);
+        setPlayerActive(false);
       }
+    };
+
+    audio.onpause = () => {
+      setPlayIcon(playBtn);
+      setPlayerActive(false);
+    };
+
+    audio.onended = () => {
+      setPlayIcon(playBtn);
+      setPlayerActive(false);
     };
 
     audio.ontimeupdate = () => {
@@ -4745,6 +5843,8 @@ function initVideoModal() {
 
   if (!modal || !frame) return;
 
+  let activeVideoWrapper = null;
+
   function buildYouTubeEmbed(url) {
     const videoId = new URL(url).searchParams.get('v');
     if (!videoId) return null;
@@ -4759,11 +5859,43 @@ function initVideoModal() {
 
   function pauseCurrentVideo() {
     frame.src = '';
+
+    if (activeVideoWrapper) {
+      activeVideoWrapper.classList.remove('is-playing');
+      activeVideoWrapper = null;
+    }
   }
 
-  function openModal(embedUrl) {
+  function pauseAllAudioPlayers() {
+    document.querySelectorAll('.custom-audio-wrapper').forEach(wrapper => {
 
+      const audio = wrapper.querySelector('.hidden-audio');
+      const playBtn = wrapper.querySelector('.play-btn');
+      const playerWrapper = wrapper.closest('.player-wrapper');
+
+      if (!audio || !playBtn) return;
+
+      audio.pause();
+      playBtn.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+
+      if (playerWrapper) {
+        playerWrapper.classList.remove('is-playing');
+      }
+
+    });
+  }
+
+  function openModal(embedUrl, playerWrapper) {
+
+    pauseAllAudioPlayers();
     pauseCurrentVideo();
+
+    activeVideoWrapper = playerWrapper;
+
+    if (activeVideoWrapper) {
+      activeVideoWrapper.classList.add('is-playing');
+    }
+
     frame.src = embedUrl;
 
     modal.classList.remove('hidden');
@@ -4814,7 +5946,7 @@ function initVideoModal() {
 
     if (!embedUrl) return;
 
-    openModal(embedUrl);
+    openModal(embedUrl, trigger.closest('.player-wrapper'));
 
   });
 
@@ -5877,8 +7009,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
         <div class="flex items-center justify-end">
           <span
-            class="text-sm font-medium text-brand-primary border border-brand-primary/20 bg-brand-primary/5
-                   group-hover:bg-brand-primary group-hover:text-white px-4 py-2 rounded-lg transition-all shadow-sm">
+            class="btn btn-primary btn-md">
             View Analysis →
           </span>
         </div>
@@ -6212,11 +7343,16 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
   </div>
   @endif
 
-  <div class="dashboard-card rounded-xl px-6 py-6 shadow-sm">
+  <div class="dashboard-card rounded-xl px-6 py-6 shadow-sm max-w-4xl mx-auto max-w-[600px]">
     <div class="prose prose-lg max-w-none">
       {!! get_field('content_text') !!}
     </div>
   </div>
+  <!-- <div class="dashboard-card rounded-xl px-6 py-6 shadow-sm">
+    <div class="prose prose-lg max-w-none lg:columns-2 lg:gap-x-12">
+      {!! get_field('content_text') !!}
+    </div>
+  </div> -->
 
 </article>
 
@@ -6347,11 +7483,11 @@ $state = dashboard_access_state(get_current_user_id());
     @endphp
 
     {{-- Glassmorphism Card --}}
-    <div class="relative group p-[1px] rounded-3xl transition-all duration-500 hover:scale-[1.01]">
+    <div class="player-wrapper relative group p-[1px] rounded-3xl transition-all duration-500 hover:scale-[1.01]">
       {{-- Glow Effekt --}}
-      <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/10 to-transparent opacity-30"></div>
+      <div class="player-glow absolute inset-0 rounded-3xl bg-gradient-to-br from-white/10 to-transparent opacity-30"></div>
 
-      <div class="relative bg-slate-900/60 backdrop-blur-xl rounded-[23px] p-5 border border-white/5 shadow-2xl flex flex-col md:flex-row items-stretch gap-6">
+      <div class="player-card relative bg-slate-900/60 backdrop-blur-xl rounded-[23px] p-5 border border-white/5 shadow-2xl flex flex-col md:flex-row items-stretch gap-6">
 
         {{-- Cover: Die Klasse items-stretch am Parent und h-full hier sorgt für den bündigen Abschluss --}}
         <div class="relative w-full md:w-36 flex-shrink-0">
@@ -6481,8 +7617,8 @@ $state = dashboard_access_state(get_current_user_id());
       <a
         href="/analysis/{{ get_post_field('post_name', $post_id) }}"
         class="dashboard-card group rounded-xl p-5 flex items-center justify-between gap-4
-         transition-all duration-200 cursor-pointer
-         hover:-translate-y-0.5 hover:shadow-lg
+         transition-[background-color,box-shadow,transform] duration-300 ease-in-out cursor-pointer
+         hover:bg-slate-50/80 hover:-translate-y-0.5 hover:shadow-lg
          focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
         <div class="flex items-center gap-4 min-w-0">
@@ -6492,7 +7628,7 @@ $state = dashboard_access_state(get_current_user_id());
           @endif
 
           <div class="min-w-0">
-            <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors">
+            <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors duration-300 ease-in-out">
               {{ get_the_title() }}
             </div>
             <div class="text-sm text-meta">
@@ -6501,7 +7637,7 @@ $state = dashboard_access_state(get_current_user_id());
           </div>
         </div>
 
-        <span class="text-sm text-brand-primary whitespace-nowrap transition-transform duration-200 group-hover:translate-x-1">
+        <span class="text-sm btn btn-primary btn-sm whitespace-nowrap">
           View →
         </span>
 
@@ -6558,10 +7694,11 @@ $state = dashboard_access_state(get_current_user_id());
       @endphp
 
       <a
+        <a
         href="/dashboard-media"
         class="dashboard-card group rounded-xl p-5 flex items-center gap-4
-         transition-all duration-200 cursor-pointer
-         hover:-translate-y-0.5 hover:shadow-lg
+         transition-all duration-300 ease-in-out cursor-pointer
+         hover:bg-slate-50/80 hover:-translate-y-0.5 hover:shadow-lg
          focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
         <img src="{{ $coverUrl }}"
@@ -6576,7 +7713,8 @@ $state = dashboard_access_state(get_current_user_id());
           </div>
         </div>
 
-        <span class="text-sm text-brand-primary whitespace-nowrap transition-transform duration-200 group-hover:translate-x-1">
+        <span class="text-sm whitespace-nowrap
+        btn btn-primary btn-sm">
           View →
         </span>
 
@@ -7374,7 +8512,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
       </div>
       @endif
 
-      <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,680px)_minmax(260px,1fr)] gap-8 items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,680px)_minmax(260px,1fr)] gap-8 items-start">
 
         <div class="space-y-6">
 
@@ -7445,7 +8583,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
                     <button
                       type="submit"
-                      class="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-white/10 bg-white/5 text-white text-sm font-semibold hover:bg-white/10 transition leading-none whitespace-nowrap">
+                      class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white text-sm font-semibold hover:bg-white/10 transition leading-none whitespace-nowrap">
                       <svg xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
                         fill="none"
@@ -7547,7 +8685,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
         </div>
 
-        <aside class="xl:pt-8 px-2">
+        <aside class="lg:pt-8 px-2">
           <div class="max-w-sm text-white">
             <p class="text-base font-semibold leading-relaxed">
               Um Abonnement, Zahlungsdaten oder Rechnungsdetails zu ändern, nutze bitte das sichere Stripe Portal.
@@ -8094,5 +9232,329 @@ Template Name: Dashboard
 
 @section('content')
 @include('dashboard.overview')
+@endsection
+
+
+===== resources/views/pages/page-trial.blade.php =====
+
+{{--
+Template Name: Conversion – Trial
+--}}
+
+@extends('layouts.conversion')
+
+@section('content')
+
+<section class="relative min-h-screen overflow-hidden">
+
+  <div class="absolute inset-0">
+    <img
+      src="{{ Vite::asset('resources/images/landingpage/hero-bg.jpg') }}"
+      alt=""
+      class="h-full w-full object-cover">
+    <div class="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/60 to-slate-950/70"></div>
+  </div>
+
+  <div class="relative">
+    <div class="container-content pt-24 pb-32">
+
+      <div class="mx-auto max-w-5xl text-center">
+        <h1 class="text-3xl font-semibold tracking-tight text-white lg:text-4xl">
+          {!! pll__('Premium-Analysen 14 Tage testen') !!}
+        </h1>
+
+        <p class="mt-4 text-lg text-slate-300">
+          <span class="font-semibold text-brand-primary">4,99 €</span>
+          {!! pll__('für 14 Tage Zugang') !!}
+          · {!! pll__('danach 49,99 € / Monat') !!}
+          · {!! pll__('jederzeit kündbar') !!}
+        </p>
+
+        <div class="mt-10 flex items-center justify-center gap-4 text-sm text-slate-400">
+          <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-white font-semibold">1</span> -->
+          <span>{!! pll__('In 2 Minuten freigeschaltet') !!}</span>
+          <span class="h-px w-16 bg-white/20 opacity-80"></span>
+          <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/30 text-white font-semibold">2</span> -->
+          <span>{!! pll__('Sichere Zahlung über Stripe') !!}</span>
+          <span class="h-px w-16 bg-white/20 opacity-80"></span>
+          <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/30 text-white font-semibold">3</span> -->
+          <span>{!! pll__('Sofortiger Zugriff') !!}</span>
+        </div>
+      </div>
+
+      <div class="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-start">
+
+        {{-- LEFT · FORM --}}
+        <div class="rounded-3xl border border-white/10 bg-slate-950/45 backdrop-blur-xl p-6 md:p-8 shadow-2xl">
+
+          <div class="flex items-start gap-4">
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M5 16L3 6l5.5 4L12 4l3.5 6L21 6l-2 10H5zm0 2h14v2H5v-2z"></path>
+              </svg>
+            </div>
+
+            <div>
+              <h2 class="text-xl font-semibold text-white">
+                {!! pll__('Premium-Zugang starten') !!}
+              </h2>
+              <p class="mt-1 text-sm text-slate-400">
+                {!! pll__('Zugangsdaten anlegen. Sicher bezahlen. Direkt starten.') !!}
+              </p>
+            </div>
+          </div>
+
+          <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="mt-8 flex flex-col gap-4">
+            <input type="hidden" name="action" value="dashboard_register_and_checkout">
+            @php wp_nonce_field('dashboard_register_checkout', '_wpnonce'); @endphp
+
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-1">
+                {!! pll__('E-Mail-Adresse') !!}
+              </label>
+              <input
+                type="email"
+                name="email"
+                required
+                autocomplete="email"
+                placeholder="name@beispiel.de"
+                class="w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-1">
+                {!! pll__('Passwort') !!}
+              </label>
+              <input
+                type="password"
+                name="password"
+                required
+                minlength="8"
+                autocomplete="new-password"
+                placeholder="{!! pll__('Mindestens 8 Zeichen') !!}"
+                class="w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">
+                  {!! pll__('Vorname') !!}
+                </label>
+                <input
+                  type="text"
+                  name="first_name"
+                  autocomplete="given-name"
+                  placeholder="Max"
+                  class="w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">
+                  {!! pll__('Nachname') !!}
+                </label>
+                <input
+                  type="text"
+                  name="last_name"
+                  autocomplete="family-name"
+                  placeholder="Mustermann"
+                  class="w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 pt-2 md:grid-cols-3">
+              <div class="flex gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3.5 19 6.6v5.1c0 4.5-2.9 7.7-7 9-4.1-1.3-7-4.5-7-9V6.6l7-3.1Z" />
+                    <path d="m9.3 12 1.8 1.8 3.9-4.1" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-sm font-semibold text-white">{!! pll__('Sicher') !!}</div>
+                  <div class="text-xs text-slate-400">{!! pll__('DSGVO-konform') !!}</div>
+                </div>
+              </div>
+
+              <div class="flex gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="6" width="14" height="14" rx="3" />
+                    <path d="M8 4v4" />
+                    <path d="M16 4v4" />
+                    <path d="M8.5 12.8 11 15.3l4.7-5" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-sm font-semibold text-white">{!! pll__('Kündbar') !!}</div>
+                  <div class="text-xs text-slate-400">{!! pll__('Jederzeit möglich') !!}</div>
+                </div>
+              </div>
+
+              <div class="flex gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="6" width="16" height="12" rx="3" />
+                    <path d="M4 10h16" />
+                    <path d="M8 15h3" />
+                    <path d="M15.5 15h.01" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-sm font-semibold text-white">{!! pll__('Stripe') !!}</div>
+                  <div class="text-xs text-slate-400">{!! pll__('Sichere Zahlung') !!}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="border-t border-white/10 pt-6">
+              <label class="flex items-start gap-3 text-sm text-slate-400">
+                <input
+                  type="checkbox"
+                  name="terms"
+                  value="1"
+                  required
+                  class="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950 text-brand-primary focus:ring-brand-primary">
+                <span>
+                  {!! pll__('Ich stimme den') !!}
+                  <a href="/agb/" class="text-brand-primary hover:text-white">{!! pll__('AGB') !!}</a>
+                  {!! pll__('und der') !!}
+                  <a href="/datenschutz/" class="text-brand-primary hover:text-white">{!! pll__('Datenschutzerklärung') !!}</a>
+                  {!! pll__('zu.') !!}
+                </span>
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              class="w-full rounded-xl bg-brand-primary px-6 py-4 text-base font-semibold text-white shadow-lg shadow-brand-primary/20 transition hover:bg-brand-primaryHover">
+              {!! pll__('Jetzt Testzugang freischalten') !!}
+              <span class="block pt-1 text-xs font-normal text-white/80">
+                {!! pll__('14 Tage Premium-Zugang für einmalig 4,99 €') !!}
+              </span>
+            </button>
+
+            <p class="text-center text-xs text-slate-500">
+              {!! pll__('Sofortige Freischaltung · jederzeit kündbar · DSGVO-konform') !!}
+            </p>
+          </form>
+        </div>
+
+        {{-- RIGHT · PLAN CARD --}}
+        <aside class="rounded-3xl border border-white/10 bg-slate-950/45 backdrop-blur-xl p-6 md:p-8 shadow-2xl">
+          <!-- <div class="flex h-7 w-7 items-center justify-center rounded-2xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M5 16L3 6l5.5 4L12 4l3.5 6L21 6l-2 10H5zm0 2h14v2H5v-2z"></path>
+            </svg>
+          </div> -->
+
+          <div class="flex items-start gap-4">
+            <!-- <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M5 16L3 6l5.5 4L12 4l3.5 6L21 6l-2 10H5zm0 2h14v2H5v-2z"></path>
+              </svg>
+            </div> -->
+
+            <div>
+              <h2 class="text-xl font-semibold text-white">
+                {!! pll__('Ihr Premium-Testzugang') !!}
+              </h2>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <div class="text-brand-primary font-semibold">
+              {!! pll__('Testphase') !!}
+            </div>
+
+            <div class="mt-2 flex items-end gap-3">
+              <span class="text-3xl font-semibold text-brand-primary">4,99 €</span>
+              <span class="pb-2 text-slate-300">{!! pll__('einmalig') !!}</span>
+            </div>
+
+            <p class="mt-2 text-sm text-slate-400">
+              {!! pll__('14 Tage Zugriff auf alle Premium-Analysen – inklusive sofortiger Freischaltung.') !!}
+            </p>
+          </div>
+
+          <div class="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div class="flex items-start gap-4">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 7h8" />
+                  <path d="M8 12h8" />
+                  <path d="M8 17h5" />
+                  <rect x="4" y="3" width="16" height="18" rx="3" />
+                </svg>
+              </div>
+
+              <div>
+                <div class="text-sm font-semibold text-white">
+                  {!! pll__('Nach 14 Tagen') !!}
+                </div>
+                <div class="mt-1 text-sm text-slate-300">
+                  <span class="font-semibold text-white">49,99 € / {!! pll__('Monat') !!}</span>
+                  · {!! pll__('jederzeit kündbar') !!}
+                </div>
+                <p class="mt-2 text-xs leading-relaxed text-slate-500">
+                  {!! pll__('Das reguläre Abo beginnt automatisch nach Ablauf des Testzeitraums, sofern Sie nicht vorher kündigen.') !!}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <ul class="mt-8 space-y-4 text-sm text-slate-300">
+            <li class="flex gap-3">
+              <span class="text-brand-primary">✓</span>
+              <span>{!! pll__('Alle Premium Analysen') !!}</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="text-brand-primary">✓</span>
+              <span>{!! pll__('Tägliche Marktupdates') !!}</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="text-brand-primary">✓</span>
+              <span>{!! pll__('Audio- und Video-Inhalte') !!}</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="text-brand-primary">✓</span>
+              <span>{!! pll__('Historische Analysen') !!}</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="text-brand-primary">✓</span>
+              <span>{!! pll__('Zugriff auf das Dashboard') !!}</span>
+            </li>
+          </ul>
+
+          <!-- <div class="mt-8 border-t border-white/10 pt-6">
+            <div class="flex gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z" />
+                  <path d="M9.5 12l2 2 3-4" />
+                </svg>
+              </div>
+              <div>
+                <div class="font-semibold text-white">
+                  {!! pll__('Sichere Zahlung & sofortiger Zugang') !!}
+                </div>
+                <p class="mt-1 text-sm text-slate-400">
+                  {!! pll__('Zahlungsdaten werden ausschließlich über Stripe verarbeitet. Ihr Zugang wird nach erfolgreicher Zahlung automatisch freigeschaltet.') !!}
+                </p>
+              </div>
+            </div>
+          </div> -->
+        </aside>
+
+      </div>
+
+    </div>
+  </div>
+
+  <div class="relative">
+    @include('sections.conversion-footer')
+  </div>
+
+</section>
+
 @endsection
 

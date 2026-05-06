@@ -68,6 +68,7 @@ if (fs.existsSync(appPath)) {
         file.startsWith('media-entry') ||
         file.includes('media') ||
         file === 'stripe.php' ||
+        file === 'translations.php' ||
         file === 'ajax.php' ||
         file === 'filters.php' ||
         file === 'setup.php'
@@ -107,6 +108,13 @@ const mediaViewsPath = path.join(viewsPath, 'dashboard', 'media');
 if (fs.existsSync(mediaViewsPath)) {
   collectedFiles = collectedFiles.concat(
     getFilesRecursive(mediaViewsPath).filter(f => f.endsWith('.blade.php'))
+  );
+}
+
+const pagesViewsPath = path.join(viewsPath, 'pages');
+if (fs.existsSync(pagesViewsPath)) {
+  collectedFiles = collectedFiles.concat(
+    getFilesRecursive(pagesViewsPath).filter(f => f.endsWith('.blade.php'))
   );
 }
 
@@ -150,6 +158,8 @@ if (fs.existsSync(cssPath)) {
   collectedFiles = collectedFiles.concat(
     getFilesRecursive(cssPath).filter(f =>
       f.toLowerCase().includes('dashboard') ||
+      f.toLowerCase().includes('admin') ||
+      f.toLowerCase().includes('editor') ||
       f.toLowerCase().includes('media')
     )
   );
