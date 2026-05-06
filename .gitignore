@@ -37,6 +37,7 @@ wp-cli.local.yml
 
 # Shell History (dein Wunsch)
 .history
+.history/
 
 # Mac
 .DS_Store

@@ -1,1 +1,0 @@
-@extends('dashboard.analyses.single')
