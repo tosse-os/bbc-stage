@@ -107,15 +107,15 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
 
       <div class="mx-auto max-w-5xl text-center">
         <h1 class="text-3xl font-semibold tracking-tight text-white lg:text-4xl">
-          {!! pll__('Premium-Analysen 14 Tage testen') !!}
+          {!! pll__('14 Tage Premium testen') !!}
         </h1>
 
-        <p class="mt-4 text-lg text-slate-300">
+        {{-- <p class="mt-4 text-lg text-slate-300">
           <span class="font-semibold text-brand-primary">4,99 €</span>
           {!! pll__('für 14 Tage Zugang') !!}
           · {!! pll__('danach 49,99 € / Monat') !!}
           · {!! pll__('jederzeit kündbar') !!}
-        </p>
+        </p> --}}
 
         <div class="mt-10 flex items-center justify-center gap-4 text-sm text-slate-400">
           <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-white font-semibold">1</span> -->
@@ -174,7 +174,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
             </h3>
 
             <div class="mt-2">
-              <span class="text-4xl font-bold tracking-tight text-white">
+              <span class="text-2xl font-bold tracking-tight text-white">
                 {!! $plan['price'] !!}
               </span>
               <div class="mt-1 text-sm text-slate-400">
@@ -471,134 +471,144 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
 
 </section>
 
-<script type="application/json" id="trial-plans-data">
-  {
-    !!wp_json_encode($trialPlans) !!
-  }
-</script>
-
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    var plansNode = document.getElementById('trial-plans-data')
-    var plans = plansNode ? JSON.parse(plansNode.textContent) : {}
-    var cards = document.querySelectorAll('[data-plan-card]')
-    var selectedPlanInput = document.querySelector('[data-selected-plan]')
-    var summaryTitle = document.querySelector('[data-plan-summary-title]')
-    var summaryLabel = document.querySelector('[data-plan-summary-label]')
-    var summaryPrice = document.querySelector('[data-plan-summary-price]')
-    var summaryInterval = document.querySelector('[data-plan-summary-interval]')
-    var summaryDescription = document.querySelector('[data-plan-summary-description]')
-    var afterTitle = document.querySelector('[data-plan-after-title]')
-    var afterPrice = document.querySelector('[data-plan-after-price]')
-    var afterSuffix = document.querySelector('[data-plan-after-suffix]')
-    var afterNote = document.querySelector('[data-plan-after-note]')
-    var summaryFeatures = document.querySelector('[data-plan-summary-features]')
-    var submitLabel = document.querySelector('[data-plan-submit-label]')
-    var submitSubline = document.querySelector('[data-plan-submit-subline]')
-    var form = document.querySelector('[data-trial-form]')
-    var firstName = form ? form.querySelector('[name="first_name"]') : null
-    var lastName = form ? form.querySelector('[name="last_name"]') : null
-    var fullName = form ? form.querySelector('[data-full-name]') : null
+  ;(function () {
+    function initTrialPlans() {
+      var plans = {!! wp_json_encode($trialPlans, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
 
-    var idleCardClasses = ['border-white/10', 'hover:border-brand-primary/60', 'hover:-translate-y-1']
-    var selectedButtonClasses = ['bg-brand-primary', 'text-slate-950']
-    var idleButtonClasses = ['bg-white', 'text-slate-950', 'group-hover:bg-brand-primary']
+      var cards = document.querySelectorAll('[data-plan-card]')
+      var selectedPlanInput = document.querySelector('[data-selected-plan]')
+      var summaryTitle = document.querySelector('[data-plan-summary-title]')
+      var summaryLabel = document.querySelector('[data-plan-summary-label]')
+      var summaryPrice = document.querySelector('[data-plan-summary-price]')
+      var summaryInterval = document.querySelector('[data-plan-summary-interval]')
+      var summaryDescription = document.querySelector('[data-plan-summary-description]')
+      var afterTitle = document.querySelector('[data-plan-after-title]')
+      var afterPrice = document.querySelector('[data-plan-after-price]')
+      var afterSuffix = document.querySelector('[data-plan-after-suffix]')
+      var afterNote = document.querySelector('[data-plan-after-note]')
+      var summaryFeatures = document.querySelector('[data-plan-summary-features]')
+      var submitLabel = document.querySelector('[data-plan-submit-label]')
+      var submitSubline = document.querySelector('[data-plan-submit-subline]')
+      var form = document.querySelector('[data-trial-form]')
+      var firstName = form ? form.querySelector('[name="first_name"]') : null
+      var lastName = form ? form.querySelector('[name="last_name"]') : null
+      var fullName = form ? form.querySelector('[data-full-name]') : null
 
-    function escapeHtml(value) {
-      var div = document.createElement('div')
-      div.textContent = value || ''
-      return div.innerHTML
-    }
-
-    function renderFeatures(features) {
-      if (!summaryFeatures) return
-
-      summaryFeatures.innerHTML = features.map(function(feature) {
-        return '<li class="flex gap-3"><span class="text-brand-primary">✓</span><span>' + escapeHtml(feature) + '</span></li>'
-      }).join('')
-    }
-
-    function setActiveCard(planKey) {
-      cards.forEach(function(card) {
-        var isActive = card.dataset.planCard === planKey
-        var button = card.querySelector('[data-plan-card-button]')
-
-        card.classList.toggle('border-brand-primary', isActive)
-        card.classList.toggle('shadow-brand-primary/20', isActive)
-
-        idleCardClasses.forEach(function(className) {
-          card.classList.toggle(className, !isActive)
-        })
-
-        if (button) {
-          selectedButtonClasses.forEach(function(className) {
-            button.classList.toggle(className, isActive)
-          })
-
-          idleButtonClasses.forEach(function(className) {
-            button.classList.toggle(className, !isActive)
-          })
+      function setHtml(node, value) {
+        if (node) {
+          node.innerHTML = value || ''
         }
-      })
-    }
-
-    function updatePlan(planKey) {
-      var plan = plans[planKey]
-      if (!plan) return
-
-      if (selectedPlanInput) selectedPlanInput.value = planKey
-      if (summaryTitle) summaryTitle.textContent = plan.summary_title
-      if (summaryLabel) summaryLabel.textContent = plan.summary_label
-      if (summaryPrice) summaryPrice.textContent = plan.price
-      if (summaryInterval) summaryInterval.textContent = plan.summary_interval
-      if (summaryDescription) summaryDescription.textContent = plan.summary_description
-      if (afterTitle) afterTitle.textContent = plan.after_title
-      if (afterPrice) afterPrice.textContent = plan.after_price
-      if (afterSuffix) afterSuffix.textContent = plan.after_suffix
-      if (afterNote) afterNote.textContent = plan.after_note
-      if (submitLabel) submitLabel.textContent = plan.cta
-      if (submitSubline) submitSubline.textContent = plan.cta_subline
-
-      renderFeatures(plan.features || [])
-      setActiveCard(planKey)
-    }
-
-    function syncFullName() {
-      if (!fullName) return
-
-      var nameParts = []
-
-      if (firstName && firstName.value.trim()) {
-        nameParts.push(firstName.value.trim())
       }
 
-      if (lastName && lastName.value.trim()) {
-        nameParts.push(lastName.value.trim())
+      function renderFeatures(features) {
+        if (!summaryFeatures) return
+
+        summaryFeatures.innerHTML = ''
+
+        features.forEach(function (feature) {
+          var li = document.createElement('li')
+          var icon = document.createElement('span')
+          var text = document.createElement('span')
+
+          li.className = 'flex gap-3'
+          icon.className = 'text-brand-primary'
+          icon.textContent = '✓'
+          text.innerHTML = feature
+
+          li.appendChild(icon)
+          li.appendChild(text)
+          summaryFeatures.appendChild(li)
+        })
       }
 
-      fullName.value = nameParts.join(' ')
-    }
+      function setActiveCard(planKey) {
+        cards.forEach(function (card) {
+          var isActive = card.getAttribute('data-plan-card') === planKey
+          var button = card.querySelector('[data-plan-card-button]')
 
-    cards.forEach(function(card) {
-      card.addEventListener('click', function() {
-        updatePlan(card.dataset.planCard)
+          card.classList.toggle('border-brand-primary', isActive)
+          card.classList.toggle('shadow-brand-primary/20', isActive)
+          card.classList.toggle('border-white/10', !isActive)
+          card.classList.toggle('hover:border-brand-primary/60', !isActive)
+          card.classList.toggle('hover:-translate-y-1', !isActive)
+
+          if (button) {
+            button.classList.toggle('bg-brand-primary', isActive)
+            button.classList.toggle('bg-white', !isActive)
+            button.classList.toggle('group-hover:bg-brand-primary', !isActive)
+            button.classList.add('text-slate-950')
+          }
+        })
+      }
+
+      function updatePlan(planKey) {
+        var plan = plans[planKey]
+
+        if (!plan) return
+
+        if (selectedPlanInput) selectedPlanInput.value = planKey
+
+        setHtml(summaryTitle, plan.summary_title)
+        setHtml(summaryLabel, plan.summary_label)
+        setHtml(summaryPrice, plan.price)
+        setHtml(summaryInterval, plan.summary_interval)
+        setHtml(summaryDescription, plan.summary_description)
+        setHtml(afterTitle, plan.after_title)
+        setHtml(afterPrice, plan.after_price)
+        setHtml(afterSuffix, plan.after_suffix)
+        setHtml(afterNote, plan.after_note)
+        setHtml(submitLabel, plan.cta)
+        setHtml(submitSubline, plan.cta_subline)
+
+        renderFeatures(plan.features || [])
+        setActiveCard(planKey)
+      }
+
+      function syncFullName() {
+        if (!fullName) return
+
+        var parts = []
+
+        if (firstName && firstName.value.trim()) {
+          parts.push(firstName.value.trim())
+        }
+
+        if (lastName && lastName.value.trim()) {
+          parts.push(lastName.value.trim())
+        }
+
+        fullName.value = parts.join(' ')
+      }
+
+      cards.forEach(function (card) {
+        card.addEventListener('click', function () {
+          updatePlan(card.getAttribute('data-plan-card'))
+        })
       })
-    })
 
-    if (firstName) {
-      firstName.addEventListener('input', syncFullName)
+      if (firstName) {
+        firstName.addEventListener('input', syncFullName)
+      }
+
+      if (lastName) {
+        lastName.addEventListener('input', syncFullName)
+      }
+
+      if (form) {
+        form.addEventListener('submit', syncFullName)
+      }
+
+      syncFullName()
+      updatePlan(selectedPlanInput ? selectedPlanInput.value : '{{ $defaultPlanKey }}')
     }
 
-    if (lastName) {
-      lastName.addEventListener('input', syncFullName)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initTrialPlans)
+    } else {
+      initTrialPlans()
     }
-
-    if (form) {
-      form.addEventListener('submit', syncFullName)
-    }
-
-    syncFullName()
-  })
+  })()
 </script>
 
 @endsection
