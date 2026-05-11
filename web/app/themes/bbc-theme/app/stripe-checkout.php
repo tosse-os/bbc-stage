@@ -8,15 +8,39 @@ function dashboard_checkout_allowed_plans(): array
   return ['trial', 'basis', 'pro'];
 }
 
+function dashboard_checkout_optional_plan_from_value($value): string
+{
+  $plan = sanitize_key((string) $value);
+
+  return in_array($plan, dashboard_checkout_allowed_plans(), true) ? $plan : '';
+}
+
+function dashboard_checkout_plan_from_value($value): string
+{
+  $plan = dashboard_checkout_optional_plan_from_value($value);
+
+  return $plan !== '' ? $plan : 'basis';
+}
+
 function dashboard_checkout_plan_from_request(): string
 {
-  $plan = sanitize_key($_POST['plan'] ?? 'basis');
+  $postedPlan = dashboard_checkout_optional_plan_from_value($_POST['plan'] ?? '');
 
-  if (!in_array($plan, dashboard_checkout_allowed_plans(), true)) {
-    return 'basis';
+  if ($postedPlan !== '') {
+    return $postedPlan;
   }
 
-  return $plan;
+  if (is_user_logged_in()) {
+    $savedPlan = dashboard_checkout_optional_plan_from_value(
+      get_user_meta(get_current_user_id(), 'dashboard_selected_plan', true)
+    );
+
+    if ($savedPlan !== '') {
+      return $savedPlan;
+    }
+  }
+
+  return 'basis';
 }
 
 function dashboard_checkout_price_config(string $plan): array
@@ -51,17 +75,29 @@ function dashboard_checkout_price_config(string $plan): array
 function dashboard_checkout_config_error_for_plan(string $plan): string
 {
   if (dashboard_stripe_secret_key() === '') {
-    return 'stripe_not_configured';
+    return 'stripe_secret_missing';
   }
 
   $config = dashboard_checkout_price_config($plan);
 
-  if (($config['recurring_price_id'] ?? '') === '') {
-    return 'stripe_not_configured';
+  if ($plan === 'pro' && ($config['recurring_price_id'] ?? '') === '') {
+    return 'stripe_price_pro_missing';
   }
 
-  if ($plan === 'trial' && ($config['trial_fee_price_id'] ?? '') === '') {
-    return 'stripe_not_configured';
+  if ($plan === 'trial') {
+    if (($config['recurring_price_id'] ?? '') === '') {
+      return 'stripe_price_basis_missing';
+    }
+
+    if (($config['trial_fee_price_id'] ?? '') === '') {
+      return 'stripe_trial_fee_missing';
+    }
+
+    return '';
+  }
+
+  if (($config['recurring_price_id'] ?? '') === '') {
+    return 'stripe_price_basis_missing';
   }
 
   return '';
@@ -106,6 +142,49 @@ function dashboard_checkout_subscription_data_for_plan(string $plan, int $userId
   return $data;
 }
 
+function dashboard_redirect_to_checkout_for_user($user, string $plan, string $successUrl, string $cancelUrl): string
+{
+  if (!$user || is_wp_error($user) || empty($user->ID)) {
+    return 'user_missing';
+  }
+
+  if (!dashboard_stripe_boot()) {
+    return 'stripe_sdk_missing';
+  }
+
+  $configError = dashboard_checkout_config_error_for_plan($plan);
+
+  if ($configError !== '') {
+    return $configError;
+  }
+
+  try {
+    $customer = dashboard_get_or_create_stripe_customer($user);
+
+    $session = \Stripe\Checkout\Session::create([
+      'mode' => 'subscription',
+      'customer' => $customer->id,
+      'line_items' => dashboard_checkout_line_items_for_plan($plan),
+      'success_url' => $successUrl,
+      'cancel_url' => $cancelUrl,
+      'client_reference_id' => (string) $user->ID,
+      'metadata' => [
+        'wp_user_id' => (string) $user->ID,
+        'dashboard_plan' => $plan,
+      ],
+      'subscription_data' => dashboard_checkout_subscription_data_for_plan($plan, (int) $user->ID),
+      'allow_promotion_codes' => true,
+    ]);
+
+    update_user_meta($user->ID, 'dashboard_selected_plan', $plan);
+
+    wp_redirect($session->url);
+    exit;
+  } catch (\Throwable $e) {
+    return 'stripe_checkout_failed';
+  }
+}
+
 function dashboard_handle_start_checkout()
 {
   if (!is_user_logged_in()) {
@@ -121,47 +200,17 @@ function dashboard_handle_start_checkout()
     exit;
   }
 
-  if (!dashboard_stripe_boot()) {
-    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_sdk_missing');
-    exit;
-  }
-
   $plan = dashboard_checkout_plan_from_request();
-  $configError = dashboard_checkout_config_error_for_plan($plan);
 
-  if ($configError !== '') {
-    wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($configError));
-    exit;
-  }
+  $error = dashboard_redirect_to_checkout_for_user(
+    wp_get_current_user(),
+    $plan,
+    dashboard_checkout_success_url(),
+    dashboard_checkout_cancel_url()
+  );
 
-  $user = wp_get_current_user();
-
-  try {
-    $customer = dashboard_get_or_create_stripe_customer($user);
-
-    $session = \Stripe\Checkout\Session::create([
-      'mode' => 'subscription',
-      'customer' => $customer->id,
-      'line_items' => dashboard_checkout_line_items_for_plan($plan),
-      'success_url' => dashboard_checkout_success_url(),
-      'cancel_url' => dashboard_checkout_cancel_url(),
-      'client_reference_id' => (string) $user->ID,
-      'metadata' => [
-        'wp_user_id' => (string) $user->ID,
-        'dashboard_plan' => $plan,
-      ],
-      'subscription_data' => dashboard_checkout_subscription_data_for_plan($plan, (int) $user->ID),
-      'allow_promotion_codes' => true,
-    ]);
-
-    update_user_meta($user->ID, 'dashboard_selected_plan', $plan);
-
-    wp_redirect($session->url);
-    exit;
-  } catch (\Throwable $e) {
-    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_checkout_failed');
-    exit;
-  }
+  wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($error));
+  exit;
 }
 
 add_action('admin_post_dashboard_start_checkout', 'dashboard_handle_start_checkout');
@@ -261,19 +310,60 @@ function dashboard_get_or_create_stripe_customer($user)
   return $customer;
 }
 
+add_action('template_redirect', 'dashboard_handle_subscribe_trial_gate');
+
+function dashboard_handle_subscribe_trial_gate(): void
+{
+  if (!is_page()) {
+    return;
+  }
+
+  $post = get_queried_object();
+
+  if (!$post || ($post->post_name ?? '') !== 'subscribe-trial') {
+    return;
+  }
+
+  if (!is_user_logged_in()) {
+    return;
+  }
+
+  $user = wp_get_current_user();
+
+  if (function_exists('dashboard_user_should_use_wp_admin') && dashboard_user_should_use_wp_admin($user)) {
+    wp_safe_redirect(admin_url());
+    exit;
+  }
+
+  wp_safe_redirect(dashboard_settings_billing_url());
+  exit;
+}
+
+add_action('admin_post_dashboard_register_and_checkout', 'dashboard_handle_register_and_checkout');
 add_action('admin_post_nopriv_dashboard_register_and_checkout', 'dashboard_handle_register_and_checkout');
 
 function dashboard_handle_register_and_checkout()
 {
+  $plan = dashboard_checkout_plan_from_request();
+
   if (
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register_checkout')
   ) {
-    wp_safe_redirect('/subscribe-trial/?error=invalid_request');
+    wp_safe_redirect('/subscribe-trial/?error=invalid_request&plan=' . rawurlencode($plan));
     exit;
   }
 
-  $plan = dashboard_checkout_plan_from_request();
+  if (is_user_logged_in()) {
+    wp_safe_redirect(dashboard_settings_billing_url());
+    exit;
+  }
+
+  if (empty($_POST['terms'])) {
+    wp_safe_redirect('/subscribe-trial/?error=terms&plan=' . rawurlencode($plan));
+    exit;
+  }
+
   $email = sanitize_email($_POST['email'] ?? '');
   $password = $_POST['password'] ?? '';
   $firstName = sanitize_text_field($_POST['first_name'] ?? '');
@@ -296,7 +386,7 @@ function dashboard_handle_register_and_checkout()
   }
 
   if (email_exists($email)) {
-    wp_safe_redirect('/subscribe-trial/?error=exists&plan=' . rawurlencode($plan));
+    wp_safe_redirect('/dashboard-login?error=account_exists&plan=' . rawurlencode($plan));
     exit;
   }
 
@@ -305,8 +395,10 @@ function dashboard_handle_register_and_checkout()
     exit;
   }
 
-  if (dashboard_checkout_config_error_for_plan($plan) !== '') {
-    wp_safe_redirect('/subscribe-trial/?error=stripe_not_configured&plan=' . rawurlencode($plan));
+  $configError = dashboard_checkout_config_error_for_plan($plan);
+
+  if ($configError !== '') {
+    wp_safe_redirect('/subscribe-trial/?error=' . rawurlencode($configError) . '&plan=' . rawurlencode($plan));
     exit;
   }
 
@@ -333,28 +425,13 @@ function dashboard_handle_register_and_checkout()
 
   $user = get_user_by('id', $user_id);
 
-  try {
-    $customer = dashboard_get_or_create_stripe_customer($user);
+  $error = dashboard_redirect_to_checkout_for_user(
+    $user,
+    $plan,
+    home_url('/dashboard?checkout=success'),
+    home_url('/dashboard-settings?tab=billing&stripe=cancel')
+  );
 
-    $session = \Stripe\Checkout\Session::create([
-      'mode' => 'subscription',
-      'customer' => $customer->id,
-      'line_items' => dashboard_checkout_line_items_for_plan($plan),
-      'success_url' => home_url('/dashboard?checkout=success'),
-      'cancel_url' => home_url('/subscribe-trial/?checkout=cancel&plan=' . rawurlencode($plan)),
-      'client_reference_id' => (string) $user_id,
-      'metadata' => [
-        'wp_user_id' => (string) $user_id,
-        'dashboard_plan' => $plan,
-      ],
-      'subscription_data' => dashboard_checkout_subscription_data_for_plan($plan, (int) $user_id),
-      'allow_promotion_codes' => true,
-    ]);
-
-    wp_safe_redirect($session->url);
-    exit;
-  } catch (\Throwable $e) {
-    wp_safe_redirect('/subscribe-trial/?error=stripe_checkout_failed&plan=' . rawurlencode($plan));
-    exit;
-  }
+  wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($error));
+  exit;
 }

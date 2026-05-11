@@ -1,10 +1,10 @@
 <!doctype html>
 @php
-$theme = 'light';
+$theme = 'dark';
 
 if (is_user_logged_in()) {
 $stored = get_user_meta(get_current_user_id(), USER_META_THEME, true);
-$theme = $stored === 'dark' ? 'dark' : 'light';
+$theme = $stored === 'light' ? 'light' : 'dark';
 }
 @endphp
 

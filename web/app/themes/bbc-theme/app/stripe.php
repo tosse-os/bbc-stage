@@ -31,6 +31,10 @@ function dashboard_checkout_cancel_url(): string
  */
 function dashboard_stripe_env(string $key): string
 {
+  if (defined($key)) {
+    return trim((string) constant($key));
+  }
+
   $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
 
   if ($value === false || $value === null) {
@@ -158,7 +162,7 @@ function dashboard_stripe_webhook_config_error(): string
 function dashboard_stripe_portal_config_error(): string
 {
   if (dashboard_stripe_secret_key() === '') {
-    return 'stripe_not_configured';
+    return 'stripe_secret_missing';
   }
 
   return '';
@@ -173,6 +177,10 @@ function dashboard_stripe_billing_error_message(string $error): string
     'invalid_request' => 'Die Anfrage war ungültig.',
     'stripe_sdk_missing' => 'Das Stripe SDK fehlt. Bitte composer require stripe/stripe-php im Theme ausführen.',
     'stripe_not_configured' => 'Stripe ist noch nicht vollständig konfiguriert.',
+    'stripe_secret_missing' => 'Der Stripe Secret Key fehlt.',
+    'stripe_price_basis_missing' => 'Die Stripe Price ID für das Basis-Abo fehlt.',
+    'stripe_price_pro_missing' => 'Die Stripe Price ID für das Pro-Abo fehlt.',
+    'stripe_trial_fee_missing' => 'Die Stripe Price ID für die Trial-Gebühr fehlt.',
     'stripe_webhook_not_configured' => 'Das Stripe Webhook Secret fehlt.',
     'stripe_customer_missing' => 'Kein Stripe-Kunde gefunden.',
     'stripe_checkout_failed' => 'Stripe Checkout konnte nicht gestartet werden.',

@@ -4,6 +4,20 @@ Template Name: Dashboard Login
 @extends('layouts.dashboard-auth')
 
 @section('content')
+
+@php
+$checkoutPlan = request()->get('plan');
+$checkoutPlan = in_array($checkoutPlan, ['trial', 'basis', 'pro'], true) ? $checkoutPlan : '';
+$loginError = request()->get('error');
+
+$loginMessages = [
+'account_exists' => 'Diese E-Mail ist bereits registriert. Bitte melden Sie sich an. Danach können Sie Ihr Abo im Billing-Bereich starten.',
+'too_many_attempts' => 'Zu viele Login-Versuche. Bitte versuchen Sie es später erneut.',
+'invalid_request' => 'Die Anfrage war ungültig. Bitte versuchen Sie es erneut.',
+'1' => 'Login fehlgeschlagen. Bitte prüfen Sie Ihre Daten.',
+];
+@endphp
+
 <section class="relative w-full max-w-md mx-auto px-4">
   <div class="backdrop-blur-xl bg-white/[0.03] border border-white/10 rounded-2xl px-8 py-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 overflow-hidden relative">
 
@@ -47,6 +61,10 @@ Template Name: Dashboard Login
       @csrf
       <input type="hidden" name="action" value="dashboard_login">
 
+      @if($checkoutPlan !== '')
+      <input type="hidden" name="checkout_plan" value="{{ $checkoutPlan }}">
+      @endif
+
       <div>
         <label class="block text-xs font-semibold mb-1.5 text-slate-300 uppercase tracking-wider">E-Mail Adresse</label>
         <input type="email" name="email" required placeholder="name@beispiel.de"
@@ -74,16 +92,18 @@ Template Name: Dashboard Login
       </button>
     </form>
 
-    @if(request()->get('error'))
+    @if($loginError)
     <div class="mt-4 p-3 rounded bg-red-500/10 border border-red-500/20">
-      <p class="text-xs text-red-400 text-center">Login fehlgeschlagen. Bitte prüfen Sie Ihre Daten.</p>
+      <p class="text-xs text-red-400 text-center">
+        {{ $loginMessages[$loginError] ?? 'Login fehlgeschlagen. Bitte prüfen Sie Ihre Daten.' }}
+      </p>
     </div>
     @endif
 
     <div class="mt-10 text-sm text-center text-slate-400 space-y-3">
       <p>
         Noch kein Konto?
-        <a href="/dashboard-register" class="text-brand-primary font-semibold hover:underline">Kostenlos registrieren</a>
+        <a href="/subscribe-trial{{ $checkoutPlan ? '?plan=' . $checkoutPlan : '' }}" class="text-brand-primary font-semibold hover:underline">Zur Abo-Seite</a>
       </p>
 
       <a href="{{ home_url('/') }}" class="inline-flex items-center justify-center text-xs uppercase tracking-[0.18em] text-slate-500 hover:text-brand-primary transition duration-300">

@@ -6,7 +6,8 @@
 $tab = request()->get('tab', 'account');
 $user = wp_get_current_user();
 
-$currentTheme = get_user_meta($user->ID, 'dashboard_theme', true) === 'dark' ? 'dark' : 'light';
+$storedTheme = get_user_meta($user->ID, 'dashboard_theme', true);
+$currentTheme = $storedTheme === 'light' ? 'light' : 'dark';
 $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true) === '1';
 @endphp
 

@@ -6,6 +6,7 @@ Template Name: Conversion – Trial
 
 @section('content')
 
+{{-- Plan Configuration - Zentrale Paketdaten für Kacheln, Summary und CTA --}}
 @php
 $trialPlans = [
 'trial' => [
@@ -90,10 +91,32 @@ pll__('Zugriff auf das Dashboard'),
 $requestedPlan = request()->get('plan');
 $defaultPlanKey = isset($trialPlans[$requestedPlan]) ? $requestedPlan : 'trial';
 $defaultPlan = $trialPlans[$defaultPlanKey];
+
+$trialError = request()->get('error');
+
+$trialMessages = [
+'invalid_request' => pll__('Die Anfrage war ungültig. Bitte versuchen Sie es erneut.'),
+'email' => pll__('Bitte geben Sie eine gültige E-Mail-Adresse ein.'),
+'weak_password' => pll__('Das Passwort muss mindestens 8 Zeichen lang sein.'),
+'exists' => pll__('Diese E-Mail ist bereits registriert. Bitte melden Sie sich an. Danach können Sie Ihr Abo im Billing-Bereich starten.'),
+'account_exists' => pll__('Diese E-Mail ist bereits registriert. Bitte melden Sie sich an. Danach können Sie Ihr Abo im Billing-Bereich starten.'),
+'terms' => pll__('Bitte akzeptieren Sie die AGB und die Datenschutzerklärung.'),
+'create_failed' => pll__('Der Account konnte nicht erstellt werden. Bitte versuchen Sie es erneut.'),
+'stripe_sdk_missing' => pll__('Stripe ist technisch noch nicht vollständig eingerichtet.'),
+'stripe_not_configured' => pll__('Stripe ist noch nicht vollständig konfiguriert.'),
+'stripe_secret_missing' => pll__('Der Stripe Secret Key fehlt.'),
+'stripe_price_basis_missing' => pll__('Die Stripe Price ID für das Basis-Abo fehlt.'),
+'stripe_price_pro_missing' => pll__('Die Stripe Price ID für das Pro-Abo fehlt.'),
+'stripe_trial_fee_missing' => pll__('Die Stripe Price ID für die Trial-Gebühr fehlt.'),
+'stripe_checkout_failed' => pll__('Stripe Checkout konnte nicht gestartet werden. Bitte versuchen Sie es erneut.'),
+'user_missing' => pll__('Der Benutzer konnte nicht ermittelt werden. Bitte melden Sie sich erneut an.'),
+];
 @endphp
 
+{{-- Conversion - Hauptbereich mit Background, Inhalt und Footer --}}
 <section class="relative min-h-screen overflow-hidden">
 
+  {{-- Background - Hero-Bild mit dunklem Overlay --}}
   <div class="absolute inset-0">
     <img
       src="{{ Vite::asset('resources/images/landingpage/hero-bg.jpg') }}"
@@ -105,19 +128,20 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
   <div class="relative">
     <div class="container-content pt-24 pb-32">
 
+      {{-- Hero - Headline, Preisanker und Trust-Hinweise --}}
       <div class="mx-auto max-w-5xl text-center">
         <h1 class="text-3xl font-semibold tracking-tight text-white lg:text-4xl">
-          {!! pll__('14 Tage Premium testen') !!}
+          {!! pll__('Premium-Analysen 14 Tage testen') !!}
         </h1>
 
-        {{-- <p class="mt-4 text-lg text-slate-300">
+        <!-- <p class="mt-4 text-lg text-slate-300">
           <span class="font-semibold text-brand-primary">4,99 €</span>
           {!! pll__('für 14 Tage Zugang') !!}
           · {!! pll__('danach 49,99 € / Monat') !!}
           · {!! pll__('jederzeit kündbar') !!}
-        </p> --}}
+        </p> -->
 
-        <div class="mt-10 flex items-center justify-center gap-4 text-sm text-slate-400">
+        <div class="mt-4 flex items-center justify-center gap-4 text-sm text-slate-400">
           <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-white font-semibold">1</span> -->
           <span>{!! pll__('In 2 Minuten freigeschaltet') !!}</span>
           <span class="h-px w-16 bg-white/20 opacity-80"></span>
@@ -127,8 +151,23 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
           <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/30 text-white font-semibold">3</span> -->
           <span>{!! pll__('Sofortiger Zugriff') !!}</span>
         </div>
+
+        @if($trialError)
+        <div class="mx-auto mt-8 max-w-3xl rounded-2xl border border-red-400/20 bg-red-500/10 px-5 py-4 text-center text-sm text-red-200">
+          {{ $trialMessages[$trialError] ?? pll__('Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.') }}
+
+          @if(in_array($trialError, ['exists', 'account_exists'], true))
+          <div class="mt-3">
+            <a href="/dashboard-login?plan={{ $defaultPlanKey }}" class="font-semibold text-brand-primary hover:text-white">
+              {!! pll__('Jetzt einloggen') !!}
+            </a>
+          </div>
+          @endif
+        </div>
+        @endif
       </div>
 
+      {{-- Plan Selector - Drei auswählbare Paket-Kacheln --}}
       <div class="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3" data-plan-selector>
         @foreach($trialPlans as $planKey => $plan)
         @php
@@ -138,7 +177,8 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
         <button
           type="button"
           data-plan-card="{{ $planKey }}"
-          class="group relative flex h-full flex-col rounded-3xl border bg-slate-950/45 p-5 text-left backdrop-blur-xl shadow-2xl transition duration-300 {{ $isActivePlan ? 'border-brand-primary shadow-brand-primary/20' : 'border-white/10 hover:border-brand-primary/60 hover:-translate-y-1' }}">
+          style="{{ $isActivePlan ? 'box-shadow: 0 0 0 1px rgba(34,211,238,.55), 0 0 42px rgba(34,211,238,.36);' : '' }}"
+          class="group relative flex h-full cursor-pointer flex-col rounded-3xl border bg-slate-950/45 p-5 text-left backdrop-blur-xl transition duration-300 {{ $isActivePlan ? 'scale-[1.015] border-brand-primary bg-brand-primary/10 ring-2 ring-brand-primary/50' : 'border-white/10 shadow-2xl hover:-translate-y-1 hover:border-brand-primary/60 hover:bg-white/5' }}">
 
           @if($planKey === 'basis')
           <div class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-brand-primary px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-950">
@@ -168,7 +208,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
             </span>
           </div>
 
-          <div class="mt-6">
+          <div class="mt-4">
             <h3 class="text-2xl font-semibold text-white">
               {!! $plan['title'] !!}
             </h3>
@@ -182,7 +222,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
               </div>
             </div>
 
-            <p class="mt-4 text-xl font-medium leading-tight text-white">
+            <p class="mt-4 text-xl font-medium leading-tight text-white" style="min-height: 3.5rem;">
               {!! $plan['headline'] !!}
             </p>
 
@@ -191,27 +231,30 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
             </p>
           </div>
 
-          <ul class="mt-5 space-y-2 text-sm text-slate-300">
-            @foreach(array_slice($plan['features'], 0, 4) as $feature)
-            <li class="flex gap-2">
-              <span class="text-brand-primary">✓</span>
-              <span>{!! $feature !!}</span>
-            </li>
-            @endforeach
-          </ul>
+          <div class="mt-5 flex flex-1 flex-col">
+            <ul class="space-y-2 text-sm text-slate-300">
+              @foreach(array_slice($plan['features'], 0, 4) as $feature)
+              <li class="flex gap-2">
+                <span class="text-brand-primary">✓</span>
+                <span>{!! $feature !!}</span>
+              </li>
+              @endforeach
+            </ul>
 
-          <span
-            data-plan-card-button
-            class="mt-auto inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition {{ $isActivePlan ? 'bg-brand-primary text-slate-950' : 'bg-white text-slate-950 group-hover:bg-brand-primary' }}">
-            {!! $plan['button'] !!}
-          </span>
+            <span
+              data-plan-card-button
+              class="mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition {{ $isActivePlan ? 'bg-brand-primary text-slate-950 shadow-lg shadow-brand-primary/30' : 'bg-white text-slate-950 group-hover:bg-brand-primary' }}">
+              {!! $plan['button'] !!}
+            </span>
+          </div>
         </button>
         @endforeach
       </div>
 
-      <div class="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-start">
+      {{-- Checkout Area - Formular links, Summary rechts --}}
+      <div class="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-start" data-checkout-area>
 
-        {{-- LEFT · FORM --}}
+        {{-- Registration Form - Accountdaten und Planübergabe --}}
         <div class="rounded-3xl border border-white/10 bg-slate-950/45 backdrop-blur-xl p-6 md:p-8 shadow-2xl">
 
           <div class="flex items-start gap-4">
@@ -237,6 +280,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
             <input type="hidden" name="name" value="" data-full-name>
             @php wp_nonce_field('dashboard_register_checkout', '_wpnonce'); @endphp
 
+            {{-- Account Fields - E-Mail, Passwort und Name --}}
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-1">
                 {!! pll__('E-Mail-Adresse') !!}
@@ -290,6 +334,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
               </div>
             </div>
 
+            {{-- Trust Points - Sicherheit, Kündbarkeit und Stripe --}}
             <div class="grid grid-cols-1 gap-4 pt-2 md:grid-cols-3">
               <div class="flex gap-3">
                 <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
@@ -335,6 +380,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
               </div>
             </div>
 
+            {{-- Legal Consent - Zustimmung zu AGB und Datenschutz --}}
             <div class="border-t border-white/10 pt-6">
               <label class="flex items-start gap-3 text-sm text-slate-400">
                 <input
@@ -353,6 +399,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
               </label>
             </div>
 
+            {{-- Form CTA - Dynamischer Button je Paket --}}
             <button
               type="submit"
               class="w-full rounded-xl bg-brand-primary px-6 py-4 text-base font-semibold text-white shadow-lg shadow-brand-primary/20 transition hover:bg-brand-primaryHover">
@@ -368,7 +415,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
           </form>
         </div>
 
-        {{-- RIGHT · PLAN CARD --}}
+        {{-- Plan Summary - Rechte Kachel mit gewähltem Paket --}}
         <aside class="rounded-3xl border border-white/10 bg-slate-950/45 backdrop-blur-xl p-6 md:p-8 shadow-2xl">
           <!-- <div class="flex h-7 w-7 items-center justify-center rounded-2xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor">
@@ -390,6 +437,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
             </div>
           </div>
 
+          {{-- Selected Plan Summary - Preis, Laufzeit und Beschreibung --}}
           <div class="mt-6">
             <div class="text-brand-primary font-semibold" data-plan-summary-label>
               {!! $defaultPlan['summary_label'] !!}
@@ -405,6 +453,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
             </p>
           </div>
 
+          {{-- Billing Info - Folgepreis und Kündigungshinweis --}}
           <div class="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
             <div class="flex items-start gap-4">
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary shadow-[0_0_24px_rgba(34,211,238,0.18)]">
@@ -431,6 +480,7 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
             </div>
           </div>
 
+          {{-- Plan Features - Leistungsumfang des gewählten Pakets --}}
           <ul class="mt-8 space-y-4 text-sm text-slate-300" data-plan-summary-features>
             @foreach($defaultPlan['features'] as $feature)
             <li class="flex gap-3">
@@ -462,153 +512,187 @@ $defaultPlan = $trialPlans[$defaultPlanKey];
 
       </div>
 
+
     </div>
   </div>
 
+  {{-- Footer - Conversion Footer --}}
   <div class="relative">
     @include('sections.conversion-footer')
   </div>
 
 </section>
 
+{{-- JS Data - Paketdaten für das Script --}}
 <script>
-  ;(function () {
-    function initTrialPlans() {
-      var plans = {!! wp_json_encode($trialPlans, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
+  window.trialPlansData = @json($trialPlans);
+</script>
 
-      var cards = document.querySelectorAll('[data-plan-card]')
-      var selectedPlanInput = document.querySelector('[data-selected-plan]')
-      var summaryTitle = document.querySelector('[data-plan-summary-title]')
-      var summaryLabel = document.querySelector('[data-plan-summary-label]')
-      var summaryPrice = document.querySelector('[data-plan-summary-price]')
-      var summaryInterval = document.querySelector('[data-plan-summary-interval]')
-      var summaryDescription = document.querySelector('[data-plan-summary-description]')
-      var afterTitle = document.querySelector('[data-plan-after-title]')
-      var afterPrice = document.querySelector('[data-plan-after-price]')
-      var afterSuffix = document.querySelector('[data-plan-after-suffix]')
-      var afterNote = document.querySelector('[data-plan-after-note]')
-      var summaryFeatures = document.querySelector('[data-plan-summary-features]')
-      var submitLabel = document.querySelector('[data-plan-submit-label]')
-      var submitSubline = document.querySelector('[data-plan-submit-subline]')
-      var form = document.querySelector('[data-trial-form]')
-      var firstName = form ? form.querySelector('[name="first_name"]') : null
-      var lastName = form ? form.querySelector('[name="last_name"]') : null
-      var fullName = form ? form.querySelector('[data-full-name]') : null
+{{-- Inline Script - Paketwechsel und Namens-Sync --}}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var plans = window.trialPlansData || {}
+    var cards = document.querySelectorAll('[data-plan-card]')
+    var checkoutArea = document.querySelector('[data-checkout-area]')
+    var selectedPlanInput = document.querySelector('[data-selected-plan]')
+    var summaryTitle = document.querySelector('[data-plan-summary-title]')
+    var summaryLabel = document.querySelector('[data-plan-summary-label]')
+    var summaryPrice = document.querySelector('[data-plan-summary-price]')
+    var summaryInterval = document.querySelector('[data-plan-summary-interval]')
+    var summaryDescription = document.querySelector('[data-plan-summary-description]')
+    var afterTitle = document.querySelector('[data-plan-after-title]')
+    var afterPrice = document.querySelector('[data-plan-after-price]')
+    var afterSuffix = document.querySelector('[data-plan-after-suffix]')
+    var afterNote = document.querySelector('[data-plan-after-note]')
+    var summaryFeatures = document.querySelector('[data-plan-summary-features]')
+    var submitLabel = document.querySelector('[data-plan-submit-label]')
+    var submitSubline = document.querySelector('[data-plan-submit-subline]')
+    var form = document.querySelector('[data-trial-form]')
+    var firstName = form ? form.querySelector('[name="first_name"]') : null
+    var lastName = form ? form.querySelector('[name="last_name"]') : null
+    var fullName = form ? form.querySelector('[data-full-name]') : null
 
-      function setHtml(node, value) {
-        if (node) {
-          node.innerHTML = value || ''
-        }
-      }
+    var idleCardClasses = ['border-white/10', 'hover:border-brand-primary/60', 'hover:-translate-y-1', 'hover:bg-white/5', 'hover:shadow-brand-primary/20']
+    var selectedCardClasses = ['scale-[1.015]', 'border-brand-primary', 'bg-brand-primary/10', 'shadow-brand-primary/30', 'ring-2', 'ring-brand-primary/50']
+    var selectedButtonClasses = ['bg-brand-primary', 'text-slate-950', 'shadow-lg', 'shadow-brand-primary/30']
+    var idleButtonClasses = ['bg-white', 'text-slate-950', 'group-hover:bg-brand-primary']
 
-      function renderFeatures(features) {
-        if (!summaryFeatures) return
+    function escapeHtml(value) {
+      var div = document.createElement('div')
+      div.textContent = value || ''
+      return div.innerHTML
+    }
 
-        summaryFeatures.innerHTML = ''
+    function renderFeatures(features) {
+      if (!summaryFeatures) return
 
-        features.forEach(function (feature) {
-          var li = document.createElement('li')
-          var icon = document.createElement('span')
-          var text = document.createElement('span')
+      summaryFeatures.innerHTML = features.map(function(feature) {
+        return '<li class="flex gap-3"><span class="text-brand-primary">✓</span><span>' + escapeHtml(feature) + '</span></li>'
+      }).join('')
+    }
 
-          li.className = 'flex gap-3'
-          icon.className = 'text-brand-primary'
-          icon.textContent = '✓'
-          text.innerHTML = feature
+    function setActiveCard(planKey) {
+      cards.forEach(function(card) {
+        var isActive = card.dataset.planCard === planKey
+        var button = card.querySelector('[data-plan-card-button]')
 
-          li.appendChild(icon)
-          li.appendChild(text)
-          summaryFeatures.appendChild(li)
+        selectedCardClasses.forEach(function(className) {
+          card.classList.toggle(className, isActive)
         })
-      }
 
-      function setActiveCard(planKey) {
-        cards.forEach(function (card) {
-          var isActive = card.getAttribute('data-plan-card') === planKey
-          var button = card.querySelector('[data-plan-card-button]')
-
-          card.classList.toggle('border-brand-primary', isActive)
-          card.classList.toggle('shadow-brand-primary/20', isActive)
-          card.classList.toggle('border-white/10', !isActive)
-          card.classList.toggle('hover:border-brand-primary/60', !isActive)
-          card.classList.toggle('hover:-translate-y-1', !isActive)
-
-          if (button) {
-            button.classList.toggle('bg-brand-primary', isActive)
-            button.classList.toggle('bg-white', !isActive)
-            button.classList.toggle('group-hover:bg-brand-primary', !isActive)
-            button.classList.add('text-slate-950')
-          }
+        idleCardClasses.forEach(function(className) {
+          card.classList.toggle(className, !isActive)
         })
-      }
 
-      function updatePlan(planKey) {
-        var plan = plans[planKey]
+        card.style.boxShadow = isActive ?
+          '0 0 0 1px rgba(34,211,238,.55), 0 0 42px rgba(34,211,238,.36)' :
+          ''
 
-        if (!plan) return
+        if (button) {
+          selectedButtonClasses.forEach(function(className) {
+            button.classList.toggle(className, isActive)
+          })
 
-        if (selectedPlanInput) selectedPlanInput.value = planKey
-
-        setHtml(summaryTitle, plan.summary_title)
-        setHtml(summaryLabel, plan.summary_label)
-        setHtml(summaryPrice, plan.price)
-        setHtml(summaryInterval, plan.summary_interval)
-        setHtml(summaryDescription, plan.summary_description)
-        setHtml(afterTitle, plan.after_title)
-        setHtml(afterPrice, plan.after_price)
-        setHtml(afterSuffix, plan.after_suffix)
-        setHtml(afterNote, plan.after_note)
-        setHtml(submitLabel, plan.cta)
-        setHtml(submitSubline, plan.cta_subline)
-
-        renderFeatures(plan.features || [])
-        setActiveCard(planKey)
-      }
-
-      function syncFullName() {
-        if (!fullName) return
-
-        var parts = []
-
-        if (firstName && firstName.value.trim()) {
-          parts.push(firstName.value.trim())
+          idleButtonClasses.forEach(function(className) {
+            button.classList.toggle(className, !isActive)
+          })
         }
-
-        if (lastName && lastName.value.trim()) {
-          parts.push(lastName.value.trim())
-        }
-
-        fullName.value = parts.join(' ')
-      }
-
-      cards.forEach(function (card) {
-        card.addEventListener('click', function () {
-          updatePlan(card.getAttribute('data-plan-card'))
-        })
       })
-
-      if (firstName) {
-        firstName.addEventListener('input', syncFullName)
-      }
-
-      if (lastName) {
-        lastName.addEventListener('input', syncFullName)
-      }
-
-      if (form) {
-        form.addEventListener('submit', syncFullName)
-      }
-
-      syncFullName()
-      updatePlan(selectedPlanInput ? selectedPlanInput.value : '{{ $defaultPlanKey }}')
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initTrialPlans)
-    } else {
-      initTrialPlans()
+    function updatePlan(planKey) {
+      var plan = plans[planKey]
+      if (!plan) return
+
+      if (selectedPlanInput) selectedPlanInput.value = planKey
+      if (summaryTitle) summaryTitle.textContent = plan.summary_title
+      if (summaryLabel) summaryLabel.textContent = plan.summary_label
+      if (summaryPrice) summaryPrice.textContent = plan.price
+      if (summaryInterval) summaryInterval.textContent = plan.summary_interval
+      if (summaryDescription) summaryDescription.textContent = plan.summary_description
+      if (afterTitle) afterTitle.textContent = plan.after_title
+      if (afterPrice) afterPrice.textContent = plan.after_price
+      if (afterSuffix) afterSuffix.textContent = plan.after_suffix
+      if (afterNote) afterNote.textContent = plan.after_note
+      if (submitLabel) submitLabel.textContent = plan.cta
+      if (submitSubline) submitSubline.textContent = plan.cta_subline
+
+      renderFeatures(plan.features || [])
+      setActiveCard(planKey)
     }
-  })()
+
+    function scrollToCheckout() {
+      if (!checkoutArea) return
+
+      var offset = 140
+      var target = checkoutArea.getBoundingClientRect().top + window.pageYOffset - offset
+      var start = window.pageYOffset
+      var distance = target - start
+      var duration = 900
+      var startTime = null
+
+      function ease(t) {
+        return t < 0.5 ?
+          2 * t * t :
+          1 - Math.pow(-2 * t + 2, 2) / 2
+      }
+
+      function animateScroll(currentTime) {
+        if (!startTime) startTime = currentTime
+
+        var elapsed = currentTime - startTime
+        var progress = Math.min(elapsed / duration, 1)
+
+        window.scrollTo(0, start + distance * ease(progress))
+
+        if (progress < 1) {
+          requestAnimationFrame(animateScroll)
+        }
+      }
+
+      requestAnimationFrame(animateScroll)
+    }
+
+    function syncFullName() {
+      if (!fullName) return
+
+      var nameParts = []
+
+      if (firstName && firstName.value.trim()) {
+        nameParts.push(firstName.value.trim())
+      }
+
+      if (lastName && lastName.value.trim()) {
+        nameParts.push(lastName.value.trim())
+      }
+
+      fullName.value = nameParts.join(' ')
+    }
+
+    cards.forEach(function(card) {
+      card.addEventListener('click', function(event) {
+        updatePlan(card.dataset.planCard)
+
+        if (event.target.closest('[data-plan-card-button]')) {
+          scrollToCheckout()
+        }
+      })
+    })
+
+    if (firstName) {
+      firstName.addEventListener('input', syncFullName)
+    }
+
+    if (lastName) {
+      lastName.addEventListener('input', syncFullName)
+    }
+
+    if (form) {
+      form.addEventListener('submit', syncFullName)
+    }
+
+    syncFullName()
+  })
 </script>
 
 @endsection

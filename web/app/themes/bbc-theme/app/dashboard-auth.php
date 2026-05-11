@@ -20,22 +20,48 @@ function dashboard_user_should_use_wp_admin($user): bool
   return !empty($roles);
 }
 
+function dashboard_login_plan_from_post(): string
+{
+  if (function_exists('dashboard_checkout_optional_plan_from_value')) {
+    return dashboard_checkout_optional_plan_from_value($_POST['checkout_plan'] ?? '');
+  }
+
+  $plan = sanitize_key($_POST['checkout_plan'] ?? '');
+
+  return in_array($plan, ['trial', 'basis', 'pro'], true) ? $plan : '';
+}
+
+function dashboard_login_redirect_url(string $error, string $plan = ''): string
+{
+  $args = [
+    'error' => $error,
+  ];
+
+  if ($plan !== '') {
+    $args['plan'] = $plan;
+  }
+
+  return add_query_arg($args, home_url('/dashboard-login'));
+}
+
 add_action('user_register', function ($user_id) {
   $now = current_time('timestamp');
 
   update_user_meta($user_id, USER_META_TRIAL_START, $now);
   update_user_meta($user_id, USER_META_TRIAL_END, strtotime('+5 days', $now));
   update_user_meta($user_id, USER_META_SUB_STATUS, 'trial');
-  update_user_meta($user_id, USER_META_THEME, 'light');
+  update_user_meta($user_id, USER_META_THEME, 'dark');
 });
 
 add_action('admin_post_nopriv_dashboard_login', function () {
+  $checkoutPlan = dashboard_login_plan_from_post();
+
   $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
   $key = 'login_attempts_' . md5($ip);
   $attempts = (int) get_transient($key);
 
   if ($attempts >= 5) {
-    wp_safe_redirect('/dashboard-login?error=too_many_attempts');
+    wp_safe_redirect(dashboard_login_redirect_url('too_many_attempts', $checkoutPlan));
     exit;
   }
 
@@ -43,7 +69,7 @@ add_action('admin_post_nopriv_dashboard_login', function () {
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_login')
   ) {
-    wp_safe_redirect('/dashboard-login?error=invalid_request');
+    wp_safe_redirect(dashboard_login_redirect_url('invalid_request', $checkoutPlan));
     exit;
   }
 
@@ -57,7 +83,7 @@ add_action('admin_post_nopriv_dashboard_login', function () {
 
   if (is_wp_error($user)) {
     set_transient($key, $attempts + 1, 15 * MINUTE_IN_SECONDS);
-    wp_safe_redirect('/dashboard-login?error=1');
+    wp_safe_redirect(dashboard_login_redirect_url('1', $checkoutPlan));
     exit;
   }
 
@@ -65,6 +91,13 @@ add_action('admin_post_nopriv_dashboard_login', function () {
 
   if (dashboard_user_should_use_wp_admin($user)) {
     wp_safe_redirect(admin_url());
+    exit;
+  }
+
+  if ($checkoutPlan !== '') {
+    update_user_meta($user->ID, 'dashboard_selected_plan', $checkoutPlan);
+
+    wp_safe_redirect(dashboard_settings_billing_url());
     exit;
   }
 
