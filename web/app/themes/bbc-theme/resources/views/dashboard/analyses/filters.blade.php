@@ -1,8 +1,11 @@
 @php
-$currentAsset = request()->get('asset');
-$currentMarket = request()->get('market');
-$dateFrom = request()->get('date_from');
-$dateTo = request()->get('date_to');
+$currentAsset = sanitize_title((string) request()->get('asset'));
+$currentMarket = sanitize_title((string) request()->get('market'));
+$dateFromRaw = (string) request()->get('date_from');
+$dateToRaw = (string) request()->get('date_to');
+$dateFrom = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFromRaw) ? $dateFromRaw : '';
+$dateTo = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateToRaw) ? $dateToRaw : '';
+$resetUrl = strtok((string) ($_SERVER['REQUEST_URI'] ?? '/dashboard'), '?') ?: '/dashboard';
 
 $topMarkets = get_terms([
 'taxonomy' => 'analysis_market',
@@ -16,8 +19,8 @@ $terms = get_terms(['taxonomy' => 'analysis_market', 'hide_empty' => false]);
 
 foreach ($terms as $term) {
 if ($term->parent !== 0) {
-$assets[] = ['name' => html_entity_decode($term->name), 'slug' => $term->slug];
-$assetNameBySlug[$term->slug] = html_entity_decode($term->name);
+$assets[] = ['name' => html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8'), 'slug' => $term->slug];
+$assetNameBySlug[$term->slug] = html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 }
 }
 
@@ -77,7 +80,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
         <select name="market" class="w-full rounded-lg border border-brand-primary/20 bg-white/50 px-3 py-1.5 text-sm outline-none" @disabled($currentAsset)>
           <option value="">Alle Kategorien</option>
           @foreach ($topMarkets as $market)
-          <option value="{{ $market->slug }}" @selected($currentMarket===$market->slug)>{!! html_entity_decode($market->name) !!}</option>
+          <option value="{{ $market->slug }}" @selected($currentMarket===$market->slug)>{{ html_entity_decode($market->name, ENT_QUOTES | ENT_HTML5, 'UTF-8') }}</option>
           @endforeach
         </select>
       </div>
@@ -111,7 +114,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
       {{-- Buttons --}}
       <div class="flex items-center gap-2 pt-1 md:pt-0">
-        <a href="/dashboard" class="flex items-center justify-center h-8 w-8 rounded-lg bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition" title="Reset">
+        <a href="{{ esc_url($resetUrl) }}" class="flex items-center justify-center h-8 w-8 rounded-lg bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition" title="Reset">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>

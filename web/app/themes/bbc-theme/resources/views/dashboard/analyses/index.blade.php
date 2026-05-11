@@ -34,8 +34,12 @@
   </header>
 
   @php
-  $currentAsset = request()->get('asset');
-  $currentMarket = request()->get('market');
+  $currentAsset = sanitize_title((string) request()->get('asset'));
+  $currentMarket = sanitize_title((string) request()->get('market'));
+  $dateFromRaw = (string) request()->get('date_from');
+  $dateToRaw = (string) request()->get('date_to');
+  $dateFrom = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFromRaw) ? $dateFromRaw : '';
+  $dateTo = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateToRaw) ? $dateToRaw : '';
 
   $args = [
   'post_type' => 'analysis',
@@ -44,6 +48,30 @@
   'meta_key' => 'publish_date',
   'order' => 'DESC',
   ];
+
+  $metaQuery = [];
+
+  if ($dateFrom !== '') {
+  $metaQuery[] = [
+  'key' => 'publish_date',
+  'value' => $dateFrom,
+  'compare' => '>=',
+  'type' => 'DATE',
+  ];
+  }
+
+  if ($dateTo !== '') {
+  $metaQuery[] = [
+  'key' => 'publish_date',
+  'value' => $dateTo,
+  'compare' => '<=',
+  'type' => 'DATE',
+  ];
+  }
+
+  if ($metaQuery) {
+  $args['meta_query'] = $metaQuery;
+  }
 
   if ($currentAsset) {
   $args['tax_query'] = [[

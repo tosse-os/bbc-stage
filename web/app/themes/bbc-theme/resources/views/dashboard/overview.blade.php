@@ -125,7 +125,6 @@
       @endphp
 
       <a
-        <a
         href="/dashboard-media"
         class="dashboard-card group rounded-xl p-5 flex items-center gap-4
          transition-all duration-300 ease-in-out cursor-pointer

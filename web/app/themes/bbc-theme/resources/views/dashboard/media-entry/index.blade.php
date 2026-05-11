@@ -50,7 +50,7 @@
           {{-- Text Sektion --}}
           <div class="mb-3">
             <h3 class="font-bold text-base md:text-lg text-white group-hover:text-brand-primary transition-colors leading-tight line-clamp-1">
-              {!! $cleanTitle !!}
+              {{ $cleanTitle }}
             </h3>
             <div class="flex items-center gap-2 mt-1">
               <span class="text-[10px] font-bold text-brand-primary uppercase tracking-widest">

@@ -20,3 +20,14 @@ if (!function_exists('pll_register_string')) {
     return true;
   }
 }
+
+if (!function_exists('pll_the_languages')) {
+  function pll_the_languages($args = [])
+  {
+    if (is_array($args) && !empty($args['raw'])) {
+      return [];
+    }
+
+    return '';
+  }
+}

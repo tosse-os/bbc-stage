@@ -1,7 +1,3 @@
-@extends('layouts.dashboard')
-
-@section('content')
-
 @php
 $tab = request()->get('tab', 'account');
 $user = wp_get_current_user();
@@ -499,5 +495,3 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
   </div>
 
 </section>
-
-@endsection

@@ -8,7 +8,7 @@ Template Name: Dashboard Password Reset
   <div class="backdrop-blur-xl bg-white/[0.03] border border-white/10 rounded-2xl px-8 py-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 overflow-hidden relative">
 
     <div class="flex flex-col items-center mb-10">
-      <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-14 mb-6">
+      <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-14 mb-6" alt="Bloombridge Capital">
       <h1 class="text-xl font-semibold text-white tracking-tight">Passwort zurücksetzen</h1>
       <p class="text-slate-400 text-sm mt-1 text-center">
         Geben Sie Ihre E-Mail-Adresse ein, um einen Link zum Zurücksetzen Ihres Passworts zu erhalten.
@@ -16,7 +16,7 @@ Template Name: Dashboard Password Reset
     </div>
 
     <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="space-y-6">
-      @csrf
+      @php wp_nonce_field('dashboard_password_reset', '_wpnonce'); @endphp
       <input type="hidden" name="action" value="dashboard_password_reset">
 
       <div>

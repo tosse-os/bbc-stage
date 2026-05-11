@@ -131,25 +131,25 @@ $trialMessages = [
       {{-- Hero - Headline, Preisanker und Trust-Hinweise --}}
       <div class="mx-auto max-w-5xl text-center">
         <h1 class="text-3xl font-semibold tracking-tight text-white lg:text-4xl">
-          {!! pll__('Premium-Analysen 14 Tage testen') !!}
+          {{ pll__('Premium-Analysen 14 Tage testen') }}
         </h1>
 
         <!-- <p class="mt-4 text-lg text-slate-300">
           <span class="font-semibold text-brand-primary">4,99 €</span>
-          {!! pll__('für 14 Tage Zugang') !!}
-          · {!! pll__('danach 49,99 € / Monat') !!}
-          · {!! pll__('jederzeit kündbar') !!}
+          {{ pll__('für 14 Tage Zugang') }}
+          · {{ pll__('danach 49,99 € / Monat') }}
+          · {{ pll__('jederzeit kündbar') }}
         </p> -->
 
         <div class="mt-4 flex items-center justify-center gap-4 text-sm text-slate-400">
           <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-white font-semibold">1</span> -->
-          <span>{!! pll__('In 2 Minuten freigeschaltet') !!}</span>
+          <span>{{ pll__('In 2 Minuten freigeschaltet') }}</span>
           <span class="h-px w-16 bg-white/20 opacity-80"></span>
           <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/30 text-white font-semibold">2</span> -->
-          <span>{!! pll__('Sichere Zahlung über Stripe') !!}</span>
+          <span>{{ pll__('Sichere Zahlung über Stripe') }}</span>
           <span class="h-px w-16 bg-white/20 opacity-80"></span>
           <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/30 text-white font-semibold">3</span> -->
-          <span>{!! pll__('Sofortiger Zugriff') !!}</span>
+          <span>{{ pll__('Sofortiger Zugriff') }}</span>
         </div>
 
         @if($trialError)
@@ -159,7 +159,7 @@ $trialMessages = [
           @if(in_array($trialError, ['exists', 'account_exists'], true))
           <div class="mt-3">
             <a href="/dashboard-login?plan={{ $defaultPlanKey }}" class="font-semibold text-brand-primary hover:text-white">
-              {!! pll__('Jetzt einloggen') !!}
+              {{ pll__('Jetzt einloggen') }}
             </a>
           </div>
           @endif
@@ -182,13 +182,13 @@ $trialMessages = [
 
           @if($planKey === 'basis')
           <div class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-brand-primary px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-950">
-            {!! pll__('Empfohlen') !!}
+            {{ pll__('Empfohlen') }}
           </div>
           @endif
 
           <div class="flex items-center justify-between gap-4">
             <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">
-              {!! $plan['badge'] !!}
+              {{ $plan['badge'] }}
             </span>
 
             <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary">
@@ -210,24 +210,24 @@ $trialMessages = [
 
           <div class="mt-4">
             <h3 class="text-2xl font-semibold text-white">
-              {!! $plan['title'] !!}
+              {{ $plan['title'] }}
             </h3>
 
             <div class="mt-2">
               <span class="text-2xl font-bold tracking-tight text-white">
-                {!! $plan['price'] !!}
+                {{ $plan['price'] }}
               </span>
               <div class="mt-1 text-sm text-slate-400">
-                {!! $plan['interval'] !!}
+                {{ $plan['interval'] }}
               </div>
             </div>
 
             <p class="mt-4 text-xl font-medium leading-tight text-white" style="min-height: 3.5rem;">
-              {!! $plan['headline'] !!}
+              {{ $plan['headline'] }}
             </p>
 
             <p class="mt-2 text-sm leading-relaxed text-slate-400">
-              {!! $plan['description'] !!}
+              {{ $plan['description'] }}
             </p>
           </div>
 
@@ -236,7 +236,7 @@ $trialMessages = [
               @foreach(array_slice($plan['features'], 0, 4) as $feature)
               <li class="flex gap-2">
                 <span class="text-brand-primary">✓</span>
-                <span>{!! $feature !!}</span>
+                <span>{{ $feature }}</span>
               </li>
               @endforeach
             </ul>
@@ -244,7 +244,7 @@ $trialMessages = [
             <span
               data-plan-card-button
               class="mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition {{ $isActivePlan ? 'bg-brand-primary text-slate-950 shadow-lg shadow-brand-primary/30' : 'bg-white text-slate-950 group-hover:bg-brand-primary' }}">
-              {!! $plan['button'] !!}
+              {{ $plan['button'] }}
             </span>
           </div>
         </button>
@@ -266,10 +266,10 @@ $trialMessages = [
 
             <div>
               <h2 class="text-xl font-semibold text-white">
-                {!! pll__('Premium-Zugang starten') !!}
+                {{ pll__('Premium-Zugang starten') }}
               </h2>
               <p class="mt-1 text-sm text-slate-400">
-                {!! pll__('Zugangsdaten anlegen. Sicher bezahlen. Direkt starten.') !!}
+                {{ pll__('Zugangsdaten anlegen. Sicher bezahlen. Direkt starten.') }}
               </p>
             </div>
           </div>
@@ -283,7 +283,7 @@ $trialMessages = [
             {{-- Account Fields - E-Mail, Passwort und Name --}}
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-1">
-                {!! pll__('E-Mail-Adresse') !!}
+                {{ pll__('E-Mail-Adresse') }}
               </label>
               <input
                 type="email"
@@ -296,7 +296,7 @@ $trialMessages = [
 
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-1">
-                {!! pll__('Passwort') !!}
+                {{ pll__('Passwort') }}
               </label>
               <input
                 type="password"
@@ -304,14 +304,14 @@ $trialMessages = [
                 required
                 minlength="8"
                 autocomplete="new-password"
-                placeholder="{!! pll__('Mindestens 8 Zeichen') !!}"
+                placeholder="{{ pll__('Mindestens 8 Zeichen') }}"
                 class="w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
             </div>
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label class="block text-sm font-medium text-slate-300 mb-2">
-                  {!! pll__('Vorname') !!}
+                  {{ pll__('Vorname') }}
                 </label>
                 <input
                   type="text"
@@ -323,7 +323,7 @@ $trialMessages = [
 
               <div>
                 <label class="block text-sm font-medium text-slate-300 mb-2">
-                  {!! pll__('Nachname') !!}
+                  {{ pll__('Nachname') }}
                 </label>
                 <input
                   type="text"
@@ -344,8 +344,8 @@ $trialMessages = [
                   </svg>
                 </div>
                 <div>
-                  <div class="text-sm font-semibold text-white">{!! pll__('Sicher') !!}</div>
-                  <div class="text-xs text-slate-400">{!! pll__('DSGVO-konform') !!}</div>
+                  <div class="text-sm font-semibold text-white">{{ pll__('Sicher') }}</div>
+                  <div class="text-xs text-slate-400">{{ pll__('DSGVO-konform') }}</div>
                 </div>
               </div>
 
@@ -359,8 +359,8 @@ $trialMessages = [
                   </svg>
                 </div>
                 <div>
-                  <div class="text-sm font-semibold text-white">{!! pll__('Kündbar') !!}</div>
-                  <div class="text-xs text-slate-400">{!! pll__('Jederzeit möglich') !!}</div>
+                  <div class="text-sm font-semibold text-white">{{ pll__('Kündbar') }}</div>
+                  <div class="text-xs text-slate-400">{{ pll__('Jederzeit möglich') }}</div>
                 </div>
               </div>
 
@@ -374,8 +374,8 @@ $trialMessages = [
                   </svg>
                 </div>
                 <div>
-                  <div class="text-sm font-semibold text-white">{!! pll__('Stripe') !!}</div>
-                  <div class="text-xs text-slate-400">{!! pll__('Sichere Zahlung') !!}</div>
+                  <div class="text-sm font-semibold text-white">{{ pll__('Stripe') }}</div>
+                  <div class="text-xs text-slate-400">{{ pll__('Sichere Zahlung') }}</div>
                 </div>
               </div>
             </div>
@@ -390,11 +390,11 @@ $trialMessages = [
                   required
                   class="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950 text-brand-primary focus:ring-brand-primary">
                 <span>
-                  {!! pll__('Ich stimme den') !!}
-                  <a href="/agb/" class="text-brand-primary hover:text-white">{!! pll__('AGB') !!}</a>
-                  {!! pll__('und der') !!}
-                  <a href="/datenschutz/" class="text-brand-primary hover:text-white">{!! pll__('Datenschutzerklärung') !!}</a>
-                  {!! pll__('zu.') !!}
+                  {{ pll__('Ich stimme den') }}
+                  <a href="/agb/" class="text-brand-primary hover:text-white">{{ pll__('AGB') }}</a>
+                  {{ pll__('und der') }}
+                  <a href="/datenschutz/" class="text-brand-primary hover:text-white">{{ pll__('Datenschutzerklärung') }}</a>
+                  {{ pll__('zu.') }}
                 </span>
               </label>
             </div>
@@ -403,14 +403,14 @@ $trialMessages = [
             <button
               type="submit"
               class="w-full rounded-xl bg-brand-primary px-6 py-4 text-base font-semibold text-white shadow-lg shadow-brand-primary/20 transition hover:bg-brand-primaryHover">
-              <span data-plan-submit-label>{!! $defaultPlan['cta'] !!}</span>
+              <span data-plan-submit-label>{{ $defaultPlan['cta'] }}</span>
               <span class="block pt-1 text-xs font-normal text-white/80" data-plan-submit-subline>
-                {!! $defaultPlan['cta_subline'] !!}
+                {{ $defaultPlan['cta_subline'] }}
               </span>
             </button>
 
             <p class="text-center text-xs text-slate-500">
-              {!! pll__('Sofortige Freischaltung · jederzeit kündbar · DSGVO-konform') !!}
+              {{ pll__('Sofortige Freischaltung · jederzeit kündbar · DSGVO-konform') }}
             </p>
           </form>
         </div>
@@ -432,7 +432,7 @@ $trialMessages = [
 
             <div>
               <h2 class="text-xl font-semibold text-white" data-plan-summary-title>
-                {!! $defaultPlan['summary_title'] !!}
+                {{ $defaultPlan['summary_title'] }}
               </h2>
             </div>
           </div>
@@ -440,16 +440,16 @@ $trialMessages = [
           {{-- Selected Plan Summary - Preis, Laufzeit und Beschreibung --}}
           <div class="mt-6">
             <div class="text-brand-primary font-semibold" data-plan-summary-label>
-              {!! $defaultPlan['summary_label'] !!}
+              {{ $defaultPlan['summary_label'] }}
             </div>
 
             <div class="mt-2 flex items-end gap-3">
-              <span class="text-3xl font-semibold text-brand-primary" data-plan-summary-price>{!! $defaultPlan['price'] !!}</span>
-              <span class="pb-2 text-slate-300" data-plan-summary-interval>{!! $defaultPlan['summary_interval'] !!}</span>
+              <span class="text-3xl font-semibold text-brand-primary" data-plan-summary-price>{{ $defaultPlan['price'] }}</span>
+              <span class="pb-2 text-slate-300" data-plan-summary-interval>{{ $defaultPlan['summary_interval'] }}</span>
             </div>
 
             <p class="mt-2 text-sm text-slate-400" data-plan-summary-description>
-              {!! $defaultPlan['summary_description'] !!}
+              {{ $defaultPlan['summary_description'] }}
             </p>
           </div>
 
@@ -467,14 +467,14 @@ $trialMessages = [
 
               <div>
                 <div class="text-sm font-semibold text-white" data-plan-after-title>
-                  {!! $defaultPlan['after_title'] !!}
+                  {{ $defaultPlan['after_title'] }}
                 </div>
                 <div class="mt-1 text-sm text-slate-300">
-                  <span class="font-semibold text-white" data-plan-after-price>{!! $defaultPlan['after_price'] !!}</span>
-                  · <span data-plan-after-suffix>{!! $defaultPlan['after_suffix'] !!}</span>
+                  <span class="font-semibold text-white" data-plan-after-price>{{ $defaultPlan['after_price'] }}</span>
+                  · <span data-plan-after-suffix>{{ $defaultPlan['after_suffix'] }}</span>
                 </div>
                 <p class="mt-2 text-xs leading-relaxed text-slate-500" data-plan-after-note>
-                  {!! $defaultPlan['after_note'] !!}
+                  {{ $defaultPlan['after_note'] }}
                 </p>
               </div>
             </div>
@@ -485,7 +485,7 @@ $trialMessages = [
             @foreach($defaultPlan['features'] as $feature)
             <li class="flex gap-3">
               <span class="text-brand-primary">✓</span>
-              <span>{!! $feature !!}</span>
+              <span>{{ $feature }}</span>
             </li>
             @endforeach
           </ul>
@@ -500,10 +500,10 @@ $trialMessages = [
               </div>
               <div>
                 <div class="font-semibold text-white">
-                  {!! pll__('Sichere Zahlung & sofortiger Zugang') !!}
+                  {{ pll__('Sichere Zahlung & sofortiger Zugang') }}
                 </div>
                 <p class="mt-1 text-sm text-slate-400">
-                  {!! pll__('Zahlungsdaten werden ausschließlich über Stripe verarbeitet. Ihr Zugang wird nach erfolgreicher Zahlung automatisch freigeschaltet.') !!}
+                  {{ pll__('Zahlungsdaten werden ausschließlich über Stripe verarbeitet. Ihr Zugang wird nach erfolgreicher Zahlung automatisch freigeschaltet.') }}
                 </p>
               </div>
             </div>

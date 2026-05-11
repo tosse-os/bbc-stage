@@ -45,12 +45,11 @@ function dashboard_login_redirect_url(string $error, string $plan = ''): string
 }
 
 add_action('user_register', function ($user_id) {
-  $now = current_time('timestamp');
-
-  update_user_meta($user_id, USER_META_TRIAL_START, $now);
-  update_user_meta($user_id, USER_META_TRIAL_END, strtotime('+5 days', $now));
-  update_user_meta($user_id, USER_META_SUB_STATUS, 'trial');
   update_user_meta($user_id, USER_META_THEME, 'dark');
+
+  if (get_user_meta($user_id, USER_META_SUB_STATUS, true) === '') {
+    update_user_meta($user_id, USER_META_SUB_STATUS, 'payment_required');
+  }
 });
 
 add_action('admin_post_nopriv_dashboard_login', function () {
@@ -106,62 +105,39 @@ add_action('admin_post_nopriv_dashboard_login', function () {
 });
 
 add_action('admin_post_nopriv_dashboard_register', function () {
+  wp_safe_redirect(home_url('/subscribe-trial/'));
+  exit;
+});
 
+
+add_action('admin_post_nopriv_dashboard_password_reset', function () {
   if (
     !isset($_POST['_wpnonce']) ||
-    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register')
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_password_reset')
   ) {
-    wp_safe_redirect('/dashboard-register?error=invalid_request');
+    wp_safe_redirect(home_url('/dashboard-password?error=invalid_request'));
     exit;
   }
 
   $email = sanitize_email($_POST['email'] ?? '');
-  $password = $_POST['password'] ?? '';
-  $name = sanitize_text_field($_POST['name'] ?? '');
-
-  if (strlen($password) < 8) {
-    wp_safe_redirect('/dashboard-register?error=weak_password');
-    exit;
-  }
 
   if (!is_email($email)) {
-    wp_safe_redirect('/dashboard-register?error=email');
+    wp_safe_redirect(home_url('/dashboard-password?error=invalid_request'));
     exit;
   }
 
-  if (email_exists($email)) {
-    wp_safe_redirect('/dashboard-register?error=exists');
-    exit;
-  }
+  retrieve_password($email);
 
-  $user_id = wp_create_user($email, $password, $email);
-
-  if (is_wp_error($user_id)) {
-    wp_safe_redirect('/dashboard-register?error=create_failed');
-    exit;
-  }
-
-  wp_update_user([
-    'ID' => $user_id,
-    'display_name' => $name,
-  ]);
-
-  wp_set_current_user($user_id);
-  wp_set_auth_cookie($user_id);
-
-  $user = get_user_by('id', $user_id);
-
-  if (dashboard_user_should_use_wp_admin($user)) {
-    wp_safe_redirect(admin_url());
-    exit;
-  }
-
-  wp_safe_redirect('/dashboard');
+  wp_safe_redirect(home_url('/dashboard-password?success=1'));
   exit;
 });
 
 add_action('wp_logout', function () {
-  wp_safe_redirect('/dashboard-login');
+  if (isset($_GET['dashboard_logout'])) {
+    return;
+  }
+
+  wp_safe_redirect(home_url('/dashboard-login'));
   exit;
 });
 
