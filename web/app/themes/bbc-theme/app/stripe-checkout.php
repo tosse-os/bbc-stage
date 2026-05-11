@@ -109,17 +109,22 @@ function dashboard_checkout_line_items_for_plan(string $plan): array
 
   $items = [];
 
-  if ($plan === 'trial' && ($config['trial_fee_price_id'] ?? '') !== '') {
+  $recurringPriceId = (string) ($config['recurring_price_id'] ?? '');
+  $trialFeePriceId = (string) ($config['trial_fee_price_id'] ?? '');
+
+  if ($plan === 'trial' && $trialFeePriceId !== '' && $trialFeePriceId !== $recurringPriceId) {
     $items[] = [
-      'price' => $config['trial_fee_price_id'],
+      'price' => $trialFeePriceId,
       'quantity' => 1,
     ];
   }
 
-  $items[] = [
-    'price' => $config['recurring_price_id'],
-    'quantity' => 1,
-  ];
+  if ($recurringPriceId !== '') {
+    $items[] = [
+      'price' => $recurringPriceId,
+      'quantity' => 1,
+    ];
+  }
 
   return $items;
 }
