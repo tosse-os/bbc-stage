@@ -217,6 +217,7 @@ require_once __DIR__ . '/analysis-access.php';
 require_once __DIR__ . '/dashboard-auth.php';
 require_once __DIR__ . '/dashboard-avatar.php';
 require_once __DIR__ . '/dashboard-access.php';
+require_once __DIR__ . '/dashboard-secure-media.php';
 require_once __DIR__ . '/stripe.php';
 require_once __DIR__ . '/dashboard-gate.php';
 require_once __DIR__ . '/dashboard-controller.php';

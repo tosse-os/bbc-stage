@@ -134,7 +134,7 @@
         <div class="chart-preview">
           @if ($image = get_field('chart_image'))
           <img
-            src="{{ $image['sizes']['medium'] }}"
+            src="{{ dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0, 'medium') }}"
             class="rounded-md shadow-sm border border-slate-100 object-cover w-full h-16">
           @endif
         </div>
@@ -189,7 +189,7 @@
       </div>
 
       @if ($image = get_field('chart_image'))
-      <img src="{{ $image['sizes']['medium'] }}" class="rounded-md">
+      <img src="{{ dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0, 'medium') }}" class="rounded-md">
       @endif
 
       <p class="text-sm text-slate-600">
@@ -239,7 +239,7 @@
       </div>
 
       @if ($image = get_field('chart_image'))
-      <img src="{{ $image['sizes']['medium'] }}" class="rounded-md">
+      <img src="{{ dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0, 'medium') }}" class="rounded-md">
       @endif
 
       <p class="text-sm text-slate-600">

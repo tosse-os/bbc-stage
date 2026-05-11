@@ -23,7 +23,7 @@
 
     $image = get_field('cover_image');
     $coverUrl = $image
-    ? $image['sizes']['medium']
+    ? dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0, 'medium')
     : get_theme_file_uri('resources/images/dashboard/default-cover.jpg');
 
     $cleanTitle = html_entity_decode(get_the_title(), ENT_QUOTES | ENT_HTML5, 'UTF-8');

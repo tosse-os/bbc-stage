@@ -128,7 +128,7 @@
   @if ($image = get_field('chart_image'))
   <div class="relative">
     <img
-      src="{{ $image['url'] }}"
+      src="{{ dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0) }}"
       alt=""
       class="w-full rounded-2xl shadow-lg cursor-zoom-in"
       data-chart-zoom>
@@ -144,7 +144,7 @@
 
     <div class="custom-audio-wrapper flex items-center gap-4">
 
-      <audio src="{{ $commentary['url'] }}" class="hidden-audio" preload="metadata"></audio>
+      <audio src="{{ dashboard_secure_media_url($commentary['ID'] ?? $commentary['id'] ?? 0) }}" class="hidden-audio" preload="metadata"></audio>
 
       <button class="play-btn w-10 h-10 flex items-center justify-center bg-brand-primary rounded-full text-white">
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">

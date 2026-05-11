@@ -39,7 +39,7 @@
 
       $image_id = get_post_meta($post_id, 'chart_image', true);
       $image_url = $image_id
-      ? wp_get_attachment_image_url($image_id, 'thumbnail')
+      ? dashboard_secure_media_url($image_id, 'thumbnail')
       : null;
 
       $publish_date = get_post_meta($post_id, 'publish_date', true);
@@ -120,7 +120,7 @@
 
       $image_id = get_post_meta($post_id, 'cover_image', true);
       $coverUrl = $image_id
-      ? wp_get_attachment_image_url($image_id, 'thumbnail')
+      ? dashboard_secure_media_url($image_id, 'thumbnail')
       : get_theme_file_uri('resources/images/dashboard/default-cover.jpg');
       @endphp
 

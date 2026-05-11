@@ -1,8 +1,11 @@
-@php $audio = get_field('audio_file'); @endphp
+@php
+$audio = get_field('audio_file');
+$audioUrl = $audio ? dashboard_secure_media_url($audio['ID'] ?? $audio['id'] ?? 0) : '';
+@endphp
 
-@if ($audio)
+@if ($audio && $audioUrl)
 <div class="custom-audio-wrapper bg-slate-800/40 border border-white/5 rounded-2xl px-4 py-2 flex items-center gap-4 select-none">
-  <audio src="{{ $audio['url'] }}" class="hidden-audio" preload="metadata"></audio>
+  <audio src="{{ $audioUrl }}" class="hidden-audio" preload="metadata"></audio>
 
   <button class="play-btn w-9 h-9 flex-shrink-0 flex items-center justify-center bg-brand-primary rounded-full text-white hover:scale-105 active:scale-95 transition shadow-lg">
     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
