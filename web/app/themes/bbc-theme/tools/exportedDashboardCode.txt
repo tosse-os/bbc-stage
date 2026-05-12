@@ -12,7 +12,7 @@ Routing: WordPress Templates + Redirects
 State: user_meta + URL Parameter
 ================
 
-Anzahl Dateien: 61
+Anzahl Dateien: 62
 
 Dateistruktur:
 - app/ajax.php
@@ -26,6 +26,7 @@ Dateistruktur:
 - app/dashboard-avatar.php
 - app/dashboard-controller.php
 - app/dashboard-gate.php
+- app/dashboard-secure-media.php
 - app/dashboard-subscription.php
 - app/filters.php
 - app/helper/dashboard.php
@@ -1374,12 +1375,11 @@ function dashboard_login_redirect_url(string $error, string $plan = ''): string
 }
 
 add_action('user_register', function ($user_id) {
-  $now = current_time('timestamp');
-
-  update_user_meta($user_id, USER_META_TRIAL_START, $now);
-  update_user_meta($user_id, USER_META_TRIAL_END, strtotime('+5 days', $now));
-  update_user_meta($user_id, USER_META_SUB_STATUS, 'trial');
   update_user_meta($user_id, USER_META_THEME, 'dark');
+
+  if (get_user_meta($user_id, USER_META_SUB_STATUS, true) === '') {
+    update_user_meta($user_id, USER_META_SUB_STATUS, 'payment_required');
+  }
 });
 
 add_action('admin_post_nopriv_dashboard_login', function () {
@@ -1435,62 +1435,39 @@ add_action('admin_post_nopriv_dashboard_login', function () {
 });
 
 add_action('admin_post_nopriv_dashboard_register', function () {
+  wp_safe_redirect(home_url('/subscribe-trial/'));
+  exit;
+});
 
+
+add_action('admin_post_nopriv_dashboard_password_reset', function () {
   if (
     !isset($_POST['_wpnonce']) ||
-    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register')
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_password_reset')
   ) {
-    wp_safe_redirect('/dashboard-register?error=invalid_request');
+    wp_safe_redirect(home_url('/dashboard-password?error=invalid_request'));
     exit;
   }
 
   $email = sanitize_email($_POST['email'] ?? '');
-  $password = $_POST['password'] ?? '';
-  $name = sanitize_text_field($_POST['name'] ?? '');
-
-  if (strlen($password) < 8) {
-    wp_safe_redirect('/dashboard-register?error=weak_password');
-    exit;
-  }
 
   if (!is_email($email)) {
-    wp_safe_redirect('/dashboard-register?error=email');
+    wp_safe_redirect(home_url('/dashboard-password?error=invalid_request'));
     exit;
   }
 
-  if (email_exists($email)) {
-    wp_safe_redirect('/dashboard-register?error=exists');
-    exit;
-  }
+  retrieve_password($email);
 
-  $user_id = wp_create_user($email, $password, $email);
-
-  if (is_wp_error($user_id)) {
-    wp_safe_redirect('/dashboard-register?error=create_failed');
-    exit;
-  }
-
-  wp_update_user([
-    'ID' => $user_id,
-    'display_name' => $name,
-  ]);
-
-  wp_set_current_user($user_id);
-  wp_set_auth_cookie($user_id);
-
-  $user = get_user_by('id', $user_id);
-
-  if (dashboard_user_should_use_wp_admin($user)) {
-    wp_safe_redirect(admin_url());
-    exit;
-  }
-
-  wp_safe_redirect('/dashboard');
+  wp_safe_redirect(home_url('/dashboard-password?success=1'));
   exit;
 });
 
 add_action('wp_logout', function () {
-  wp_safe_redirect('/dashboard-login');
+  if (isset($_GET['dashboard_logout'])) {
+    return;
+  }
+
+  wp_safe_redirect(home_url('/dashboard-login'));
   exit;
 });
 
@@ -1761,6 +1738,214 @@ function dashboard_handle_dashboard_gate()
 add_action('template_redirect', 'dashboard_handle_dashboard_gate', 99);
 
 
+===== app/dashboard-secure-media.php =====
+
+<?php
+
+function dashboard_acf_attachment_id($value): int
+{
+  if (is_numeric($value)) {
+    return (int) $value;
+  }
+
+  if (!is_array($value)) {
+    return 0;
+  }
+
+  if (!empty($value['ID'])) {
+    return (int) $value['ID'];
+  }
+
+  if (!empty($value['id'])) {
+    return (int) $value['id'];
+  }
+
+  return 0;
+}
+
+function dashboard_secure_media_url($attachment, string $size = ''): string
+{
+  $attachment_id = dashboard_acf_attachment_id($attachment);
+
+  if ($attachment_id <= 0) {
+    return '';
+  }
+
+  return add_query_arg([
+    'dashboard_secure_media' => '1',
+    'media_id' => $attachment_id,
+    'size' => $size,
+    '_wpnonce' => wp_create_nonce('dashboard_secure_media_' . $attachment_id),
+  ], home_url('/'));
+}
+
+function dashboard_secure_media_forbidden(): void
+{
+  status_header(403);
+  nocache_headers();
+  echo 'Forbidden';
+  exit;
+}
+
+function dashboard_secure_media_file_for_size(int $attachment_id, string $size): string
+{
+  $file = get_attached_file($attachment_id);
+
+  if (!is_string($file) || $file === '') {
+    return '';
+  }
+
+  if ($size === '') {
+    return $file;
+  }
+
+  $mime = (string) get_post_mime_type($attachment_id);
+
+  if (!str_starts_with($mime, 'image/')) {
+    return $file;
+  }
+
+  $meta = wp_get_attachment_metadata($attachment_id);
+
+  if (!is_array($meta) || empty($meta['sizes'][$size]['file'])) {
+    return $file;
+  }
+
+  $candidate = trailingslashit(dirname($file)) . $meta['sizes'][$size]['file'];
+
+  return is_readable($candidate) ? $candidate : $file;
+}
+
+function dashboard_stream_secure_media_file(string $file, string $mime): void
+{
+  if (!is_readable($file)) {
+    status_header(404);
+    nocache_headers();
+    echo 'Not found';
+    exit;
+  }
+
+  $size = filesize($file);
+
+  if (!$size) {
+    status_header(404);
+    nocache_headers();
+    echo 'Not found';
+    exit;
+  }
+
+  $start = 0;
+  $end = $size - 1;
+  $status = 200;
+
+  if (!empty($_SERVER['HTTP_RANGE']) && preg_match('/bytes=(\d*)-(\d*)/', $_SERVER['HTTP_RANGE'], $matches)) {
+    if ($matches[1] !== '') {
+      $start = (int) $matches[1];
+    }
+
+    if ($matches[2] !== '') {
+      $end = (int) $matches[2];
+    }
+
+    if ($start > $end || $start >= $size) {
+      status_header(416);
+      header('Content-Range: bytes */' . $size);
+      exit;
+    }
+
+    $status = 206;
+  }
+
+  $length = $end - $start + 1;
+
+  status_header($status);
+  header('Content-Type: ' . $mime);
+  header('Content-Length: ' . $length);
+  header('Accept-Ranges: bytes');
+  header('X-Content-Type-Options: nosniff');
+  header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+
+  if ($status === 206) {
+    header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
+  }
+
+  $handle = fopen($file, 'rb');
+
+  if (!$handle) {
+    status_header(500);
+    exit;
+  }
+
+  fseek($handle, $start);
+
+  $remaining = $length;
+
+  while ($remaining > 0 && !feof($handle)) {
+    $chunk_size = min(8192, $remaining);
+    echo fread($handle, $chunk_size);
+    $remaining -= $chunk_size;
+    flush();
+  }
+
+  fclose($handle);
+  exit;
+}
+
+add_action('template_redirect', function () {
+  if (empty($_GET['dashboard_secure_media'])) {
+    return;
+  }
+
+  $attachment_id = absint($_GET['media_id'] ?? 0);
+
+  if ($attachment_id <= 0) {
+    dashboard_secure_media_forbidden();
+  }
+
+  if (!is_user_logged_in()) {
+    dashboard_secure_media_forbidden();
+  }
+
+  if (
+    empty($_GET['_wpnonce']) ||
+    !wp_verify_nonce($_GET['_wpnonce'], 'dashboard_secure_media_' . $attachment_id)
+  ) {
+    dashboard_secure_media_forbidden();
+  }
+
+  if (!function_exists('dashboard_user_has_premium_access') || !dashboard_user_has_premium_access(get_current_user_id())) {
+    dashboard_secure_media_forbidden();
+  }
+
+  if (get_post_type($attachment_id) !== 'attachment') {
+    dashboard_secure_media_forbidden();
+  }
+
+  $mime = (string) get_post_mime_type($attachment_id);
+
+  $allowed = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'audio/mpeg',
+    'audio/mp4',
+    'audio/x-m4a',
+    'audio/wav',
+    'audio/ogg',
+  ];
+
+  if (!in_array($mime, $allowed, true)) {
+    dashboard_secure_media_forbidden();
+  }
+
+  $size = sanitize_key($_GET['size'] ?? '');
+  $file = dashboard_secure_media_file_for_size($attachment_id, $size);
+
+  dashboard_stream_secure_media_file($file, $mime);
+});
+
+
 ===== app/dashboard-subscription.php =====
 
 <?php
@@ -1840,6 +2025,228 @@ function dashboard_subscription_admin_save($user_id)
 }
 
 
+function dashboard_admin_user_subscription_plan_label(int $userId): string
+{
+  $selectedPlan = function_exists('dashboard_checkout_optional_plan_from_value')
+    ? dashboard_checkout_optional_plan_from_value(get_user_meta($userId, 'dashboard_selected_plan', true))
+    : sanitize_key((string) get_user_meta($userId, 'dashboard_selected_plan', true));
+
+  $stripeStatus = (string) get_user_meta($userId, 'stripe_subscription_status', true);
+
+  if ($selectedPlan === 'trial' || $stripeStatus === 'trialing') {
+    return 'Trial';
+  }
+
+  if ($selectedPlan === 'pro') {
+    return 'Pro';
+  }
+
+  if ($selectedPlan === 'basis') {
+    return 'Basis';
+  }
+
+  return '—';
+}
+
+function dashboard_admin_user_subscription_state_label(int $userId): string
+{
+  $state = (string) get_user_meta($userId, USER_META_SUB_STATUS, true);
+  $stripeStatus = (string) get_user_meta($userId, 'stripe_subscription_status', true);
+  $selectedPlan = (string) get_user_meta($userId, 'dashboard_selected_plan', true);
+
+  if ($selectedPlan === 'trial' || $stripeStatus === 'trialing') {
+    return 'Testphase';
+  }
+
+  return match ($state) {
+    'active' => 'Aktiv',
+    'trial' => 'Testphase',
+    'payment_required' => 'Zahlung erforderlich',
+    'past_due' => 'Zahlung überfällig',
+    'canceled' => 'Gekündigt',
+    default => $state !== '' ? ucfirst(str_replace('_', ' ', $state)) : '—',
+  };
+}
+
+function dashboard_admin_user_subscription_badge_class(int $userId): string
+{
+  $state = (string) get_user_meta($userId, USER_META_SUB_STATUS, true);
+  $stripeStatus = (string) get_user_meta($userId, 'stripe_subscription_status', true);
+  $selectedPlan = (string) get_user_meta($userId, 'dashboard_selected_plan', true);
+
+  if ($selectedPlan === 'trial' || $stripeStatus === 'trialing') {
+    return 'dashboard-subscription-badge dashboard-subscription-badge-trial';
+  }
+
+  return match ($state) {
+    'active' => 'dashboard-subscription-badge dashboard-subscription-badge-active',
+    'past_due' => 'dashboard-subscription-badge dashboard-subscription-badge-warning',
+    'payment_required' => 'dashboard-subscription-badge dashboard-subscription-badge-warning',
+    'canceled' => 'dashboard-subscription-badge dashboard-subscription-badge-muted',
+    default => 'dashboard-subscription-badge dashboard-subscription-badge-muted',
+  };
+}
+
+function dashboard_admin_format_stripe_id(string $value): string
+{
+  $value = trim($value);
+
+  if ($value === '') {
+    return '—';
+  }
+
+  if (strlen($value) <= 18) {
+    return $value;
+  }
+
+  return substr($value, 0, 10) . '…' . substr($value, -6);
+}
+
+add_filter('manage_users_columns', function ($columns) {
+  $newColumns = [];
+
+  foreach ($columns as $key => $label) {
+    $newColumns[$key] = $label;
+
+    if ($key === 'email') {
+      $newColumns['dashboard_subscription'] = 'Dashboard Abo';
+      $newColumns['dashboard_stripe'] = 'Stripe';
+    }
+  }
+
+  return $newColumns;
+});
+
+add_filter('manage_users_custom_column', function ($output, $columnName, $userId) {
+  $userId = (int) $userId;
+
+  if ($columnName === 'dashboard_subscription') {
+    $stateLabel = dashboard_admin_user_subscription_state_label($userId);
+    $planLabel = dashboard_admin_user_subscription_plan_label($userId);
+    $badgeClass = dashboard_admin_user_subscription_badge_class($userId);
+
+    $currentPeriodEnd = (int) get_user_meta($userId, 'stripe_current_period_end', true);
+    $stripeTrialStart = (int) get_user_meta($userId, 'stripe_trial_start', true);
+    $stripeTrialEnd = (int) get_user_meta($userId, 'stripe_trial_end', true);
+    $trialUsedAt = (string) get_user_meta($userId, 'dashboard_trial_used_at', true);
+    $isTrialDisplay = $planLabel === 'Trial';
+
+    $displayPeriodEnd = $isTrialDisplay && $stripeTrialEnd > 0
+      ? $stripeTrialEnd
+      : $currentPeriodEnd;
+
+    $html = '<div class="dashboard-subscription-admin">';
+    $html .= '<span class="' . esc_attr($badgeClass) . '">' . esc_html($stateLabel) . '</span>';
+    $html .= '<div><strong>Plan:</strong> ' . esc_html($planLabel) . '</div>';
+
+    if ($isTrialDisplay && $stripeTrialStart > 0) {
+      $html .= '<div><strong>Trial Start:</strong> ' . esc_html(date_i18n('d.m.Y', $stripeTrialStart)) . '</div>';
+    }
+
+    if ($displayPeriodEnd > 0) {
+      $label = $isTrialDisplay ? 'Trial bis' : 'Bis';
+      $html .= '<div><strong>' . esc_html($label) . ':</strong> ' . esc_html(date_i18n('d.m.Y', $displayPeriodEnd)) . '</div>';
+    }
+
+    if ($trialUsedAt !== '') {
+      $html .= '<div><strong>Trial genutzt:</strong> ja</div>';
+    }
+
+    $html .= '</div>';
+
+    return $html;
+  }
+
+  if ($columnName === 'dashboard_stripe') {
+    $stripeStatus = (string) get_user_meta($userId, 'stripe_subscription_status', true);
+    $customerId = (string) get_user_meta($userId, 'stripe_customer_id', true);
+    $subscriptionId = (string) get_user_meta($userId, 'stripe_subscription_id', true);
+
+    $html = '<div class="dashboard-stripe-admin">';
+    $html .= '<div><strong>Status:</strong> ' . esc_html($stripeStatus !== '' ? $stripeStatus : '—') . '</div>';
+    $html .= '<div><strong>Customer:</strong> <code>' . esc_html(dashboard_admin_format_stripe_id($customerId)) . '</code></div>';
+    $html .= '<div><strong>Sub:</strong> <code>' . esc_html(dashboard_admin_format_stripe_id($subscriptionId)) . '</code></div>';
+    $html .= '</div>';
+
+    return $html;
+  }
+
+  return $output;
+}, 10, 3);
+
+add_filter('manage_users_sortable_columns', function ($columns) {
+  $columns['dashboard_subscription'] = 'dashboard_subscription_status';
+  return $columns;
+});
+
+add_action('pre_get_users', function ($query) {
+  if (!is_admin()) {
+    return;
+  }
+
+  if (($query->get('orderby') ?? '') !== 'dashboard_subscription_status') {
+    return;
+  }
+
+  $query->set('meta_key', USER_META_SUB_STATUS);
+  $query->set('orderby', 'meta_value');
+});
+
+add_action('admin_head-users.php', function () {
+  echo '<style>
+    .column-dashboard_subscription {
+      width: 210px;
+    }
+
+    .column-dashboard_stripe {
+      width: 260px;
+    }
+
+    .dashboard-subscription-admin,
+    .dashboard-stripe-admin {
+      line-height: 1.55;
+      font-size: 12px;
+    }
+
+    .dashboard-subscription-admin code,
+    .dashboard-stripe-admin code {
+      font-size: 11px;
+    }
+
+    .dashboard-subscription-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      margin-bottom: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .dashboard-subscription-badge-active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .dashboard-subscription-badge-trial {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .dashboard-subscription-badge-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .dashboard-subscription-badge-muted {
+      background: #e5e7eb;
+      color: #374151;
+    }
+  </style>';
+});
+
+
 ===== app/filters.php =====
 
 <?php
@@ -1879,6 +2286,32 @@ function dashboard_active(string $path, bool $exact = false): bool
   return $current === $path || str_starts_with($current, $path . '/');
 }
 
+function dashboard_allowed_inline_html(): array
+{
+  return [
+    'br' => [],
+    'strong' => [],
+    'b' => [],
+    'em' => [],
+    'i' => [],
+    'p' => [],
+    'ul' => [],
+    'ol' => [],
+    'li' => [],
+    'a' => [
+      'href' => [],
+      'target' => [],
+      'rel' => [],
+      'title' => [],
+    ],
+  ];
+}
+
+function dashboard_kses($html): string
+{
+  return wp_kses((string) $html, dashboard_allowed_inline_html());
+}
+
 
 ===== app/helper/polylang-stubs.php =====
 
@@ -1902,6 +2335,17 @@ if (!function_exists('pll_register_string')) {
   function pll_register_string($name, $string, $group = 'Polylang', $multiline = false)
   {
     return true;
+  }
+}
+
+if (!function_exists('pll_the_languages')) {
+  function pll_the_languages($args = [])
+  {
+    if (is_array($args) && !empty($args['raw'])) {
+      return [];
+    }
+
+    return '';
   }
 }
 
@@ -2242,6 +2686,7 @@ require_once __DIR__ . '/analysis-access.php';
 require_once __DIR__ . '/dashboard-auth.php';
 require_once __DIR__ . '/dashboard-avatar.php';
 require_once __DIR__ . '/dashboard-access.php';
+require_once __DIR__ . '/dashboard-secure-media.php';
 require_once __DIR__ . '/stripe.php';
 require_once __DIR__ . '/dashboard-gate.php';
 require_once __DIR__ . '/dashboard-controller.php';
@@ -2622,6 +3067,51 @@ function dashboard_checkout_plan_from_request(): string
   return 'basis';
 }
 
+function dashboard_user_has_used_trial(int $userId): bool
+{
+  if ($userId <= 0) {
+    return true;
+  }
+
+  if (get_user_meta($userId, 'dashboard_trial_used_at', true) !== '') {
+    return true;
+  }
+
+  $customerId = trim((string) get_user_meta($userId, 'stripe_customer_id', true));
+
+  if ($customerId === '' || !dashboard_stripe_boot()) {
+    return false;
+  }
+
+  try {
+    $subscriptions = \Stripe\Subscription::all([
+      'customer' => $customerId,
+      'status' => 'all',
+      'limit' => 100,
+    ]);
+
+    foreach ($subscriptions->data as $subscription) {
+      if (!empty($subscription->trial_start) || !empty($subscription->trial_end)) {
+        update_user_meta($userId, 'dashboard_trial_used_at', current_time('mysql'));
+        return true;
+      }
+
+      if (isset($subscription->metadata) && is_object($subscription->metadata)) {
+        $plan = dashboard_checkout_optional_plan_from_value($subscription->metadata->dashboard_plan ?? '');
+
+        if ($plan === 'trial') {
+          update_user_meta($userId, 'dashboard_trial_used_at', current_time('mysql'));
+          return true;
+        }
+      }
+    }
+  } catch (\Throwable $e) {
+    error_log('[BBC Trial Check] ' . $e->getMessage());
+  }
+
+  return false;
+}
+
 function dashboard_checkout_price_config(string $plan): array
 {
   $basisPriceId = dashboard_stripe_env('STRIPE_PRICE_ID_BASIS');
@@ -2688,17 +3178,22 @@ function dashboard_checkout_line_items_for_plan(string $plan): array
 
   $items = [];
 
-  if ($plan === 'trial' && ($config['trial_fee_price_id'] ?? '') !== '') {
+  $recurringPriceId = (string) ($config['recurring_price_id'] ?? '');
+  $trialFeePriceId = (string) ($config['trial_fee_price_id'] ?? '');
+
+  if ($plan === 'trial' && $trialFeePriceId !== '' && $trialFeePriceId !== $recurringPriceId) {
     $items[] = [
-      'price' => $config['trial_fee_price_id'],
+      'price' => $trialFeePriceId,
       'quantity' => 1,
     ];
   }
 
-  $items[] = [
-    'price' => $config['recurring_price_id'],
-    'quantity' => 1,
-  ];
+  if ($recurringPriceId !== '') {
+    $items[] = [
+      'price' => $recurringPriceId,
+      'quantity' => 1,
+    ];
+  }
 
   return $items;
 }
@@ -2760,6 +3255,7 @@ function dashboard_redirect_to_checkout_for_user($user, string $plan, string $su
     wp_redirect($session->url);
     exit;
   } catch (\Throwable $e) {
+    error_log('[BBC Checkout Failed] ' . $e->getMessage());
     return 'stripe_checkout_failed';
   }
 }
@@ -2780,6 +3276,11 @@ function dashboard_handle_start_checkout()
   }
 
   $plan = dashboard_checkout_plan_from_request();
+
+  if ($plan === 'trial' && dashboard_user_has_used_trial(get_current_user_id())) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=trial_already_used');
+    exit;
+  }
 
   $error = dashboard_redirect_to_checkout_for_user(
     wp_get_current_user(),
@@ -2889,6 +3390,162 @@ function dashboard_get_or_create_stripe_customer($user)
   return $customer;
 }
 
+add_action('template_redirect', 'dashboard_handle_checkout_success_return', 30);
+
+function dashboard_handle_checkout_success_return(): void
+{
+  if (!is_user_logged_in() || !is_page()) {
+    return;
+  }
+
+  $post = get_queried_object();
+
+  if (!$post || ($post->post_name ?? '') !== 'dashboard-settings') {
+    return;
+  }
+
+  if (($_GET['tab'] ?? '') !== 'billing') {
+    return;
+  }
+
+  if (($_GET['stripe'] ?? '') !== 'success') {
+    return;
+  }
+
+  if (isset($_GET['sync'])) {
+    return;
+  }
+
+  $sessionId = sanitize_text_field(wp_unslash($_GET['session_id'] ?? ''));
+
+  if ($sessionId !== '') {
+    $syncResult = dashboard_sync_checkout_session_to_current_user($sessionId);
+
+    wp_safe_redirect(add_query_arg([
+      'tab' => 'billing',
+      'stripe' => 'success',
+      'sync' => $syncResult,
+    ], home_url('/dashboard-settings')));
+
+    exit;
+  }
+
+  $syncResult = dashboard_sync_current_user_subscription_by_customer();
+
+  wp_safe_redirect(add_query_arg([
+    'tab' => 'billing',
+    'stripe' => 'success',
+    'sync' => $syncResult,
+  ], home_url('/dashboard-settings')));
+
+  exit;
+}
+
+function dashboard_sync_checkout_session_to_current_user(string $sessionId): string
+{
+  if (!dashboard_stripe_boot()) {
+    return 'stripe_sdk_missing';
+  }
+
+  $userId = get_current_user_id();
+
+  try {
+    $session = \Stripe\Checkout\Session::retrieve($sessionId);
+
+    $sessionUserId = (int) ($session->client_reference_id ?? 0);
+
+    if ($sessionUserId !== $userId) {
+      return 'session_user_mismatch';
+    }
+
+    $customerId = trim((string) ($session->customer ?? ''));
+
+    if ($customerId !== '') {
+      dashboard_stripe_store_customer_id($userId, $customerId);
+    }
+
+    $plan = '';
+
+    if (isset($session->metadata) && is_object($session->metadata)) {
+      $plan = dashboard_checkout_optional_plan_from_value($session->metadata->dashboard_plan ?? '');
+    }
+
+    if ($plan !== '') {
+      update_user_meta($userId, 'dashboard_selected_plan', $plan);
+    }
+
+    $subscriptionId = trim((string) ($session->subscription ?? ''));
+
+    if ($subscriptionId === '') {
+      return 'subscription_missing';
+    }
+
+    $subscription = \Stripe\Subscription::retrieve($subscriptionId);
+
+    dashboard_stripe_sync_subscription($userId, $subscription);
+
+    return 'subscription_synced';
+  } catch (\Throwable $e) {
+    error_log('[BBC Checkout Sync] ' . $e->getMessage());
+    return 'sync_failed';
+  }
+}
+
+function dashboard_sync_current_user_subscription_by_customer(): string
+{
+  if (!dashboard_stripe_boot()) {
+    return 'stripe_sdk_missing';
+  }
+
+  $userId = get_current_user_id();
+  $customerId = trim((string) get_user_meta($userId, 'stripe_customer_id', true));
+
+  if ($customerId === '') {
+    return 'stripe_customer_missing';
+  }
+
+  try {
+    $subscriptions = \Stripe\Subscription::all([
+      'customer' => $customerId,
+      'status' => 'all',
+      'limit' => 10,
+    ]);
+
+    $selectedSubscription = null;
+
+    foreach ($subscriptions->data as $subscription) {
+      $status = trim((string) ($subscription->status ?? ''));
+
+      if (in_array($status, ['active', 'trialing'], true)) {
+        $selectedSubscription = $subscription;
+        break;
+      }
+    }
+
+    if (!$selectedSubscription) {
+      foreach ($subscriptions->data as $subscription) {
+        $status = trim((string) ($subscription->status ?? ''));
+
+        if (!in_array($status, ['canceled', 'incomplete_expired'], true)) {
+          $selectedSubscription = $subscription;
+          break;
+        }
+      }
+    }
+
+    if (!$selectedSubscription) {
+      return 'subscription_missing';
+    }
+
+    dashboard_stripe_sync_subscription($userId, $selectedSubscription);
+
+    return 'subscription_synced';
+  } catch (\Throwable $e) {
+    error_log('[BBC Customer Sync] ' . $e->getMessage());
+    return 'sync_failed';
+  }
+}
+
 add_action('template_redirect', 'dashboard_handle_subscribe_trial_gate');
 
 function dashboard_handle_subscribe_trial_gate(): void
@@ -2914,8 +3571,52 @@ function dashboard_handle_subscribe_trial_gate(): void
     exit;
   }
 
-  wp_safe_redirect(dashboard_settings_billing_url());
+  $plan = dashboard_checkout_optional_plan_from_value($_GET['plan'] ?? '');
+
+  if ($plan === 'trial' && dashboard_user_has_used_trial($user->ID)) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=trial_already_used');
+    exit;
+  }
+
+  if ($plan !== '' && $plan !== 'trial') {
+    update_user_meta($user->ID, 'dashboard_selected_plan', $plan);
+  }
+
+  $billingUrl = dashboard_settings_billing_url();
+
+  if ($plan !== '' && $plan !== 'trial') {
+    $billingUrl = add_query_arg('plan', $plan, $billingUrl);
+  }
+
+  wp_safe_redirect($billingUrl);
   exit;
+}
+
+add_action('template_redirect', 'dashboard_capture_billing_plan_from_query', 20);
+
+function dashboard_capture_billing_plan_from_query(): void
+{
+  if (!is_user_logged_in() || !is_page()) {
+    return;
+  }
+
+  $post = get_queried_object();
+
+  if (!$post || ($post->post_name ?? '') !== 'dashboard-settings') {
+    return;
+  }
+
+  if (($_GET['tab'] ?? '') !== 'billing') {
+    return;
+  }
+
+  $plan = dashboard_checkout_optional_plan_from_value($_GET['plan'] ?? '');
+
+  if ($plan === '' || $plan === 'trial') {
+    return;
+  }
+
+  update_user_meta(get_current_user_id(), 'dashboard_selected_plan', $plan);
 }
 
 add_action('admin_post_dashboard_register_and_checkout', 'dashboard_handle_register_and_checkout');
@@ -2934,6 +3635,11 @@ function dashboard_handle_register_and_checkout()
   }
 
   if (is_user_logged_in()) {
+    if ($plan === 'trial' && dashboard_user_has_used_trial(get_current_user_id())) {
+      wp_safe_redirect('/subscribe-trial/?error=trial_already_used&plan=basis');
+      exit;
+    }
+
     wp_safe_redirect(dashboard_settings_billing_url());
     exit;
   }
@@ -3106,6 +3812,7 @@ function dashboard_process_stripe_event($event): void
       dashboard_handle_stripe_subscription_event($object);
       return;
 
+    case 'invoice.paid':
     case 'invoice.payment_succeeded':
       dashboard_handle_stripe_invoice_paid($object);
       return;
@@ -3288,12 +3995,6 @@ function dashboard_stripe_boot(): bool
   static $booted = false;
   static $ok = false;
 
-  error_log('Stripe DEBUG __DIR__: ' . __DIR__);
-  error_log('Stripe DEBUG stylesheet: ' . get_stylesheet_directory());
-  error_log('Stripe DEBUG template: ' . get_template_directory());
-  error_log('Stripe DEBUG ABSPATH: ' . ABSPATH);
-  error_log('Stripe DEBUG autoload: ' . dashboard_stripe_vendor_autoload_path());
-
   if ($booted) {
     return $ok;
   }
@@ -3302,25 +4003,17 @@ function dashboard_stripe_boot(): bool
 
   $autoload = dashboard_stripe_vendor_autoload_path();
 
-  error_log('Stripe autoload path: ' . $autoload);
-  error_log('Stripe autoload exists: ' . (file_exists($autoload) ? 'yes' : 'no'));
-  error_log('Stripe autoload readable: ' . (is_readable($autoload) ? 'yes' : 'no'));
-
   if (!file_exists($autoload)) {
     return false;
   }
 
   require_once $autoload;
 
-  error_log('Stripe class exists: ' . (class_exists('\Stripe\Stripe') ? 'yes' : 'no'));
-
   if (!class_exists('\Stripe\Stripe')) {
     return false;
   }
 
   $secretKey = dashboard_stripe_secret_key();
-
-  error_log('Stripe secret key set: ' . ($secretKey !== '' ? 'yes' : 'no'));
 
   if ($secretKey !== '') {
     \Stripe\Stripe::setApiKey($secretKey);
@@ -3653,6 +4346,71 @@ function dashboard_stripe_store_customer_id(int $userId, string $customerId): vo
   update_user_meta($userId, 'stripe_customer_id', $customerId);
 }
 
+function dashboard_stripe_subscription_metadata_plan($subscription): string
+{
+  if (!is_object($subscription) || !isset($subscription->metadata) || !is_object($subscription->metadata)) {
+    return '';
+  }
+
+  $plan = sanitize_key((string) ($subscription->metadata->dashboard_plan ?? ''));
+
+  return in_array($plan, ['trial', 'basis', 'pro'], true) ? $plan : '';
+}
+
+function dashboard_stripe_subscription_price_id($subscription): string
+{
+  if (!is_object($subscription)) {
+    return '';
+  }
+
+  if (
+    isset($subscription->items) &&
+    is_object($subscription->items) &&
+    isset($subscription->items->data) &&
+    is_array($subscription->items->data) &&
+    !empty($subscription->items->data[0]) &&
+    isset($subscription->items->data[0]->price) &&
+    is_object($subscription->items->data[0]->price)
+  ) {
+    return trim((string) ($subscription->items->data[0]->price->id ?? ''));
+  }
+
+  return '';
+}
+
+function dashboard_stripe_plan_from_price_id(string $priceId): string
+{
+  $priceId = trim($priceId);
+
+  if ($priceId === '') {
+    return '';
+  }
+
+  $basisPriceId = dashboard_stripe_env('STRIPE_PRICE_ID_BASIS');
+  $proPriceId = dashboard_stripe_env('STRIPE_PRICE_ID_PRO');
+
+  if ($basisPriceId === '') {
+    $basisPriceId = dashboard_stripe_price_id();
+  }
+
+  if ($basisPriceId !== '' && $priceId === $basisPriceId) {
+    return 'basis';
+  }
+
+  if ($proPriceId !== '' && $priceId === $proPriceId) {
+    return 'pro';
+  }
+
+  return '';
+}
+
+function dashboard_stripe_format_amount(int $amount, string $currency): string
+{
+  $currency = strtoupper($currency ?: 'EUR');
+
+  return number_format($amount / 100, 2, ',', '.') . ' ' . $currency;
+}
+
 /**
  * Synchronisiert Stripe-Subscriptions in User-Meta und Access-State.
  */
@@ -3665,6 +4423,9 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
   $customerId = trim((string) ($subscription->customer ?? ''));
   $subscriptionId = trim((string) ($subscription->id ?? ''));
   $status = trim((string) ($subscription->status ?? ''));
+  $metadataPlan = dashboard_stripe_subscription_metadata_plan($subscription);
+  $priceId = dashboard_stripe_subscription_price_id($subscription);
+  $currentPlan = dashboard_stripe_plan_from_price_id($priceId);
 
   if ($customerId !== '') {
     update_user_meta($userId, 'stripe_customer_id', $customerId);
@@ -3678,8 +4439,34 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
     update_user_meta($userId, 'stripe_subscription_status', $status);
   }
 
+  if ($priceId !== '') {
+    update_user_meta($userId, 'stripe_subscription_price_id', $priceId);
+  }
+
+  if ($currentPlan !== '') {
+    update_user_meta($userId, 'dashboard_current_plan', $currentPlan);
+  } elseif (in_array($metadataPlan, ['basis', 'pro'], true)) {
+    update_user_meta($userId, 'dashboard_current_plan', $metadataPlan);
+  }
+
+  if ($metadataPlan !== '') {
+    update_user_meta($userId, 'dashboard_selected_plan', $metadataPlan);
+  }
+
+  if (isset($subscription->current_period_start)) {
+    update_user_meta($userId, 'stripe_current_period_start', (int) $subscription->current_period_start);
+  }
+
   if (isset($subscription->current_period_end)) {
     update_user_meta($userId, 'stripe_current_period_end', (int) $subscription->current_period_end);
+  }
+
+  if (isset($subscription->trial_start)) {
+    update_user_meta($userId, 'stripe_trial_start', (int) $subscription->trial_start);
+  }
+
+  if (isset($subscription->trial_end)) {
+    update_user_meta($userId, 'stripe_trial_end', (int) $subscription->trial_end);
   }
 
   update_user_meta(
@@ -3687,6 +4474,14 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
     'stripe_cancel_at_period_end',
     !empty($subscription->cancel_at_period_end) ? '1' : '0'
   );
+
+  if (
+    ($metadataPlan === 'trial' || get_user_meta($userId, 'dashboard_selected_plan', true) === 'trial') &&
+    (int) ($subscription->trial_end ?? 0) > 0 &&
+    get_user_meta($userId, 'dashboard_trial_used_at', true) === ''
+  ) {
+    update_user_meta($userId, 'dashboard_trial_used_at', current_time('mysql'));
+  }
 
   if (in_array($status, ['active', 'trialing'], true)) {
     dashboard_set_subscription_state($userId, 'active');
@@ -3705,6 +4500,134 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
 
   dashboard_set_subscription_state($userId, 'payment_required');
 }
+
+function dashboard_stripe_sync_user_subscription_from_stripe(int $userId, bool $force = false): bool
+{
+  if ($userId <= 0) {
+    return false;
+  }
+
+  $subscriptionId = trim((string) get_user_meta($userId, 'stripe_subscription_id', true));
+
+  if ($subscriptionId === '') {
+    return false;
+  }
+
+  $transientKey = 'dashboard_stripe_sync_' . $userId;
+
+  if (!$force && get_transient($transientKey)) {
+    return false;
+  }
+
+  if (!dashboard_stripe_boot()) {
+    return false;
+  }
+
+  try {
+    $subscription = \Stripe\Subscription::retrieve($subscriptionId);
+
+    if (!is_object($subscription) || !empty($subscription->deleted)) {
+      return false;
+    }
+
+    dashboard_stripe_sync_subscription($userId, $subscription);
+
+    set_transient($transientKey, 1, 20);
+
+    return true;
+  } catch (\Throwable $e) {
+    error_log('[BBC Stripe Sync] Pull sync failed for user ' . $userId . ': ' . $e->getMessage());
+    return false;
+  }
+}
+
+function dashboard_stripe_get_user_invoices(int $userId, int $limit = 10, bool $force = false): array
+{
+  if ($userId <= 0) {
+    return [];
+  }
+
+  $customerId = trim((string) get_user_meta($userId, 'stripe_customer_id', true));
+
+  if ($customerId === '') {
+    return [];
+  }
+
+  $cacheKey = 'dashboard_stripe_invoices_' . $userId;
+
+  if (!$force) {
+    $cached = get_transient($cacheKey);
+
+    if (is_array($cached)) {
+      return $cached;
+    }
+  }
+
+  if (!dashboard_stripe_boot()) {
+    return [];
+  }
+
+  try {
+    $result = \Stripe\Invoice::all([
+      'customer' => $customerId,
+      'limit' => max(1, min(20, $limit)),
+    ]);
+
+    $items = [];
+
+    foreach (($result->data ?? []) as $invoice) {
+      $amount = (int) ($invoice->amount_paid ?? $invoice->total ?? $invoice->amount_due ?? 0);
+      $currency = (string) ($invoice->currency ?? 'eur');
+      $status = (string) ($invoice->status ?? '');
+      $created = (int) ($invoice->created ?? 0);
+      $url = (string) ($invoice->hosted_invoice_url ?? '');
+      $pdf = (string) ($invoice->invoice_pdf ?? '');
+      $number = (string) ($invoice->number ?? '');
+
+      $items[] = [
+        'created' => $created,
+        'amount' => dashboard_stripe_format_amount($amount, $currency),
+        'status' => $status !== '' ? $status : '—',
+        'url' => $url,
+        'pdf' => $pdf,
+        'number' => $number !== '' ? $number : '—',
+      ];
+    }
+
+    set_transient($cacheKey, $items, 20);
+
+    return $items;
+  } catch (\Throwable $e) {
+    error_log('[BBC Stripe Sync] Invoice fetch failed for user ' . $userId . ': ' . $e->getMessage());
+    return [];
+  }
+}
+
+add_action('admin_post_dashboard_sync_billing', function () {
+  if (!is_user_logged_in()) {
+    wp_safe_redirect('/dashboard-login');
+    exit;
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_sync_billing')
+  ) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=invalid_request');
+    exit;
+  }
+
+  $userId = get_current_user_id();
+
+  dashboard_stripe_sync_user_subscription_from_stripe($userId, true);
+  dashboard_stripe_get_user_invoices($userId, 10, true);
+
+  delete_transient('dashboard_stripe_sync_' . $userId);
+  delete_transient('dashboard_stripe_invoices_' . $userId);
+
+  wp_safe_redirect(dashboard_settings_billing_url() . '&synced=1');
+  exit;
+});
 
 
 ===== app/translations.php =====
@@ -6983,10 +7906,13 @@ document.addEventListener('DOMContentLoaded', () => {
 ===== resources/views/dashboard/analyses/filters.blade.php =====
 
 @php
-$currentAsset = request()->get('asset');
-$currentMarket = request()->get('market');
-$dateFrom = request()->get('date_from');
-$dateTo = request()->get('date_to');
+$currentAsset = sanitize_title((string) request()->get('asset'));
+$currentMarket = sanitize_title((string) request()->get('market'));
+$dateFromRaw = (string) request()->get('date_from');
+$dateToRaw = (string) request()->get('date_to');
+$dateFrom = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFromRaw) ? $dateFromRaw : '';
+$dateTo = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateToRaw) ? $dateToRaw : '';
+$resetUrl = strtok((string) ($_SERVER['REQUEST_URI'] ?? '/dashboard'), '?') ?: '/dashboard';
 
 $topMarkets = get_terms([
 'taxonomy' => 'analysis_market',
@@ -7000,8 +7926,8 @@ $terms = get_terms(['taxonomy' => 'analysis_market', 'hide_empty' => false]);
 
 foreach ($terms as $term) {
 if ($term->parent !== 0) {
-$assets[] = ['name' => html_entity_decode($term->name), 'slug' => $term->slug];
-$assetNameBySlug[$term->slug] = html_entity_decode($term->name);
+$assets[] = ['name' => html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8'), 'slug' => $term->slug];
+$assetNameBySlug[$term->slug] = html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 }
 }
 
@@ -7061,7 +7987,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
         <select name="market" class="w-full rounded-lg border border-brand-primary/20 bg-white/50 px-3 py-1.5 text-sm outline-none" @disabled($currentAsset)>
           <option value="">Alle Kategorien</option>
           @foreach ($topMarkets as $market)
-          <option value="{{ $market->slug }}" @selected($currentMarket===$market->slug)>{!! html_entity_decode($market->name) !!}</option>
+          <option value="{{ $market->slug }}" @selected($currentMarket===$market->slug)>{{ html_entity_decode($market->name, ENT_QUOTES | ENT_HTML5, 'UTF-8') }}</option>
           @endforeach
         </select>
       </div>
@@ -7095,7 +8021,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
       {{-- Buttons --}}
       <div class="flex items-center gap-2 pt-1 md:pt-0">
-        <a href="/dashboard" class="flex items-center justify-center h-8 w-8 rounded-lg bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition" title="Reset">
+        <a href="{{ esc_url($resetUrl) }}" class="flex items-center justify-center h-8 w-8 rounded-lg bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition" title="Reset">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
@@ -7145,8 +8071,12 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
   </header>
 
   @php
-  $currentAsset = request()->get('asset');
-  $currentMarket = request()->get('market');
+  $currentAsset = sanitize_title((string) request()->get('asset'));
+  $currentMarket = sanitize_title((string) request()->get('market'));
+  $dateFromRaw = (string) request()->get('date_from');
+  $dateToRaw = (string) request()->get('date_to');
+  $dateFrom = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFromRaw) ? $dateFromRaw : '';
+  $dateTo = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateToRaw) ? $dateToRaw : '';
 
   $args = [
   'post_type' => 'analysis',
@@ -7155,6 +8085,30 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
   'meta_key' => 'publish_date',
   'order' => 'DESC',
   ];
+
+  $metaQuery = [];
+
+  if ($dateFrom !== '') {
+  $metaQuery[] = [
+  'key' => 'publish_date',
+  'value' => $dateFrom,
+  'compare' => '>=',
+  'type' => 'DATE',
+  ];
+  }
+
+  if ($dateTo !== '') {
+  $metaQuery[] = [
+  'key' => 'publish_date',
+  'value' => $dateTo,
+  'compare' => '<=',
+  'type' => 'DATE',
+  ];
+  }
+
+  if ($metaQuery) {
+  $args['meta_query'] = $metaQuery;
+  }
 
   if ($currentAsset) {
   $args['tax_query'] = [[
@@ -7217,7 +8171,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
         <div class="chart-preview">
           @if ($image = get_field('chart_image'))
           <img
-            src="{{ $image['sizes']['medium'] }}"
+            src="{{ dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0, 'medium') }}"
             class="rounded-md shadow-sm border border-slate-100 object-cover w-full h-16">
           @endif
         </div>
@@ -7272,7 +8226,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
       </div>
 
       @if ($image = get_field('chart_image'))
-      <img src="{{ $image['sizes']['medium'] }}" class="rounded-md">
+      <img src="{{ dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0, 'medium') }}" class="rounded-md">
       @endif
 
       <p class="text-sm text-slate-600">
@@ -7322,7 +8276,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
       </div>
 
       @if ($image = get_field('chart_image'))
-      <img src="{{ $image['sizes']['medium'] }}" class="rounded-md">
+      <img src="{{ dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0, 'medium') }}" class="rounded-md">
       @endif
 
       <p class="text-sm text-slate-600">
@@ -7520,7 +8474,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
   @if ($image = get_field('chart_image'))
   <div class="relative">
     <img
-      src="{{ $image['url'] }}"
+      src="{{ dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0) }}"
       alt=""
       class="w-full rounded-2xl shadow-lg cursor-zoom-in"
       data-chart-zoom>
@@ -7536,7 +8490,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
     <div class="custom-audio-wrapper flex items-center gap-4">
 
-      <audio src="{{ $commentary['url'] }}" class="hidden-audio" preload="metadata"></audio>
+      <audio src="{{ dashboard_secure_media_url($commentary['ID'] ?? $commentary['id'] ?? 0) }}" class="hidden-audio" preload="metadata"></audio>
 
       <button class="play-btn w-10 h-10 flex items-center justify-center bg-brand-primary rounded-full text-white">
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -7568,12 +8522,12 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
   <div class="dashboard-card rounded-xl px-6 py-6 shadow-sm max-w-4xl mx-auto max-w-[600px]">
     <div class="prose prose-lg max-w-none">
-      {!! get_field('content_text') !!}
+      {!! dashboard_kses(get_field('content_text')) !!}
     </div>
   </div>
   <!-- <div class="dashboard-card rounded-xl px-6 py-6 shadow-sm">
     <div class="prose prose-lg max-w-none lg:columns-2 lg:gap-x-12">
-      {!! get_field('content_text') !!}
+      {!! dashboard_kses(get_field('content_text')) !!}
     </div>
   </div> -->
 
@@ -7603,11 +8557,14 @@ $state = dashboard_access_state(get_current_user_id());
 
 ===== resources/views/dashboard/media-entry/card-audio.blade.php =====
 
-@php $audio = get_field('audio_file'); @endphp
+@php
+$audio = get_field('audio_file');
+$audioUrl = $audio ? dashboard_secure_media_url($audio['ID'] ?? $audio['id'] ?? 0) : '';
+@endphp
 
-@if ($audio)
+@if ($audio && $audioUrl)
 <div class="custom-audio-wrapper bg-slate-800/40 border border-white/5 rounded-2xl px-4 py-2 flex items-center gap-4 select-none">
-  <audio src="{{ $audio['url'] }}" class="hidden-audio" preload="metadata"></audio>
+  <audio src="{{ $audioUrl }}" class="hidden-audio" preload="metadata"></audio>
 
   <button class="play-btn w-9 h-9 flex-shrink-0 flex items-center justify-center bg-brand-primary rounded-full text-white hover:scale-105 active:scale-95 transition shadow-lg">
     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -7698,7 +8655,7 @@ $state = dashboard_access_state(get_current_user_id());
 
     $image = get_field('cover_image');
     $coverUrl = $image
-    ? $image['sizes']['medium']
+    ? dashboard_secure_media_url($image['ID'] ?? $image['id'] ?? 0, 'medium')
     : get_theme_file_uri('resources/images/dashboard/default-cover.jpg');
 
     $cleanTitle = html_entity_decode(get_the_title(), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -7725,7 +8682,7 @@ $state = dashboard_access_state(get_current_user_id());
           {{-- Text Sektion --}}
           <div class="mb-3">
             <h3 class="font-bold text-base md:text-lg text-white group-hover:text-brand-primary transition-colors leading-tight line-clamp-1">
-              {!! $cleanTitle !!}
+              {{ $cleanTitle }}
             </h3>
             <div class="flex items-center gap-2 mt-1">
               <span class="text-[10px] font-bold text-brand-primary uppercase tracking-widest">
@@ -7831,7 +8788,7 @@ $state = dashboard_access_state(get_current_user_id());
 
       $image_id = get_post_meta($post_id, 'chart_image', true);
       $image_url = $image_id
-      ? wp_get_attachment_image_url($image_id, 'thumbnail')
+      ? dashboard_secure_media_url($image_id, 'thumbnail')
       : null;
 
       $publish_date = get_post_meta($post_id, 'publish_date', true);
@@ -7912,12 +8869,11 @@ $state = dashboard_access_state(get_current_user_id());
 
       $image_id = get_post_meta($post_id, 'cover_image', true);
       $coverUrl = $image_id
-      ? wp_get_attachment_image_url($image_id, 'thumbnail')
+      ? dashboard_secure_media_url($image_id, 'thumbnail')
       : get_theme_file_uri('resources/images/dashboard/default-cover.jpg');
       @endphp
 
       <a
-        <a
         href="/dashboard-media"
         class="dashboard-card group rounded-xl p-5 flex items-center gap-4
          transition-all duration-300 ease-in-out cursor-pointer
@@ -8529,10 +9485,6 @@ $avatar_url = $avatar_id
 
 ===== resources/views/dashboard/settings/index.blade.php =====
 
-@extends('layouts.dashboard')
-
-@section('content')
-
 @php
 $tab = request()->get('tab', 'account');
 $user = wp_get_current_user();
@@ -8582,9 +9534,9 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
       <a
         href="/dashboard-settings?tab=billing"
         class="pb-3 text-sm font-medium
-  {{ $tab === 'billing'
-    ? 'text-brand-primary border-b-2 border-brand-primary'
-    : 'text-slate-400 hover:text-slate-600' }}">
+        {{ $tab === 'billing'
+          ? 'text-brand-primary border-b-2 border-brand-primary'
+          : 'text-slate-400 hover:text-slate-600' }}">
         Billing
       </a>
 
@@ -8691,19 +9643,99 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     @if ($tab === 'billing')
 
     @php
+    if (function_exists('dashboard_stripe_sync_user_subscription_from_stripe')) {
+    dashboard_stripe_sync_user_subscription_from_stripe($user->ID);
+    }
+    @endphp
+
+    @php
     $subscriptionState = get_user_meta($user->ID, USER_META_SUB_STATUS, true) ?: 'payment_required';
     $stripeCustomerId = get_user_meta($user->ID, 'stripe_customer_id', true);
     $stripeSubscriptionId = get_user_meta($user->ID, 'stripe_subscription_id', true);
     $stripeRawStatus = get_user_meta($user->ID, 'stripe_subscription_status', true);
+    $stripeCurrentPlan = function_exists('dashboard_checkout_optional_plan_from_value')
+    ? dashboard_checkout_optional_plan_from_value(get_user_meta($user->ID, 'dashboard_current_plan', true))
+    : sanitize_key((string) get_user_meta($user->ID, 'dashboard_current_plan', true));
+    $stripeCurrentPeriodStart = (int) get_user_meta($user->ID, 'stripe_current_period_start', true);
     $currentPeriodEnd = (int) get_user_meta($user->ID, 'stripe_current_period_end', true);
+    $stripeTrialStart = (int) get_user_meta($user->ID, 'stripe_trial_start', true);
+    $stripeTrialEnd = (int) get_user_meta($user->ID, 'stripe_trial_end', true);
     $cancelAtPeriodEnd = get_user_meta($user->ID, 'stripe_cancel_at_period_end', true) === '1';
     $billingErrorCode = trim((string) request()->get('error', ''));
     $billingErrorMessage = $billingErrorCode !== '' ? dashboard_stripe_billing_error_message($billingErrorCode) : '';
 
-    $isActive = $subscriptionState === 'active';
-    $isTrial = $subscriptionState === 'trial';
+    $requestedBillingPlan = function_exists('dashboard_checkout_optional_plan_from_value')
+    ? dashboard_checkout_optional_plan_from_value(request()->get('plan', ''))
+    : '';
 
-    $stateText = match ($subscriptionState) {
+    $savedBillingPlan = function_exists('dashboard_checkout_optional_plan_from_value')
+    ? dashboard_checkout_optional_plan_from_value(get_user_meta($user->ID, 'dashboard_selected_plan', true))
+    : '';
+
+    $selectedBillingPlan = $requestedBillingPlan ?: ($stripeCurrentPlan ?: ($savedBillingPlan ?: 'basis'));
+
+    $billingPlans = [
+    'basis' => [
+    'title' => 'Premium Analysen Zugang - Basis',
+    'label' => 'Basis',
+    'price' => '49,99 € / Monat',
+    'interval' => 'monatlich kündbar',
+    'description' => 'Zugriff auf Premium-Analysen, Marktupdates und das Dashboard.',
+    'button' => 'Basis starten',
+    ],
+    'pro' => [
+    'title' => 'Premium Analysen Zugang - Pro',
+    'label' => 'Pro',
+    'price' => '79,99 € / Monat',
+    'interval' => 'monatlich kündbar',
+    'description' => 'Erweiterter Premium-Zugang mit priorisierten Updates und Pro-Inhalten.',
+    'button' => 'Pro starten',
+    ],
+    ];
+
+    $displayBillingPlans = [
+    'trial' => [
+    'title' => 'Premium Analysen Zugang - Trial',
+    'label' => 'Trial',
+    'price' => '4,99 € einmalig',
+    'interval' => 'danach 49,99 € / Monat',
+    'description' => '14 Tage Premium-Zugang. Danach läuft automatisch das Basis-Abo weiter.',
+    'button' => 'Trial starten',
+    ],
+    'basis' => $billingPlans['basis'],
+    'pro' => $billingPlans['pro'],
+    ];
+
+    $now = current_time('timestamp');
+
+    $isSelectedTrial = $requestedBillingPlan === 'trial' || $savedBillingPlan === 'trial';
+    $isStripeTrialing = $stripeRawStatus === 'trialing';
+    $hasActiveTrialWindow = $stripeTrialEnd > 0 && $stripeTrialEnd >= $now;
+    $hasStripePeriodAfterTrial = $stripeTrialEnd > 0 && $stripeCurrentPeriodStart > 0 && $stripeCurrentPeriodStart >= $stripeTrialEnd;
+
+    $isDisplayedTrial = $isStripeTrialing || ($isSelectedTrial && $hasActiveTrialWindow && !$hasStripePeriodAfterTrial);
+
+    if (!$isDisplayedTrial && !isset($billingPlans[$selectedBillingPlan])) {
+    $selectedBillingPlan = $stripeCurrentPlan ?: 'basis';
+    }
+
+    if (!$isDisplayedTrial && !isset($billingPlans[$selectedBillingPlan])) {
+    $selectedBillingPlan = 'basis';
+    }
+
+    $displayBillingPlan = $isDisplayedTrial ? 'trial' : $selectedBillingPlan;
+    $billingPlan = $displayBillingPlans[$displayBillingPlan] ?? $billingPlans['basis'];
+
+    $displayPeriodEnd = $isDisplayedTrial && $stripeTrialEnd > 0
+    ? $stripeTrialEnd
+    : $currentPeriodEnd;
+
+    $isActive = $subscriptionState === 'active';
+    $isTrial = $subscriptionState === 'trial' || $isDisplayedTrial;
+
+    $stateText = $isDisplayedTrial
+    ? 'Testphase'
+    : match ($subscriptionState) {
     'active' => 'Aktiv',
     'trial' => 'Testphase',
     'past_due' => 'Zahlung überfällig',
@@ -8711,22 +9743,35 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     default => 'Zahlung erforderlich',
     };
 
+    $customerStatusLabel = $isDisplayedTrial ? 'Trial / Testphase' : $stateText;
+    $customerPlanLabel = $isDisplayedTrial ? 'Trial' : ($billingPlan['label'] ?? $selectedBillingPlan);
+
     $badgeClass = $isActive || $isTrial
     ? 'bg-emerald-400/20 text-emerald-200 border-emerald-300/20'
     : 'bg-amber-400/20 text-amber-200 border-amber-300/20';
+
+    $billingInvoices = function_exists('dashboard_stripe_get_user_invoices')
+    ? dashboard_stripe_get_user_invoices($user->ID, 10)
+    : [];
     @endphp
 
     <section class="max-w-6xl text-white">
 
       @if(request()->get('stripe') === 'success')
       <div class="mb-6 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-        Checkout abgeschlossen. Dein Abo-Status wird automatisch aktualisiert.
+        Checkout abgeschlossen. Dein Abo-Status wurde aktualisiert.
       </div>
       @endif
 
       @if(request()->get('stripe') === 'cancel')
       <div class="mb-6 rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
         Checkout wurde abgebrochen.
+      </div>
+      @endif
+
+      @if(request()->get('synced') === '1')
+      <div class="mb-6 rounded-xl border border-brand-primary/20 bg-brand-primary/10 px-4 py-3 text-sm text-brand-primary">
+        Abo-Status wurde mit Stripe synchronisiert.
       </div>
       @endif
 
@@ -8754,22 +9799,36 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
                 <div class="mt-5">
                   <div class="text-lg font-semibold text-white">
-                    Premium Analysen Zugang
+                    {{ $billingPlan['title'] }}
                   </div>
 
                   <div class="text-slate-300">
-                    €29,99 / Monat
+                    {{ $billingPlan['price'] }}
                   </div>
 
-                  @if($currentPeriodEnd)
                   <div class="text-sm text-slate-400">
-                    Nächste Rechnung: {{ date_i18n('d.m.Y', $currentPeriodEnd) }}
+                    {{ $billingPlan['interval'] }}
+                  </div>
+
+                  @if($displayPeriodEnd)
+                  <div class="text-sm text-slate-400">
+                    {{ $isDisplayedTrial ? 'Testphase endet' : 'Nächste Rechnung' }}: {{ date_i18n('d.m.Y', $displayPeriodEnd) }}
+                  </div>
+                  @endif
+
+                  @if($isDisplayedTrial && $stripeTrialStart)
+                  <div class="text-sm text-slate-500">
+                    Testphase gestartet: {{ date_i18n('d.m.Y', $stripeTrialStart) }}
                   </div>
                   @endif
 
                   @if($cancelAtPeriodEnd)
                   <div class="text-sm text-amber-300">
                     Kündigung zum Periodenende vorgemerkt.
+                  </div>
+                  @elseif($isDisplayedTrial)
+                  <div class="text-sm text-slate-400">
+                    Testphase aktiv.
                   </div>
                   @elseif($isActive)
                   <div class="text-sm text-slate-400">
@@ -8783,45 +9842,6 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                   <div class="text-sm text-slate-400">
                     Kein aktives Abonnement.
                   </div>
-                  @endif
-                </div>
-
-                <div class="mt-6 flex flex-wrap gap-3">
-                  @if(!$isActive)
-                  <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
-                    <input type="hidden" name="action" value="dashboard_start_checkout">
-                    @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
-
-                    <button
-                      type="submit"
-                      class="inline-flex items-center px-5 py-2.5 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
-                      Abo starten
-                    </button>
-                  </form>
-                  @endif
-
-                  @if($stripeCustomerId)
-                  <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
-                    <input type="hidden" name="action" value="dashboard_open_billing_portal">
-                    @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
-
-                    <button
-                      type="submit"
-                      class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white text-sm font-semibold hover:bg-white/10 transition leading-none whitespace-nowrap">
-                      <svg xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="w-4 h-4 flex-shrink-0 text-brand-primary">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1z"></path>
-                      </svg>
-                      Im Stripe Portal verwalten
-                    </button>
-                  </form>
                   @endif
                 </div>
               </div>
@@ -8845,36 +9865,121 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
             </div>
           </div>
 
+          @if(!$isActive && !$isTrial)
           <div class="rounded-2xl border border-white/10 bg-slate-950/30 backdrop-blur-xl px-6 py-6 shadow-2xl">
-            <div class="flex items-center justify-between gap-6">
+            <div class="flex items-start justify-between gap-6 mb-5">
               <div>
                 <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
-                  Zahlungsmethode
+                  Abo auswählen
                 </h2>
 
-                <p class="mt-4 text-slate-300">
-                  @if($stripeCustomerId)
-                  Zahlungsdaten werden sicher über Stripe verwaltet.
-                  @else
-                  Noch keine Zahlungsmethode hinterlegt.
-                  @endif
+                <p class="mt-2 text-sm text-slate-400">
+                  Wähle den Plan, der direkt an Stripe Checkout übergeben werden soll.
                 </p>
               </div>
 
-              @if($stripeCustomerId)
+              <div class="hidden md:block text-xs text-slate-500 text-right">
+                <div>Vorgemerkt: {{ $selectedBillingPlan }}</div>
+                <div>User-Meta: {{ $savedBillingPlan ?: '—' }}</div>
+                <div>URL: {{ $requestedBillingPlan ?: '—' }}</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              @foreach($billingPlans as $billingPlanKey => $billingPlanOption)
               <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
-                <input type="hidden" name="action" value="dashboard_open_billing_portal">
-                @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+                <input type="hidden" name="action" value="dashboard_start_checkout">
+                @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
+                <input type="hidden" name="plan" value="{{ $billingPlanKey }}">
 
                 <button
                   type="submit"
-                  class="text-sm font-semibold text-brand-primary hover:text-white transition whitespace-nowrap">
-                  Im Stripe Portal verwalten
+                  class="group flex h-full w-full flex-col rounded-2xl border px-5 py-5 text-left transition {{ $selectedBillingPlan === $billingPlanKey ? 'border-brand-primary bg-brand-primary/15 shadow-[0_0_34px_rgba(64,136,158,0.25)]' : 'border-white/10 bg-white/5 hover:border-brand-primary/60 hover:bg-white/10' }}">
+
+                  <span class="inline-flex w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+                    {{ $billingPlanOption['label'] }}
+                  </span>
+
+                  <span class="mt-4 block text-base font-semibold text-white">
+                    {{ $billingPlanOption['title'] }}
+                  </span>
+
+                  <span class="mt-3 block text-xl font-semibold text-brand-primary">
+                    {{ $billingPlanOption['price'] }}
+                  </span>
+
+                  <span class="mt-1 block text-xs text-slate-400">
+                    {{ $billingPlanOption['interval'] }}
+                  </span>
+
+                  <span class="mt-4 block flex-1 text-sm leading-relaxed text-slate-400">
+                    {{ $billingPlanOption['description'] }}
+                  </span>
+
+                  <span class="mt-5 inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition bg-brand-primary/80 text-white group-hover:bg-brand-primary">
+                    {{ $billingPlanOption['button'] }}
+                  </span>
                 </button>
               </form>
-              @endif
+              @endforeach
+            </div>
+
+            <div class="mt-4 md:hidden text-xs text-slate-500">
+              Vorgemerkt: {{ $selectedBillingPlan }} · User-Meta: {{ $savedBillingPlan ?: '—' }} · URL: {{ $requestedBillingPlan ?: '—' }}
             </div>
           </div>
+          @endif
+
+          @if($stripeCustomerId)
+          <div class="rounded-2xl border border-white/10 bg-slate-950/30 backdrop-blur-xl px-6 py-6 shadow-2xl">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
+              <div>
+                <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
+                  Stripe Portal
+                </h2>
+
+                <p class="mt-2 text-sm text-slate-400">
+                  Zahlungsdaten, Rechnungen und bestehende Abos werden sicher über Stripe verwaltet.
+                </p>
+              </div>
+
+              <div class="flex flex-wrap gap-3">
+                <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+                  <input type="hidden" name="action" value="dashboard_sync_billing">
+                  @php wp_nonce_field('dashboard_sync_billing', '_wpnonce'); @endphp
+
+                  <button
+                    type="submit"
+                    class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white text-sm font-semibold hover:bg-white/10 transition leading-none whitespace-nowrap">
+                    Status aktualisieren
+                  </button>
+                </form>
+
+                <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+                  <input type="hidden" name="action" value="dashboard_open_billing_portal">
+                  @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
+
+                  <button
+                    type="submit"
+                    class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-white/10 bg-white/5 text-white text-sm font-semibold hover:bg-white/10 transition leading-none whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="w-4 h-4 flex-shrink-0 text-brand-primary">
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1z"></path>
+                    </svg>
+                    Im Stripe Portal verwalten
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+          @endif
 
           <div class="rounded-2xl border border-white/10 bg-slate-950/30 backdrop-blur-xl px-6 py-6 shadow-2xl">
             <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
@@ -8892,12 +9997,41 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                   </tr>
                 </thead>
                 <tbody>
+                  @if(!empty($billingInvoices))
+                  @foreach($billingInvoices as $invoice)
+                  <tr class="border-b border-white/5 text-slate-400 last:border-b-0">
+                    <td class="px-4 py-4">
+                      {{ !empty($invoice['created']) ? date_i18n('d.m.Y', (int) $invoice['created']) : '—' }}
+                    </td>
+                    <td class="px-4 py-4">
+                      {{ $invoice['amount'] ?? '—' }}
+                    </td>
+                    <td class="px-4 py-4">
+                      {{ $invoice['status'] ?? '—' }}
+                    </td>
+                    <td class="px-4 py-4 text-right">
+                      @if(!empty($invoice['pdf']))
+                      <a href="{{ esc_url($invoice['pdf']) }}" target="_blank" rel="noopener" class="text-brand-primary hover:text-white">
+                        PDF
+                      </a>
+                      @elseif(!empty($invoice['url']))
+                      <a href="{{ esc_url($invoice['url']) }}" target="_blank" rel="noopener" class="text-brand-primary hover:text-white">
+                        Öffnen
+                      </a>
+                      @else
+                      —
+                      @endif
+                    </td>
+                  </tr>
+                  @endforeach
+                  @else
                   <tr class="text-slate-400">
                     <td class="px-4 py-4">—</td>
                     <td class="px-4 py-4">—</td>
                     <td class="px-4 py-4">Noch keine Rechnungen</td>
                     <td class="px-4 py-4 text-right">—</td>
                   </tr>
+                  @endif
                 </tbody>
               </table>
             </div>
@@ -8912,23 +10046,26 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
         <aside class="lg:pt-8 px-2">
           <div class="max-w-sm text-white">
             <p class="text-base font-semibold leading-relaxed">
-              Um Abonnement, Zahlungsdaten oder Rechnungsdetails zu ändern, nutze bitte das sichere Stripe Portal.
+              Trial wird nur auf der Abo-Seite angeboten. Im Billing-Bereich kannst du ein bestehendes Abo verwalten.
             </p>
 
             <p class="mt-4 text-sm leading-relaxed text-slate-400">
-              Dort kannst du Zahlungsmethoden aktualisieren, Rechnungen einsehen und dein Abo verwalten.
+              Nach Ablauf der Testphase läuft das Basis-Abo automatisch weiter, sofern es nicht vorher gekündigt wird.
             </p>
 
-            @if($stripeRawStatus)
             <div class="mt-8 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
               <div class="text-xs uppercase tracking-wide text-slate-500">
-                Stripe Status
+                Abo Status
               </div>
-              <div class="mt-1 text-sm font-medium text-slate-300">
-                {{ $stripeRawStatus }}
+
+              <div class="mt-1 text-sm font-semibold text-slate-200">
+                {{ $customerStatusLabel }}
+              </div>
+
+              <div class="mt-2 text-xs text-slate-400">
+                Plan: {{ $customerPlanLabel }}
               </div>
             </div>
-            @endif
           </div>
         </aside>
 
@@ -8981,7 +10118,6 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
     @endif
 
-
     {{-- APPEARANCE TAB --}}
     @if ($tab === 'appearance')
 
@@ -9030,8 +10166,6 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
   </div>
 
 </section>
-
-@endsection
 
 
 ===== resources/views/layouts/dashboard-auth.blade.php =====
@@ -9292,7 +10426,7 @@ Template Name: Dashboard Password Reset
   <div class="backdrop-blur-xl bg-white/[0.03] border border-white/10 rounded-2xl px-8 py-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 overflow-hidden relative">
 
     <div class="flex flex-col items-center mb-10">
-      <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-14 mb-6">
+      <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-14 mb-6" alt="Bloombridge Capital">
       <h1 class="text-xl font-semibold text-white tracking-tight">Passwort zurücksetzen</h1>
       <p class="text-slate-400 text-sm mt-1 text-center">
         Geben Sie Ihre E-Mail-Adresse ein, um einen Link zum Zurücksetzen Ihres Passworts zu erhalten.
@@ -9300,7 +10434,7 @@ Template Name: Dashboard Password Reset
     </div>
 
     <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="space-y-6">
-      @csrf
+      @php wp_nonce_field('dashboard_password_reset', '_wpnonce'); @endphp
       <input type="hidden" name="action" value="dashboard_password_reset">
 
       <div>
@@ -9364,74 +10498,25 @@ Template Name: Dashboard Register
 
   <div class="backdrop-blur-xl bg-white/[0.03] border border-white/10 rounded-2xl px-8 py-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 overflow-hidden relative">
 
-    {{-- 1. Logo & Welcome Message --}}
     <div class="flex flex-col items-center mb-10">
-      <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-13 mb-5 drop-shadow-md">
-      {{--
-        <h1 class="text-xl font-semibold text-white tracking-tight">Willkommen zurück</h1>
-        --}}
-      <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">Erstellen Ihren Account</p>
+      <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-13 mb-5 drop-shadow-md" alt="Bloombridge Capital">
+      <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">Account erstellen</p>
     </div>
 
-    <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="space-y-6">
-      @php wp_nonce_field('dashboard_register', '_wpnonce'); @endphp
-      @csrf
-      <input type="hidden" name="action" value="dashboard_register">
+    <div class="space-y-5 text-center">
+      <h1 class="text-xl font-semibold text-white tracking-tight">
+        Registrierung über Abo-Seite
+      </h1>
 
-      {{-- Name --}}
-      <div>
-        <label class="block text-xs font-semibold mb-1.5 text-slate-300 uppercase tracking-wider">
-          Name
-        </label>
-        <input
-          type="text"
-          name="name"
-          required
-          placeholder="Ihr Name"
-          class="dashboard-input w-full rounded-lg bg-white/10 border border-white/10 px-4 py-3 text-white placeholder-slate-500 transition-all">
-      </div>
+      <p class="text-sm leading-relaxed text-slate-400">
+        Neue Accounts werden zusammen mit der Abo-Auswahl und der sicheren Zahlung über Stripe erstellt.
+      </p>
 
-      {{-- E-Mail --}}
-      <div>
-        <label class="block text-xs font-semibold mb-1.5 text-slate-300 uppercase tracking-wider">
-          E-Mail Adresse
-        </label>
-        <input
-          type="email"
-          name="email"
-          required
-          placeholder="name@beispiel.de"
-          class="dashboard-input w-full">
-      </div>
-
-      {{-- Passwort --}}
-      <div>
-        <label class="block text-xs font-semibold mb-1.5 text-slate-300 uppercase tracking-wider">
-          Passwort
-        </label>
-
-        <div class="relative">
-          <input
-            type="password"
-            name="password"
-            required
-            placeholder="Passwort"
-            class="dashboard-input password-input w-full ">
-
-          <button
-            type="button"
-            class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition">
-            @include('dashboard.icons.eye')
-          </button>
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        class="w-full py-3.5 rounded-lg bg-brand-primary hover:bg-brand-primaryHover transition-all shadow-lg shadow-brand-primary/20 font-semibold text-white uppercase tracking-wide">
-        Account erstellen
-      </button>
-    </form>
+      <a href="{{ home_url('/subscribe-trial/') }}"
+        class="inline-flex w-full items-center justify-center py-3.5 rounded-lg bg-brand-primary hover:bg-brand-primaryHover transition-all shadow-lg shadow-brand-primary/20 font-semibold text-white uppercase tracking-wide">
+        Zur Abo-Seite
+      </a>
+    </div>
 
     <p class="mt-10 text-sm text-center text-slate-400">
       Bereits registriert?
@@ -9614,25 +10699,25 @@ $trialMessages = [
       {{-- Hero - Headline, Preisanker und Trust-Hinweise --}}
       <div class="mx-auto max-w-5xl text-center">
         <h1 class="text-3xl font-semibold tracking-tight text-white lg:text-4xl">
-          {!! pll__('Premium-Analysen 14 Tage testen') !!}
+          {{ pll__('Premium-Analysen 14 Tage testen') }}
         </h1>
 
         <!-- <p class="mt-4 text-lg text-slate-300">
           <span class="font-semibold text-brand-primary">4,99 €</span>
-          {!! pll__('für 14 Tage Zugang') !!}
-          · {!! pll__('danach 49,99 € / Monat') !!}
-          · {!! pll__('jederzeit kündbar') !!}
+          {{ pll__('für 14 Tage Zugang') }}
+          · {{ pll__('danach 49,99 € / Monat') }}
+          · {{ pll__('jederzeit kündbar') }}
         </p> -->
 
         <div class="mt-4 flex items-center justify-center gap-4 text-sm text-slate-400">
           <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-white font-semibold">1</span> -->
-          <span>{!! pll__('In 2 Minuten freigeschaltet') !!}</span>
+          <span>{{ pll__('In 2 Minuten freigeschaltet') }}</span>
           <span class="h-px w-16 bg-white/20 opacity-80"></span>
           <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/30 text-white font-semibold">2</span> -->
-          <span>{!! pll__('Sichere Zahlung über Stripe') !!}</span>
+          <span>{{ pll__('Sichere Zahlung über Stripe') }}</span>
           <span class="h-px w-16 bg-white/20 opacity-80"></span>
           <!-- <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/30 text-white font-semibold">3</span> -->
-          <span>{!! pll__('Sofortiger Zugriff') !!}</span>
+          <span>{{ pll__('Sofortiger Zugriff') }}</span>
         </div>
 
         @if($trialError)
@@ -9642,7 +10727,7 @@ $trialMessages = [
           @if(in_array($trialError, ['exists', 'account_exists'], true))
           <div class="mt-3">
             <a href="/dashboard-login?plan={{ $defaultPlanKey }}" class="font-semibold text-brand-primary hover:text-white">
-              {!! pll__('Jetzt einloggen') !!}
+              {{ pll__('Jetzt einloggen') }}
             </a>
           </div>
           @endif
@@ -9665,13 +10750,13 @@ $trialMessages = [
 
           @if($planKey === 'basis')
           <div class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-brand-primary px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-950">
-            {!! pll__('Empfohlen') !!}
+            {{ pll__('Empfohlen') }}
           </div>
           @endif
 
           <div class="flex items-center justify-between gap-4">
             <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">
-              {!! $plan['badge'] !!}
+              {{ $plan['badge'] }}
             </span>
 
             <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary">
@@ -9693,24 +10778,24 @@ $trialMessages = [
 
           <div class="mt-4">
             <h3 class="text-2xl font-semibold text-white">
-              {!! $plan['title'] !!}
+              {{ $plan['title'] }}
             </h3>
 
             <div class="mt-2">
               <span class="text-2xl font-bold tracking-tight text-white">
-                {!! $plan['price'] !!}
+                {{ $plan['price'] }}
               </span>
               <div class="mt-1 text-sm text-slate-400">
-                {!! $plan['interval'] !!}
+                {{ $plan['interval'] }}
               </div>
             </div>
 
             <p class="mt-4 text-xl font-medium leading-tight text-white" style="min-height: 3.5rem;">
-              {!! $plan['headline'] !!}
+              {{ $plan['headline'] }}
             </p>
 
             <p class="mt-2 text-sm leading-relaxed text-slate-400">
-              {!! $plan['description'] !!}
+              {{ $plan['description'] }}
             </p>
           </div>
 
@@ -9719,7 +10804,7 @@ $trialMessages = [
               @foreach(array_slice($plan['features'], 0, 4) as $feature)
               <li class="flex gap-2">
                 <span class="text-brand-primary">✓</span>
-                <span>{!! $feature !!}</span>
+                <span>{{ $feature }}</span>
               </li>
               @endforeach
             </ul>
@@ -9727,7 +10812,7 @@ $trialMessages = [
             <span
               data-plan-card-button
               class="mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition {{ $isActivePlan ? 'bg-brand-primary text-slate-950 shadow-lg shadow-brand-primary/30' : 'bg-white text-slate-950 group-hover:bg-brand-primary' }}">
-              {!! $plan['button'] !!}
+              {{ $plan['button'] }}
             </span>
           </div>
         </button>
@@ -9749,10 +10834,10 @@ $trialMessages = [
 
             <div>
               <h2 class="text-xl font-semibold text-white">
-                {!! pll__('Premium-Zugang starten') !!}
+                {{ pll__('Premium-Zugang starten') }}
               </h2>
               <p class="mt-1 text-sm text-slate-400">
-                {!! pll__('Zugangsdaten anlegen. Sicher bezahlen. Direkt starten.') !!}
+                {{ pll__('Zugangsdaten anlegen. Sicher bezahlen. Direkt starten.') }}
               </p>
             </div>
           </div>
@@ -9766,7 +10851,7 @@ $trialMessages = [
             {{-- Account Fields - E-Mail, Passwort und Name --}}
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-1">
-                {!! pll__('E-Mail-Adresse') !!}
+                {{ pll__('E-Mail-Adresse') }}
               </label>
               <input
                 type="email"
@@ -9779,7 +10864,7 @@ $trialMessages = [
 
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-1">
-                {!! pll__('Passwort') !!}
+                {{ pll__('Passwort') }}
               </label>
               <input
                 type="password"
@@ -9787,14 +10872,14 @@ $trialMessages = [
                 required
                 minlength="8"
                 autocomplete="new-password"
-                placeholder="{!! pll__('Mindestens 8 Zeichen') !!}"
+                placeholder="{{ pll__('Mindestens 8 Zeichen') }}"
                 class="w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
             </div>
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label class="block text-sm font-medium text-slate-300 mb-2">
-                  {!! pll__('Vorname') !!}
+                  {{ pll__('Vorname') }}
                 </label>
                 <input
                   type="text"
@@ -9806,7 +10891,7 @@ $trialMessages = [
 
               <div>
                 <label class="block text-sm font-medium text-slate-300 mb-2">
-                  {!! pll__('Nachname') !!}
+                  {{ pll__('Nachname') }}
                 </label>
                 <input
                   type="text"
@@ -9827,8 +10912,8 @@ $trialMessages = [
                   </svg>
                 </div>
                 <div>
-                  <div class="text-sm font-semibold text-white">{!! pll__('Sicher') !!}</div>
-                  <div class="text-xs text-slate-400">{!! pll__('DSGVO-konform') !!}</div>
+                  <div class="text-sm font-semibold text-white">{{ pll__('Sicher') }}</div>
+                  <div class="text-xs text-slate-400">{{ pll__('DSGVO-konform') }}</div>
                 </div>
               </div>
 
@@ -9842,8 +10927,8 @@ $trialMessages = [
                   </svg>
                 </div>
                 <div>
-                  <div class="text-sm font-semibold text-white">{!! pll__('Kündbar') !!}</div>
-                  <div class="text-xs text-slate-400">{!! pll__('Jederzeit möglich') !!}</div>
+                  <div class="text-sm font-semibold text-white">{{ pll__('Kündbar') }}</div>
+                  <div class="text-xs text-slate-400">{{ pll__('Jederzeit möglich') }}</div>
                 </div>
               </div>
 
@@ -9857,8 +10942,8 @@ $trialMessages = [
                   </svg>
                 </div>
                 <div>
-                  <div class="text-sm font-semibold text-white">{!! pll__('Stripe') !!}</div>
-                  <div class="text-xs text-slate-400">{!! pll__('Sichere Zahlung') !!}</div>
+                  <div class="text-sm font-semibold text-white">{{ pll__('Stripe') }}</div>
+                  <div class="text-xs text-slate-400">{{ pll__('Sichere Zahlung') }}</div>
                 </div>
               </div>
             </div>
@@ -9873,11 +10958,11 @@ $trialMessages = [
                   required
                   class="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950 text-brand-primary focus:ring-brand-primary">
                 <span>
-                  {!! pll__('Ich stimme den') !!}
-                  <a href="/agb/" class="text-brand-primary hover:text-white">{!! pll__('AGB') !!}</a>
-                  {!! pll__('und der') !!}
-                  <a href="/datenschutz/" class="text-brand-primary hover:text-white">{!! pll__('Datenschutzerklärung') !!}</a>
-                  {!! pll__('zu.') !!}
+                  {{ pll__('Ich stimme den') }}
+                  <a href="/agb/" class="text-brand-primary hover:text-white">{{ pll__('AGB') }}</a>
+                  {{ pll__('und der') }}
+                  <a href="/datenschutz/" class="text-brand-primary hover:text-white">{{ pll__('Datenschutzerklärung') }}</a>
+                  {{ pll__('zu.') }}
                 </span>
               </label>
             </div>
@@ -9886,14 +10971,14 @@ $trialMessages = [
             <button
               type="submit"
               class="w-full rounded-xl bg-brand-primary px-6 py-4 text-base font-semibold text-white shadow-lg shadow-brand-primary/20 transition hover:bg-brand-primaryHover">
-              <span data-plan-submit-label>{!! $defaultPlan['cta'] !!}</span>
+              <span data-plan-submit-label>{{ $defaultPlan['cta'] }}</span>
               <span class="block pt-1 text-xs font-normal text-white/80" data-plan-submit-subline>
-                {!! $defaultPlan['cta_subline'] !!}
+                {{ $defaultPlan['cta_subline'] }}
               </span>
             </button>
 
             <p class="text-center text-xs text-slate-500">
-              {!! pll__('Sofortige Freischaltung · jederzeit kündbar · DSGVO-konform') !!}
+              {{ pll__('Sofortige Freischaltung · jederzeit kündbar · DSGVO-konform') }}
             </p>
           </form>
         </div>
@@ -9915,7 +11000,7 @@ $trialMessages = [
 
             <div>
               <h2 class="text-xl font-semibold text-white" data-plan-summary-title>
-                {!! $defaultPlan['summary_title'] !!}
+                {{ $defaultPlan['summary_title'] }}
               </h2>
             </div>
           </div>
@@ -9923,16 +11008,16 @@ $trialMessages = [
           {{-- Selected Plan Summary - Preis, Laufzeit und Beschreibung --}}
           <div class="mt-6">
             <div class="text-brand-primary font-semibold" data-plan-summary-label>
-              {!! $defaultPlan['summary_label'] !!}
+              {{ $defaultPlan['summary_label'] }}
             </div>
 
             <div class="mt-2 flex items-end gap-3">
-              <span class="text-3xl font-semibold text-brand-primary" data-plan-summary-price>{!! $defaultPlan['price'] !!}</span>
-              <span class="pb-2 text-slate-300" data-plan-summary-interval>{!! $defaultPlan['summary_interval'] !!}</span>
+              <span class="text-3xl font-semibold text-brand-primary" data-plan-summary-price>{{ $defaultPlan['price'] }}</span>
+              <span class="pb-2 text-slate-300" data-plan-summary-interval>{{ $defaultPlan['summary_interval'] }}</span>
             </div>
 
             <p class="mt-2 text-sm text-slate-400" data-plan-summary-description>
-              {!! $defaultPlan['summary_description'] !!}
+              {{ $defaultPlan['summary_description'] }}
             </p>
           </div>
 
@@ -9950,14 +11035,14 @@ $trialMessages = [
 
               <div>
                 <div class="text-sm font-semibold text-white" data-plan-after-title>
-                  {!! $defaultPlan['after_title'] !!}
+                  {{ $defaultPlan['after_title'] }}
                 </div>
                 <div class="mt-1 text-sm text-slate-300">
-                  <span class="font-semibold text-white" data-plan-after-price>{!! $defaultPlan['after_price'] !!}</span>
-                  · <span data-plan-after-suffix>{!! $defaultPlan['after_suffix'] !!}</span>
+                  <span class="font-semibold text-white" data-plan-after-price>{{ $defaultPlan['after_price'] }}</span>
+                  · <span data-plan-after-suffix>{{ $defaultPlan['after_suffix'] }}</span>
                 </div>
                 <p class="mt-2 text-xs leading-relaxed text-slate-500" data-plan-after-note>
-                  {!! $defaultPlan['after_note'] !!}
+                  {{ $defaultPlan['after_note'] }}
                 </p>
               </div>
             </div>
@@ -9968,7 +11053,7 @@ $trialMessages = [
             @foreach($defaultPlan['features'] as $feature)
             <li class="flex gap-3">
               <span class="text-brand-primary">✓</span>
-              <span>{!! $feature !!}</span>
+              <span>{{ $feature }}</span>
             </li>
             @endforeach
           </ul>
@@ -9983,10 +11068,10 @@ $trialMessages = [
               </div>
               <div>
                 <div class="font-semibold text-white">
-                  {!! pll__('Sichere Zahlung & sofortiger Zugang') !!}
+                  {{ pll__('Sichere Zahlung & sofortiger Zugang') }}
                 </div>
                 <p class="mt-1 text-sm text-slate-400">
-                  {!! pll__('Zahlungsdaten werden ausschließlich über Stripe verarbeitet. Ihr Zugang wird nach erfolgreicher Zahlung automatisch freigeschaltet.') !!}
+                  {{ pll__('Zahlungsdaten werden ausschließlich über Stripe verarbeitet. Ihr Zugang wird nach erfolgreicher Zahlung automatisch freigeschaltet.') }}
                 </p>
               </div>
             </div>
