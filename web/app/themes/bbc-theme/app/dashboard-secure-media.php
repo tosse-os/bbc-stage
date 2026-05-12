@@ -41,6 +41,9 @@ function dashboard_secure_media_forbidden(): void
 {
   status_header(403);
   nocache_headers();
+  header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+  header('X-Content-Type-Options: nosniff');
+  header('X-Robots-Tag: noindex, nofollow, noarchive');
   echo 'Forbidden';
   exit;
 }
@@ -122,6 +125,9 @@ function dashboard_stream_secure_media_file(string $file, string $mime): void
   header('Accept-Ranges: bytes');
   header('X-Content-Type-Options: nosniff');
   header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+  header('Pragma: no-cache');
+  header('Expires: 0');
+  header('X-Robots-Tag: noindex, nofollow, noarchive');
 
   if ($status === 206) {
     header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
@@ -169,6 +175,10 @@ add_action('template_redirect', function () {
     !wp_verify_nonce($_GET['_wpnonce'], 'dashboard_secure_media_' . $attachment_id)
   ) {
     dashboard_secure_media_forbidden();
+  }
+
+  if (function_exists('dashboard_maybe_sync_user_subscription_before_access')) {
+    dashboard_maybe_sync_user_subscription_before_access(get_current_user_id());
   }
 
   if (!function_exists('dashboard_user_has_premium_access') || !dashboard_user_has_premium_access(get_current_user_id())) {

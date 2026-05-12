@@ -581,6 +581,10 @@ function dashboard_stripe_sync_user_subscription_from_stripe(int $userId, bool $
     return false;
   }
 
+  if (!$force) {
+    set_transient($transientKey, 1, 20);
+  }
+
   if (!dashboard_stripe_boot()) {
     return false;
   }
