@@ -43,6 +43,51 @@ function dashboard_checkout_plan_from_request(): string
   return 'basis';
 }
 
+function dashboard_user_has_used_trial(int $userId): bool
+{
+  if ($userId <= 0) {
+    return true;
+  }
+
+  if (get_user_meta($userId, 'dashboard_trial_used_at', true) !== '') {
+    return true;
+  }
+
+  $customerId = trim((string) get_user_meta($userId, 'stripe_customer_id', true));
+
+  if ($customerId === '' || !dashboard_stripe_boot()) {
+    return false;
+  }
+
+  try {
+    $subscriptions = \Stripe\Subscription::all([
+      'customer' => $customerId,
+      'status' => 'all',
+      'limit' => 100,
+    ]);
+
+    foreach ($subscriptions->data as $subscription) {
+      if (!empty($subscription->trial_start) || !empty($subscription->trial_end)) {
+        update_user_meta($userId, 'dashboard_trial_used_at', current_time('mysql'));
+        return true;
+      }
+
+      if (isset($subscription->metadata) && is_object($subscription->metadata)) {
+        $plan = dashboard_checkout_optional_plan_from_value($subscription->metadata->dashboard_plan ?? '');
+
+        if ($plan === 'trial') {
+          update_user_meta($userId, 'dashboard_trial_used_at', current_time('mysql'));
+          return true;
+        }
+      }
+    }
+  } catch (\Throwable $e) {
+    error_log('[BBC Trial Check] ' . $e->getMessage());
+  }
+
+  return false;
+}
+
 function dashboard_checkout_price_config(string $plan): array
 {
   $basisPriceId = dashboard_stripe_env('STRIPE_PRICE_ID_BASIS');
@@ -186,6 +231,7 @@ function dashboard_redirect_to_checkout_for_user($user, string $plan, string $su
     wp_redirect($session->url);
     exit;
   } catch (\Throwable $e) {
+    error_log('[BBC Checkout Failed] ' . $e->getMessage());
     return 'stripe_checkout_failed';
   }
 }
@@ -206,6 +252,11 @@ function dashboard_handle_start_checkout()
   }
 
   $plan = dashboard_checkout_plan_from_request();
+
+  if ($plan === 'trial' && dashboard_user_has_used_trial(get_current_user_id())) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=trial_already_used');
+    exit;
+  }
 
   $error = dashboard_redirect_to_checkout_for_user(
     wp_get_current_user(),
@@ -315,6 +366,162 @@ function dashboard_get_or_create_stripe_customer($user)
   return $customer;
 }
 
+add_action('template_redirect', 'dashboard_handle_checkout_success_return', 30);
+
+function dashboard_handle_checkout_success_return(): void
+{
+  if (!is_user_logged_in() || !is_page()) {
+    return;
+  }
+
+  $post = get_queried_object();
+
+  if (!$post || ($post->post_name ?? '') !== 'dashboard-settings') {
+    return;
+  }
+
+  if (($_GET['tab'] ?? '') !== 'billing') {
+    return;
+  }
+
+  if (($_GET['stripe'] ?? '') !== 'success') {
+    return;
+  }
+
+  if (isset($_GET['sync'])) {
+    return;
+  }
+
+  $sessionId = sanitize_text_field(wp_unslash($_GET['session_id'] ?? ''));
+
+  if ($sessionId !== '') {
+    $syncResult = dashboard_sync_checkout_session_to_current_user($sessionId);
+
+    wp_safe_redirect(add_query_arg([
+      'tab' => 'billing',
+      'stripe' => 'success',
+      'sync' => $syncResult,
+    ], home_url('/dashboard-settings')));
+
+    exit;
+  }
+
+  $syncResult = dashboard_sync_current_user_subscription_by_customer();
+
+  wp_safe_redirect(add_query_arg([
+    'tab' => 'billing',
+    'stripe' => 'success',
+    'sync' => $syncResult,
+  ], home_url('/dashboard-settings')));
+
+  exit;
+}
+
+function dashboard_sync_checkout_session_to_current_user(string $sessionId): string
+{
+  if (!dashboard_stripe_boot()) {
+    return 'stripe_sdk_missing';
+  }
+
+  $userId = get_current_user_id();
+
+  try {
+    $session = \Stripe\Checkout\Session::retrieve($sessionId);
+
+    $sessionUserId = (int) ($session->client_reference_id ?? 0);
+
+    if ($sessionUserId !== $userId) {
+      return 'session_user_mismatch';
+    }
+
+    $customerId = trim((string) ($session->customer ?? ''));
+
+    if ($customerId !== '') {
+      dashboard_stripe_store_customer_id($userId, $customerId);
+    }
+
+    $plan = '';
+
+    if (isset($session->metadata) && is_object($session->metadata)) {
+      $plan = dashboard_checkout_optional_plan_from_value($session->metadata->dashboard_plan ?? '');
+    }
+
+    if ($plan !== '') {
+      update_user_meta($userId, 'dashboard_selected_plan', $plan);
+    }
+
+    $subscriptionId = trim((string) ($session->subscription ?? ''));
+
+    if ($subscriptionId === '') {
+      return 'subscription_missing';
+    }
+
+    $subscription = \Stripe\Subscription::retrieve($subscriptionId);
+
+    dashboard_stripe_sync_subscription($userId, $subscription);
+
+    return 'subscription_synced';
+  } catch (\Throwable $e) {
+    error_log('[BBC Checkout Sync] ' . $e->getMessage());
+    return 'sync_failed';
+  }
+}
+
+function dashboard_sync_current_user_subscription_by_customer(): string
+{
+  if (!dashboard_stripe_boot()) {
+    return 'stripe_sdk_missing';
+  }
+
+  $userId = get_current_user_id();
+  $customerId = trim((string) get_user_meta($userId, 'stripe_customer_id', true));
+
+  if ($customerId === '') {
+    return 'stripe_customer_missing';
+  }
+
+  try {
+    $subscriptions = \Stripe\Subscription::all([
+      'customer' => $customerId,
+      'status' => 'all',
+      'limit' => 10,
+    ]);
+
+    $selectedSubscription = null;
+
+    foreach ($subscriptions->data as $subscription) {
+      $status = trim((string) ($subscription->status ?? ''));
+
+      if (in_array($status, ['active', 'trialing'], true)) {
+        $selectedSubscription = $subscription;
+        break;
+      }
+    }
+
+    if (!$selectedSubscription) {
+      foreach ($subscriptions->data as $subscription) {
+        $status = trim((string) ($subscription->status ?? ''));
+
+        if (!in_array($status, ['canceled', 'incomplete_expired'], true)) {
+          $selectedSubscription = $subscription;
+          break;
+        }
+      }
+    }
+
+    if (!$selectedSubscription) {
+      return 'subscription_missing';
+    }
+
+    dashboard_stripe_sync_subscription($userId, $selectedSubscription);
+
+    return 'subscription_synced';
+  } catch (\Throwable $e) {
+    error_log('[BBC Customer Sync] ' . $e->getMessage());
+    return 'sync_failed';
+  }
+}
+
 add_action('template_redirect', 'dashboard_handle_subscribe_trial_gate');
 
 function dashboard_handle_subscribe_trial_gate(): void
@@ -340,8 +547,52 @@ function dashboard_handle_subscribe_trial_gate(): void
     exit;
   }
 
-  wp_safe_redirect(dashboard_settings_billing_url());
+  $plan = dashboard_checkout_optional_plan_from_value($_GET['plan'] ?? '');
+
+  if ($plan === 'trial' && dashboard_user_has_used_trial($user->ID)) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=trial_already_used');
+    exit;
+  }
+
+  if ($plan !== '' && $plan !== 'trial') {
+    update_user_meta($user->ID, 'dashboard_selected_plan', $plan);
+  }
+
+  $billingUrl = dashboard_settings_billing_url();
+
+  if ($plan !== '' && $plan !== 'trial') {
+    $billingUrl = add_query_arg('plan', $plan, $billingUrl);
+  }
+
+  wp_safe_redirect($billingUrl);
   exit;
+}
+
+add_action('template_redirect', 'dashboard_capture_billing_plan_from_query', 20);
+
+function dashboard_capture_billing_plan_from_query(): void
+{
+  if (!is_user_logged_in() || !is_page()) {
+    return;
+  }
+
+  $post = get_queried_object();
+
+  if (!$post || ($post->post_name ?? '') !== 'dashboard-settings') {
+    return;
+  }
+
+  if (($_GET['tab'] ?? '') !== 'billing') {
+    return;
+  }
+
+  $plan = dashboard_checkout_optional_plan_from_value($_GET['plan'] ?? '');
+
+  if ($plan === '' || $plan === 'trial') {
+    return;
+  }
+
+  update_user_meta(get_current_user_id(), 'dashboard_selected_plan', $plan);
 }
 
 add_action('admin_post_dashboard_register_and_checkout', 'dashboard_handle_register_and_checkout');
@@ -360,6 +611,11 @@ function dashboard_handle_register_and_checkout()
   }
 
   if (is_user_logged_in()) {
+    if ($plan === 'trial' && dashboard_user_has_used_trial(get_current_user_id())) {
+      wp_safe_redirect('/subscribe-trial/?error=trial_already_used&plan=basis');
+      exit;
+    }
+
     wp_safe_redirect(dashboard_settings_billing_url());
     exit;
   }

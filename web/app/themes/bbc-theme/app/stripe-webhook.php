@@ -86,6 +86,7 @@ function dashboard_process_stripe_event($event): void
       dashboard_handle_stripe_subscription_event($object);
       return;
 
+    case 'invoice.paid':
     case 'invoice.payment_succeeded':
       dashboard_handle_stripe_invoice_paid($object);
       return;

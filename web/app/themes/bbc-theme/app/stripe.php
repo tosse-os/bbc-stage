@@ -57,12 +57,6 @@ function dashboard_stripe_boot(): bool
   static $booted = false;
   static $ok = false;
 
-  error_log('Stripe DEBUG __DIR__: ' . __DIR__);
-  error_log('Stripe DEBUG stylesheet: ' . get_stylesheet_directory());
-  error_log('Stripe DEBUG template: ' . get_template_directory());
-  error_log('Stripe DEBUG ABSPATH: ' . ABSPATH);
-  error_log('Stripe DEBUG autoload: ' . dashboard_stripe_vendor_autoload_path());
-
   if ($booted) {
     return $ok;
   }
@@ -71,25 +65,17 @@ function dashboard_stripe_boot(): bool
 
   $autoload = dashboard_stripe_vendor_autoload_path();
 
-  error_log('Stripe autoload path: ' . $autoload);
-  error_log('Stripe autoload exists: ' . (file_exists($autoload) ? 'yes' : 'no'));
-  error_log('Stripe autoload readable: ' . (is_readable($autoload) ? 'yes' : 'no'));
-
   if (!file_exists($autoload)) {
     return false;
   }
 
   require_once $autoload;
 
-  error_log('Stripe class exists: ' . (class_exists('\Stripe\Stripe') ? 'yes' : 'no'));
-
   if (!class_exists('\Stripe\Stripe')) {
     return false;
   }
 
   $secretKey = dashboard_stripe_secret_key();
-
-  error_log('Stripe secret key set: ' . ($secretKey !== '' ? 'yes' : 'no'));
 
   if ($secretKey !== '') {
     \Stripe\Stripe::setApiKey($secretKey);
@@ -422,6 +408,71 @@ function dashboard_stripe_store_customer_id(int $userId, string $customerId): vo
   update_user_meta($userId, 'stripe_customer_id', $customerId);
 }
 
+function dashboard_stripe_subscription_metadata_plan($subscription): string
+{
+  if (!is_object($subscription) || !isset($subscription->metadata) || !is_object($subscription->metadata)) {
+    return '';
+  }
+
+  $plan = sanitize_key((string) ($subscription->metadata->dashboard_plan ?? ''));
+
+  return in_array($plan, ['trial', 'basis', 'pro'], true) ? $plan : '';
+}
+
+function dashboard_stripe_subscription_price_id($subscription): string
+{
+  if (!is_object($subscription)) {
+    return '';
+  }
+
+  if (
+    isset($subscription->items) &&
+    is_object($subscription->items) &&
+    isset($subscription->items->data) &&
+    is_array($subscription->items->data) &&
+    !empty($subscription->items->data[0]) &&
+    isset($subscription->items->data[0]->price) &&
+    is_object($subscription->items->data[0]->price)
+  ) {
+    return trim((string) ($subscription->items->data[0]->price->id ?? ''));
+  }
+
+  return '';
+}
+
+function dashboard_stripe_plan_from_price_id(string $priceId): string
+{
+  $priceId = trim($priceId);
+
+  if ($priceId === '') {
+    return '';
+  }
+
+  $basisPriceId = dashboard_stripe_env('STRIPE_PRICE_ID_BASIS');
+  $proPriceId = dashboard_stripe_env('STRIPE_PRICE_ID_PRO');
+
+  if ($basisPriceId === '') {
+    $basisPriceId = dashboard_stripe_price_id();
+  }
+
+  if ($basisPriceId !== '' && $priceId === $basisPriceId) {
+    return 'basis';
+  }
+
+  if ($proPriceId !== '' && $priceId === $proPriceId) {
+    return 'pro';
+  }
+
+  return '';
+}
+
+function dashboard_stripe_format_amount(int $amount, string $currency): string
+{
+  $currency = strtoupper($currency ?: 'EUR');
+
+  return number_format($amount / 100, 2, ',', '.') . ' ' . $currency;
+}
+
 /**
  * Synchronisiert Stripe-Subscriptions in User-Meta und Access-State.
  */
@@ -434,6 +485,9 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
   $customerId = trim((string) ($subscription->customer ?? ''));
   $subscriptionId = trim((string) ($subscription->id ?? ''));
   $status = trim((string) ($subscription->status ?? ''));
+  $metadataPlan = dashboard_stripe_subscription_metadata_plan($subscription);
+  $priceId = dashboard_stripe_subscription_price_id($subscription);
+  $currentPlan = dashboard_stripe_plan_from_price_id($priceId);
 
   if ($customerId !== '') {
     update_user_meta($userId, 'stripe_customer_id', $customerId);
@@ -447,8 +501,34 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
     update_user_meta($userId, 'stripe_subscription_status', $status);
   }
 
+  if ($priceId !== '') {
+    update_user_meta($userId, 'stripe_subscription_price_id', $priceId);
+  }
+
+  if ($currentPlan !== '') {
+    update_user_meta($userId, 'dashboard_current_plan', $currentPlan);
+  } elseif (in_array($metadataPlan, ['basis', 'pro'], true)) {
+    update_user_meta($userId, 'dashboard_current_plan', $metadataPlan);
+  }
+
+  if ($metadataPlan !== '') {
+    update_user_meta($userId, 'dashboard_selected_plan', $metadataPlan);
+  }
+
+  if (isset($subscription->current_period_start)) {
+    update_user_meta($userId, 'stripe_current_period_start', (int) $subscription->current_period_start);
+  }
+
   if (isset($subscription->current_period_end)) {
     update_user_meta($userId, 'stripe_current_period_end', (int) $subscription->current_period_end);
+  }
+
+  if (isset($subscription->trial_start)) {
+    update_user_meta($userId, 'stripe_trial_start', (int) $subscription->trial_start);
+  }
+
+  if (isset($subscription->trial_end)) {
+    update_user_meta($userId, 'stripe_trial_end', (int) $subscription->trial_end);
   }
 
   update_user_meta(
@@ -456,6 +536,14 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
     'stripe_cancel_at_period_end',
     !empty($subscription->cancel_at_period_end) ? '1' : '0'
   );
+
+  if (
+    ($metadataPlan === 'trial' || get_user_meta($userId, 'dashboard_selected_plan', true) === 'trial') &&
+    (int) ($subscription->trial_end ?? 0) > 0 &&
+    get_user_meta($userId, 'dashboard_trial_used_at', true) === ''
+  ) {
+    update_user_meta($userId, 'dashboard_trial_used_at', current_time('mysql'));
+  }
 
   if (in_array($status, ['active', 'trialing'], true)) {
     dashboard_set_subscription_state($userId, 'active');
@@ -474,3 +562,131 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
 
   dashboard_set_subscription_state($userId, 'payment_required');
 }
+
+function dashboard_stripe_sync_user_subscription_from_stripe(int $userId, bool $force = false): bool
+{
+  if ($userId <= 0) {
+    return false;
+  }
+
+  $subscriptionId = trim((string) get_user_meta($userId, 'stripe_subscription_id', true));
+
+  if ($subscriptionId === '') {
+    return false;
+  }
+
+  $transientKey = 'dashboard_stripe_sync_' . $userId;
+
+  if (!$force && get_transient($transientKey)) {
+    return false;
+  }
+
+  if (!dashboard_stripe_boot()) {
+    return false;
+  }
+
+  try {
+    $subscription = \Stripe\Subscription::retrieve($subscriptionId);
+
+    if (!is_object($subscription) || !empty($subscription->deleted)) {
+      return false;
+    }
+
+    dashboard_stripe_sync_subscription($userId, $subscription);
+
+    set_transient($transientKey, 1, 20);
+
+    return true;
+  } catch (\Throwable $e) {
+    error_log('[BBC Stripe Sync] Pull sync failed for user ' . $userId . ': ' . $e->getMessage());
+    return false;
+  }
+}
+
+function dashboard_stripe_get_user_invoices(int $userId, int $limit = 10, bool $force = false): array
+{
+  if ($userId <= 0) {
+    return [];
+  }
+
+  $customerId = trim((string) get_user_meta($userId, 'stripe_customer_id', true));
+
+  if ($customerId === '') {
+    return [];
+  }
+
+  $cacheKey = 'dashboard_stripe_invoices_' . $userId;
+
+  if (!$force) {
+    $cached = get_transient($cacheKey);
+
+    if (is_array($cached)) {
+      return $cached;
+    }
+  }
+
+  if (!dashboard_stripe_boot()) {
+    return [];
+  }
+
+  try {
+    $result = \Stripe\Invoice::all([
+      'customer' => $customerId,
+      'limit' => max(1, min(20, $limit)),
+    ]);
+
+    $items = [];
+
+    foreach (($result->data ?? []) as $invoice) {
+      $amount = (int) ($invoice->amount_paid ?? $invoice->total ?? $invoice->amount_due ?? 0);
+      $currency = (string) ($invoice->currency ?? 'eur');
+      $status = (string) ($invoice->status ?? '');
+      $created = (int) ($invoice->created ?? 0);
+      $url = (string) ($invoice->hosted_invoice_url ?? '');
+      $pdf = (string) ($invoice->invoice_pdf ?? '');
+      $number = (string) ($invoice->number ?? '');
+
+      $items[] = [
+        'created' => $created,
+        'amount' => dashboard_stripe_format_amount($amount, $currency),
+        'status' => $status !== '' ? $status : '—',
+        'url' => $url,
+        'pdf' => $pdf,
+        'number' => $number !== '' ? $number : '—',
+      ];
+    }
+
+    set_transient($cacheKey, $items, 20);
+
+    return $items;
+  } catch (\Throwable $e) {
+    error_log('[BBC Stripe Sync] Invoice fetch failed for user ' . $userId . ': ' . $e->getMessage());
+    return [];
+  }
+}
+
+add_action('admin_post_dashboard_sync_billing', function () {
+  if (!is_user_logged_in()) {
+    wp_safe_redirect('/dashboard-login');
+    exit;
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_sync_billing')
+  ) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=invalid_request');
+    exit;
+  }
+
+  $userId = get_current_user_id();
+
+  dashboard_stripe_sync_user_subscription_from_stripe($userId, true);
+  dashboard_stripe_get_user_invoices($userId, 10, true);
+
+  delete_transient('dashboard_stripe_sync_' . $userId);
+  delete_transient('dashboard_stripe_invoices_' . $userId);
+
+  wp_safe_redirect(dashboard_settings_billing_url() . '&synced=1');
+  exit;
+});
