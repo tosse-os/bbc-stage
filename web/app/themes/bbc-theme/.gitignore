@@ -4,4 +4,4 @@
 !/public/.gitkeep
 .env
 npm-debug.log
-/tools
+/tools/*.txt
