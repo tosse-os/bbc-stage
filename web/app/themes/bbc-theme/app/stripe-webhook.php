@@ -161,8 +161,8 @@ function dashboard_handle_stripe_invoice_paid($invoice): void
   $subscriptionId = trim((string) ($invoice->subscription ?? ''));
 
   if ($subscriptionId === '') {
-    dashboard_set_subscription_state($user->ID, 'active');
-    update_user_meta($user->ID, 'stripe_subscription_status', 'active');
+    update_user_meta($user->ID, 'stripe_last_invoice_status', 'paid');
+    update_user_meta($user->ID, 'stripe_last_invoice_paid_at', current_time('mysql'));
     return;
   }
 
@@ -170,8 +170,8 @@ function dashboard_handle_stripe_invoice_paid($invoice): void
     $subscription = \Stripe\Subscription::retrieve($subscriptionId);
     dashboard_stripe_sync_subscription($user->ID, $subscription);
   } catch (\Throwable $e) {
-    dashboard_set_subscription_state($user->ID, 'active');
-    update_user_meta($user->ID, 'stripe_subscription_status', 'active');
+    error_log('[BBC Stripe Webhook] invoice paid subscription sync failed for user ' . $user->ID . ': ' . $e->getMessage());
+    return;
   }
 }
 

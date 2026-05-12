@@ -224,7 +224,10 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     $isSelectedTrial = $requestedBillingPlan === 'trial' || $savedBillingPlan === 'trial';
     $isStripeTrialing = $stripeRawStatus === 'trialing';
     $hasActiveTrialWindow = $stripeTrialEnd > 0 && $stripeTrialEnd >= $now;
-    $hasStripePeriodAfterTrial = $stripeTrialEnd > 0 && $stripeCurrentPeriodStart > 0 && $stripeCurrentPeriodStart >= $stripeTrialEnd;
+    $hasStripePeriodAfterTrial = $stripeTrialEnd > 0 && (
+      ($stripeCurrentPeriodStart > 0 && $stripeCurrentPeriodStart >= $stripeTrialEnd) ||
+      ($currentPeriodEnd > 0 && $currentPeriodEnd > $stripeTrialEnd)
+    );
 
     $isDisplayedTrial = $isStripeTrialing || ($isSelectedTrial && $hasActiveTrialWindow && !$hasStripePeriodAfterTrial);
 
