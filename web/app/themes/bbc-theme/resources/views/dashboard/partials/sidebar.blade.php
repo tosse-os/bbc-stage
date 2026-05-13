@@ -334,7 +334,7 @@ $avatar_url = $avatar_id
     </a>
 
     {{-- LOGOUT (ersetzt About) --}}
-    <a href="/?dashboard_logout=1"
+    <a href="{{ esc_url(add_query_arg(['dashboard_logout' => '1', '_wpnonce' => wp_create_nonce('dashboard_logout')], home_url('/'))) }}"
       class="flex items-center justify-between py-2 text-red-400 hover:text-red-300 transition">
       <div class="flex items-center gap-3">
         @include('dashboard.icons.logout')
@@ -361,7 +361,7 @@ $avatar_url = $avatar_id
 {{-- Geändert: px-4 statt px-6 für bündige Icons --}}
 <div class="px-4 py-4 border-t border-slate-800 text-sm">
   {{-- Geändert: px-4 hinzugefügt für das Alignment innerhalb des Containers --}}
-  <a href="/?dashboard_logout=1"
+  <a href="{!! esc_url(add_query_arg(['dashboard_logout' => '1', '_wpnonce' => wp_create_nonce('dashboard_logout')], home_url('/'))) !!}"
     class="nav-item flex items-center gap-3 text-slate-400 hover:text-white px-4">
     <span class="w-5 h-5">
       @include('dashboard.icons.logout')

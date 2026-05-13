@@ -251,6 +251,13 @@ function dashboard_handle_start_checkout()
     exit;
   }
 
+  $rateLimitIdentity = (string) get_current_user_id();
+
+  if (function_exists('dashboard_rate_limit_hit') && dashboard_rate_limit_hit('dashboard_start_checkout', $rateLimitIdentity, 8, 10 * MINUTE_IN_SECONDS)) {
+    wp_safe_redirect(dashboard_settings_billing_url() . '&error=rate_limited');
+    exit;
+  }
+
   $plan = dashboard_checkout_plan_from_request();
 
   if ($plan === 'trial' && dashboard_user_has_used_trial(get_current_user_id())) {
@@ -610,6 +617,15 @@ function dashboard_handle_register_and_checkout()
     exit;
   }
 
+  $rateLimitEmail = sanitize_email($_POST['email'] ?? '');
+  $rateLimitIp = function_exists('dashboard_request_ip') ? dashboard_request_ip() : ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+  $rateLimitIdentity = is_user_logged_in() ? (string) get_current_user_id() : ($rateLimitIp . '|' . strtolower($rateLimitEmail));
+
+  if (function_exists('dashboard_rate_limit_hit') && dashboard_rate_limit_hit('dashboard_register_checkout', $rateLimitIdentity, 5, 15 * MINUTE_IN_SECONDS)) {
+    wp_safe_redirect('/subscribe-trial/?error=rate_limited&plan=' . rawurlencode($plan));
+    exit;
+  }
+
   if (is_user_logged_in()) {
     if ($plan === 'trial' && dashboard_user_has_used_trial(get_current_user_id())) {
       wp_safe_redirect('/subscribe-trial/?error=trial_already_used&plan=basis');
@@ -682,7 +698,7 @@ function dashboard_handle_register_and_checkout()
   dashboard_set_subscription_state($user_id, 'payment_required');
 
   wp_set_current_user($user_id);
-  wp_set_auth_cookie($user_id);
+  wp_set_auth_cookie($user_id, true, is_ssl());
 
   $user = get_user_by('id', $user_id);
 

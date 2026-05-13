@@ -571,6 +571,134 @@ document.addEventListener('DOMContentLoaded', () => {
   initMobileBottomMenu()
 })
 
+function initAvatarUpload() {
+  const input = document.querySelector('[data-avatar-input]')
+  const preview = document.querySelector('[data-avatar-preview]')
+  const button = document.querySelector('[data-avatar-upload-button]')
+  const label = document.querySelector('[data-avatar-upload-label]')
+  const spinner = document.querySelector('[data-avatar-upload-spinner]')
+  const progressWrap = document.querySelector('[data-avatar-upload-progress-wrap]')
+  const progress = document.querySelector('[data-avatar-upload-progress]')
+  const status = document.querySelector('[data-avatar-upload-status]')
+
+  if (!input) return
+
+  function setLoading(active) {
+    input.disabled = active
+    button?.classList.toggle('pointer-events-none', active)
+    button?.classList.toggle('opacity-80', active)
+    spinner?.classList.toggle('hidden', !active)
+
+    if (label) {
+      label.textContent = active ? 'Upload läuft …' : 'Choose Photo'
+    }
+
+    if (progressWrap) {
+      progressWrap.classList.toggle('hidden', !active)
+    }
+
+    if (progress) {
+      progress.style.width = active ? '8%' : '0%'
+    }
+  }
+
+  function setStatus(message, type) {
+    if (!status) return
+
+    status.textContent = message
+    status.classList.remove('text-slate-400', 'text-red-400', 'text-emerald-400')
+
+    if (type === 'error') {
+      status.classList.add('text-red-400')
+      return
+    }
+
+    if (type === 'success') {
+      status.classList.add('text-emerald-400')
+      return
+    }
+
+    status.classList.add('text-slate-400')
+  }
+
+  input.addEventListener('change', () => {
+    const file = input.files && input.files[0]
+
+    if (!file) return
+
+    const form = new FormData()
+    form.append('action', 'dashboard_upload_avatar')
+    form.append('_wpnonce', input.dataset.nonce)
+    form.append('avatar', file)
+
+    const request = new XMLHttpRequest()
+
+    setLoading(true)
+    setStatus('Bild wird hochgeladen …', 'default')
+
+    request.upload.addEventListener('progress', event => {
+      if (!event.lengthComputable || !progress) return
+
+      const percent = Math.max(8, Math.round((event.loaded / event.total) * 100))
+      progress.style.width = percent + '%'
+    })
+
+    request.addEventListener('load', () => {
+      setLoading(false)
+
+      let json = null
+
+      try {
+        json = JSON.parse(request.responseText)
+      } catch {
+        json = null
+      }
+
+      if (!request.status || request.status >= 400 || !json || !json.success || !json.data || !json.data.url) {
+        input.value = ''
+        setStatus('Bild konnte nicht hochgeladen werden.', 'error')
+        return
+      }
+
+      if (progress) {
+        progress.style.width = '100%'
+      }
+
+      if (preview) {
+        preview.src = json.data.url
+      }
+
+      document.querySelectorAll('[data-avatar], [data-sidebar-avatar]').forEach(img => {
+        img.src = json.data.url
+      })
+
+      input.value = ''
+      setStatus('Profilbild wurde aktualisiert.', 'success')
+
+      window.setTimeout(() => {
+        if (progressWrap) {
+          progressWrap.classList.add('hidden')
+        }
+
+        if (progress) {
+          progress.style.width = '0%'
+        }
+
+        setStatus('JPG, PNG oder WebP · max. 2 MB', 'default')
+      }, 2500)
+    })
+
+    request.addEventListener('error', () => {
+      setLoading(false)
+      input.value = ''
+      setStatus('Upload fehlgeschlagen. Bitte erneut versuchen.', 'error')
+    })
+
+    request.open('POST', input.dataset.ajax)
+    request.send(form)
+  })
+}
+
 /*
 |--------------------------------------------------------------------------
 | Dashboard Init
@@ -589,7 +717,7 @@ function initDashboard() {
   initCustomAudioPlayers();
   initVideoModal();
   initMobileBottomMenu();
-
+  initAvatarUpload();
 }
 
 document.addEventListener('DOMContentLoaded', initDashboard);

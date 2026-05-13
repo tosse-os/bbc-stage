@@ -97,7 +97,7 @@ $langs = pll_the_languages(['raw' => 1]);
       Account Settings
     </a>
 
-    <a href="/?dashboard_logout=1" class="block py-2 text-red-400">
+    <a href="{!! ! !! esc_url(add_query_arg(['dashboard_logout' => '1', '_wpnonce' => wp_create_nonce('dashboard_logout')], home_url('/'))) !!}" class="block py-2 text-red-400">
       Logout
     </a>
 

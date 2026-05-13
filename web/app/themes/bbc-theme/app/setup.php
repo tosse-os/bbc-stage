@@ -269,6 +269,13 @@ add_filter('show_admin_bar', function ($show) {
 add_action('init', function () {
     if (isset($_GET['dashboard_logout'])) {
 
+        $nonce = sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? ''));
+
+        if (!$nonce || !wp_verify_nonce($nonce, 'dashboard_logout')) {
+            wp_safe_redirect('/dashboard-login?error=invalid_request');
+            exit;
+        }
+
         if (is_user_logged_in()) {
             wp_clear_auth_cookie();
             wp_logout();

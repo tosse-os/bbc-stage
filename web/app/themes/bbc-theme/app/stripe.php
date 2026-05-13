@@ -161,6 +161,7 @@ function dashboard_stripe_billing_error_message(string $error): string
 {
   return match ($error) {
     'invalid_request' => 'Die Anfrage war ungültig.',
+    'rate_limited' => 'Zu viele Versuche. Bitte warte kurz und versuche es erneut.',
     'stripe_sdk_missing' => 'Das Stripe SDK fehlt. Bitte composer require stripe/stripe-php im Theme ausführen.',
     'stripe_not_configured' => 'Stripe ist noch nicht vollständig konfiguriert.',
     'stripe_secret_missing' => 'Der Stripe Secret Key fehlt.',

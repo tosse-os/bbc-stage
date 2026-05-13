@@ -44,6 +44,39 @@ function dashboard_login_redirect_url(string $error, string $plan = ''): string
   return add_query_arg($args, home_url('/dashboard-login'));
 }
 
+if (!function_exists('dashboard_request_ip')) {
+  function dashboard_request_ip(): string
+  {
+    $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ip = explode(',', (string) $ip)[0];
+    $ip = trim($ip);
+
+    return $ip !== '' ? $ip : 'unknown';
+  }
+}
+
+if (!function_exists('dashboard_rate_limit_hit')) {
+  function dashboard_rate_limit_hit(string $scope, string $identity, int $limit, int $windowSeconds): bool
+  {
+    $identity = trim($identity);
+
+    if ($identity === '') {
+      $identity = dashboard_request_ip();
+    }
+
+    $key = 'dashboard_rl_' . md5($scope . '|' . $identity);
+    $hits = (int) get_transient($key);
+
+    if ($hits >= $limit) {
+      return true;
+    }
+
+    set_transient($key, $hits + 1, $windowSeconds);
+
+    return false;
+  }
+}
+
 add_action('user_register', function ($user_id) {
   update_user_meta($user_id, USER_META_THEME, 'dark');
 
@@ -78,7 +111,7 @@ add_action('admin_post_nopriv_dashboard_login', function () {
     'remember'      => true,
   ];
 
-  $user = wp_signon($creds, false);
+  $user = wp_signon($creds, is_ssl());
 
   if (is_wp_error($user)) {
     set_transient($key, $attempts + 1, 15 * MINUTE_IN_SECONDS);
@@ -120,6 +153,12 @@ add_action('admin_post_nopriv_dashboard_password_reset', function () {
   }
 
   $email = sanitize_email($_POST['email'] ?? '');
+  $rateLimitIdentity = dashboard_request_ip() . '|' . strtolower($email);
+
+  if (dashboard_rate_limit_hit('dashboard_password_reset', $rateLimitIdentity, 5, HOUR_IN_SECONDS)) {
+    wp_safe_redirect(home_url('/dashboard-password?error=too_many_attempts'));
+    exit;
+  }
 
   if (!is_email($email)) {
     wp_safe_redirect(home_url('/dashboard-password?error=invalid_request'));
@@ -211,7 +250,7 @@ add_action('admin_post_dashboard_update_password', function () {
   }
 
   wp_set_password($new, $user->ID);
-  wp_set_auth_cookie($user->ID);
+  wp_set_auth_cookie($user->ID, true, is_ssl());
 
   wp_safe_redirect('/dashboard-settings?tab=password&success=1');
   exit;

@@ -132,8 +132,11 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
           class="w-40 h-40 rounded-xl object-cover bg-slate-100"
           data-avatar-preview>
 
-        <label class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 cursor-pointer text-sm">
-          Choose Photo
+        <label
+          data-avatar-upload-button
+          class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand-primary text-white hover:bg-brand-primaryHover cursor-pointer text-sm font-semibold transition shadow-sm hover:shadow-md">
+          <span data-avatar-upload-label>Choose Photo</span>
+          <span data-avatar-upload-spinner class="hidden h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin"></span>
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -143,9 +146,14 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
             data-nonce="{{ wp_create_nonce('dashboard_avatar_upload') }}">
         </label>
 
-        <p class="text-xs text-slate-400">
+        <div data-avatar-upload-progress-wrap class="hidden mt-3 w-full max-w-[220px] overflow-hidden rounded-full bg-slate-200">
+          <div data-avatar-upload-progress class="h-2 w-0 rounded-full bg-brand-primary transition-all duration-300"></div>
+        </div>
+
+        <p data-avatar-upload-status class="text-xs text-slate-400">
           JPG, PNG oder WebP · max. 2 MB
         </p>
+
       </div>
 
     </form>
@@ -225,8 +233,8 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     $isStripeTrialing = $stripeRawStatus === 'trialing';
     $hasActiveTrialWindow = $stripeTrialEnd > 0 && $stripeTrialEnd >= $now;
     $hasStripePeriodAfterTrial = $stripeTrialEnd > 0 && (
-      ($stripeCurrentPeriodStart > 0 && $stripeCurrentPeriodStart >= $stripeTrialEnd) ||
-      ($currentPeriodEnd > 0 && $currentPeriodEnd > $stripeTrialEnd)
+    ($stripeCurrentPeriodStart > 0 && $stripeCurrentPeriodStart >= $stripeTrialEnd) ||
+    ($currentPeriodEnd > 0 && $currentPeriodEnd > $stripeTrialEnd)
     );
 
     $isDisplayedTrial = $isStripeTrialing || ($isSelectedTrial && $hasActiveTrialWindow && !$hasStripePeriodAfterTrial);
