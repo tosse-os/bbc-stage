@@ -15,7 +15,7 @@ if (!function_exists('dashboard_settings_billing_url')) {
  */
 function dashboard_checkout_success_url(): string
 {
-  return home_url('/dashboard-settings?tab=billing&stripe=success');
+  return home_url('/dashboard-settings?tab=billing&stripe=success&session_id={CHECKOUT_SESSION_ID}');
 }
 
 /**
@@ -300,16 +300,6 @@ function dashboard_stripe_find_user_from_checkout_session($session)
     }
   }
 
-  $email = trim((string) ($session->customer_email ?? ''));
-
-  if ($email === '' && isset($session->customer_details) && is_object($session->customer_details)) {
-    $email = trim((string) ($session->customer_details->email ?? ''));
-  }
-
-  if ($email !== '') {
-    return dashboard_stripe_find_user_by_email($email);
-  }
-
   return null;
 }
 
@@ -341,11 +331,6 @@ function dashboard_stripe_find_user_from_subscription($subscription)
       return $user;
     }
 
-    $email = dashboard_stripe_get_customer_email($customerId);
-
-    if ($email !== '') {
-      return dashboard_stripe_find_user_by_email($email);
-    }
   }
 
   return null;
@@ -380,33 +365,32 @@ function dashboard_stripe_find_user_from_invoice($invoice)
     }
   }
 
-  $email = trim((string) ($invoice->customer_email ?? ''));
-
-  if ($email !== '') {
-    return dashboard_stripe_find_user_by_email($email);
-  }
-
-  if ($customerId !== '') {
-    $email = dashboard_stripe_get_customer_email($customerId);
-
-    if ($email !== '') {
-      return dashboard_stripe_find_user_by_email($email);
-    }
-  }
-
   return null;
 }
 
 /**
  * Speichert eine Stripe Customer ID am User.
  */
-function dashboard_stripe_store_customer_id(int $userId, string $customerId): void
+function dashboard_stripe_store_customer_id(int $userId, string $customerId): bool
 {
   if ($userId <= 0 || $customerId === '') {
-    return;
+    return false;
+  }
+
+  $existingCustomerId = trim((string) get_user_meta($userId, 'stripe_customer_id', true));
+
+  if ($existingCustomerId !== '' && $existingCustomerId !== $customerId) {
+    update_user_meta($userId, 'stripe_customer_conflict_id', $customerId);
+    update_user_meta($userId, 'stripe_customer_conflict_at', current_time('mysql'));
+    error_log('[BBC Stripe Mapping] Customer conflict for user ' . $userId . ': existing=' . $existingCustomerId . ' incoming=' . $customerId);
+    return false;
   }
 
   update_user_meta($userId, 'stripe_customer_id', $customerId);
+  delete_user_meta($userId, 'stripe_customer_conflict_id');
+  delete_user_meta($userId, 'stripe_customer_conflict_at');
+
+  return true;
 }
 
 function dashboard_stripe_subscription_metadata_plan($subscription): string
@@ -467,6 +451,23 @@ function dashboard_stripe_plan_from_price_id(string $priceId): string
   return '';
 }
 
+function dashboard_stripe_allowed_price_ids(): array
+{
+  $ids = array_filter([
+    dashboard_stripe_env('STRIPE_PRICE_ID_BASIS') ?: dashboard_stripe_price_id(),
+    dashboard_stripe_env('STRIPE_PRICE_ID_PRO'),
+  ]);
+
+  return array_values(array_unique(array_map('trim', $ids)));
+}
+
+function dashboard_stripe_price_is_allowed(string $priceId): bool
+{
+  $priceId = trim($priceId);
+
+  return $priceId !== '' && in_array($priceId, dashboard_stripe_allowed_price_ids(), true);
+}
+
 function dashboard_stripe_format_amount(int $amount, string $currency): string
 {
   $currency = strtoupper($currency ?: 'EUR');
@@ -490,8 +491,10 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
   $priceId = dashboard_stripe_subscription_price_id($subscription);
   $currentPlan = dashboard_stripe_plan_from_price_id($priceId);
 
-  if ($customerId !== '') {
-    update_user_meta($userId, 'stripe_customer_id', $customerId);
+  if ($customerId !== '' && !dashboard_stripe_store_customer_id($userId, $customerId)) {
+    dashboard_set_subscription_state($userId, 'payment_required');
+    update_user_meta($userId, 'stripe_subscription_status', 'customer_conflict');
+    return;
   }
 
   if ($subscriptionId !== '') {
@@ -514,6 +517,13 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
 
   if ($metadataPlan !== '') {
     update_user_meta($userId, 'dashboard_selected_plan', $metadataPlan);
+  }
+
+  if (!dashboard_stripe_price_is_allowed($priceId)) {
+    update_user_meta($userId, 'stripe_subscription_status', 'invalid_price');
+    update_user_meta($userId, 'stripe_invalid_price_id', $priceId);
+    dashboard_set_subscription_state($userId, 'payment_required');
+    return;
   }
 
   if (isset($subscription->current_period_start)) {
@@ -547,6 +557,7 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
   }
 
   if (in_array($status, ['active', 'trialing'], true)) {
+    update_user_meta($userId, 'subscription_source', 'stripe');
     dashboard_set_subscription_state($userId, 'active');
     return;
   }

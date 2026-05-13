@@ -223,7 +223,7 @@ function dashboard_redirect_to_checkout_for_user($user, string $plan, string $su
         'dashboard_plan' => $plan,
       ],
       'subscription_data' => dashboard_checkout_subscription_data_for_plan($plan, (int) $user->ID),
-      'allow_promotion_codes' => true,
+      'allow_promotion_codes' => false,
     ]);
 
     update_user_meta($user->ID, 'dashboard_selected_plan', $plan);
@@ -443,8 +443,8 @@ function dashboard_sync_checkout_session_to_current_user(string $sessionId): str
 
     $customerId = trim((string) ($session->customer ?? ''));
 
-    if ($customerId !== '') {
-      dashboard_stripe_store_customer_id($userId, $customerId);
+    if ($customerId !== '' && !dashboard_stripe_store_customer_id($userId, $customerId)) {
+      return 'customer_conflict';
     }
 
     $plan = '';
@@ -455,6 +455,17 @@ function dashboard_sync_checkout_session_to_current_user(string $sessionId): str
 
     if ($plan !== '') {
       update_user_meta($userId, 'dashboard_selected_plan', $plan);
+    }
+
+    $sessionMode = trim((string) ($session->mode ?? ''));
+    $paymentStatus = trim((string) ($session->payment_status ?? ''));
+
+    if ($sessionMode !== 'subscription') {
+      return 'invalid_session_mode';
+    }
+
+    if (!in_array($paymentStatus, ['paid', 'no_payment_required'], true)) {
+      return 'payment_not_confirmed';
     }
 
     $subscriptionId = trim((string) ($session->subscription ?? ''));
@@ -705,7 +716,7 @@ function dashboard_handle_register_and_checkout()
   $error = dashboard_redirect_to_checkout_for_user(
     $user,
     $plan,
-    home_url('/dashboard?checkout=success'),
+    dashboard_checkout_success_url(),
     home_url('/dashboard-settings?tab=billing&stripe=cancel')
   );
 
