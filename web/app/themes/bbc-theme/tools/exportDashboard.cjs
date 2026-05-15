@@ -11,6 +11,8 @@ const cssPath = path.join(themeRoot, 'resources', 'css');
 
 const excludedIconsPath = path.join(viewsPath, 'dashboard', 'icons');
 
+const { execFileSync } = require('child_process');
+
 function shouldIgnore(filePath) {
   const name = path.basename(filePath).toLowerCase();
   const normalizedPath = path.normalize(filePath);
@@ -206,7 +208,14 @@ const output = [
 ].join('\n');
 
 const filename = 'exportedDashboardCode.txt';
+const zipFilename = 'exportedDashboardCode.zip';
+
 fs.writeFileSync(filename, output);
+
+execFileSync('zip', ['-j', zipFilename, filename], {
+  stdio: 'inherit'
+});
 
 console.log('');
 console.log('Dashboard + Media Entry Modul exportiert nach ' + filename);
+console.log('ZIP erstellt: ' + zipFilename);
