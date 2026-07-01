@@ -217,6 +217,7 @@ require_once __DIR__ . '/analysis-access.php';
 require_once __DIR__ . '/dashboard-auth.php';
 require_once __DIR__ . '/dashboard-avatar.php';
 require_once __DIR__ . '/dashboard-access.php';
+require_once __DIR__ . '/dashboard-secure-media.php';
 require_once __DIR__ . '/stripe.php';
 require_once __DIR__ . '/dashboard-gate.php';
 require_once __DIR__ . '/dashboard-controller.php';
@@ -239,8 +240,7 @@ require_once __DIR__ . '/acf-chart-image-validation.php';
 #require_once __DIR__ . '/sql-query-admin.php';//only debug cases
 
 require_once __DIR__ . '/export-landing.php';
-#require_once __DIR__ . '/import-landing.php';
-#require_once __DIR__ . '/import-landing-admin.php';
+##require_once __DIR__ . '/import-landing-admin.php';
 
 
 /**
@@ -267,6 +267,13 @@ add_filter('show_admin_bar', function ($show) {
 
 add_action('init', function () {
     if (isset($_GET['dashboard_logout'])) {
+
+        $nonce = sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? ''));
+
+        if (!$nonce || !wp_verify_nonce($nonce, 'dashboard_logout')) {
+            wp_safe_redirect('/dashboard-login?error=invalid_request');
+            exit;
+        }
 
         if (is_user_logged_in()) {
             wp_clear_auth_cookie();
@@ -548,3 +555,7 @@ add_action('admin_menu', function () {
 
 //     return function_exists('pll_home_url') ? pll_home_url('de') : home_url('/');
 // }, 10, 3);
+
+if (file_exists(__DIR__ . '/reviews.php')) {
+    require_once __DIR__ . '/reviews.php';
+}

@@ -8,6 +8,7 @@ Template Name: Landing Page
 @include('partials.landing.market-insights')
 @include('partials.landing.about')
 @include('partials.landing.team')
+@include('partials.landing.reviews', ['reviews' => $reviews ?? []])
 @include('partials.landing.cta')
 @include('partials.landing.contact')
 @endsection
