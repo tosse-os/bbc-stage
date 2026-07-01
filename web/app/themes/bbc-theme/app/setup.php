@@ -556,3 +556,7 @@ add_action('admin_menu', function () {
 
 //     return function_exists('pll_home_url') ? pll_home_url('de') : home_url('/');
 // }, 10, 3);
+
+if (file_exists(__DIR__ . '/reviews.php')) {
+    require_once __DIR__ . '/reviews.php';
+}

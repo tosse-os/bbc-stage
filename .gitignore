@@ -97,3 +97,11 @@ temp/
 # yarn.lock
 # composer.lock
 *:Zone.Identifier
+
+.osp-backups/
+web/app/themes/bbc-theme/tools/*.zip
+web/app/themes/bbc-theme/tools/archive/
+
+web/app/themes/bbc-theme/paket-*.sh
+web/app/themes/bbc-theme/tools/osp-importer.mjs
+web/app/themes/bbc-theme/tools/osp-importer/

@@ -478,3 +478,318 @@ document.addEventListener('DOMContentLoaded', () => {
   initHeroFloat()
   initScrollSpy()
 })
+
+function initReviewsSlider() {
+  var sliders = document.querySelectorAll('[data-reviews-slider]');
+
+  if (!sliders.length) {
+    return;
+  }
+
+  sliders.forEach(function (slider) {
+    var viewport = slider.querySelector('.reviews-slider__viewport');
+    var track = slider.querySelector('.reviews-slider__track');
+    var slides = Array.prototype.slice.call(slider.querySelectorAll('.reviews-slider__slide'));
+    var cards = Array.prototype.slice.call(slider.querySelectorAll('.review-card'));
+    var previous = slider.querySelector('[data-reviews-prev]');
+    var next = slider.querySelector('[data-reviews-next]');
+    var dotsContainer = slider.querySelector('[data-reviews-dots]');
+    var toggles = Array.prototype.slice.call(slider.querySelectorAll('[data-review-toggle]'));
+
+    if (!viewport || !track || !slides.length) {
+      return;
+    }
+
+    var index = 0;
+    var slideWidth = 0;
+    var gap = 0;
+    var timer = null;
+    var resizeFrame = null;
+    var paused = false;
+    var autoplay = slider.getAttribute('data-autoplay') === '1';
+    var speed = Math.max(parseInt(slider.getAttribute('data-speed') || '6500', 10) || 6500, 2500);
+    var perStep = Math.max(parseInt(slider.getAttribute('data-per-step') || '1', 10) || 1, 1);
+    var equalHeight = slider.getAttribute('data-equal-height') === '1';
+    var dots = [];
+    var pages = [];
+
+    var slidesPerView = function () {
+      if (window.innerWidth < 768) {
+        return 1;
+      }
+
+      if (window.innerWidth < 1024) {
+        return 2;
+      }
+
+      return 3;
+    };
+
+    var viewportWidth = function () {
+      var style = window.getComputedStyle(viewport);
+      var left = parseFloat(style.paddingLeft) || 0;
+      var right = parseFloat(style.paddingRight) || 0;
+
+      return viewport.clientWidth - left - right;
+    };
+
+    var clearCardHeights = function () {
+      cards.forEach(function (card) {
+        card.style.height = '';
+      });
+    };
+
+    var applyEqualHeight = function () {
+      clearCardHeights();
+
+      if (!equalHeight) {
+        return;
+      }
+
+      var height = cards.reduce(function (max, card) {
+        return Math.max(max, card.offsetHeight);
+      }, 0);
+
+      cards.forEach(function (card) {
+        card.style.height = height + 'px';
+      });
+    };
+
+    var getMaxIndex = function () {
+      return Math.max(slides.length - slidesPerView(), 0);
+    };
+
+    var buildPages = function () {
+      var maxIndex = getMaxIndex();
+      var result = [];
+      var step = Math.max(perStep, 1);
+      var page = 0;
+
+      while (page < maxIndex) {
+        result.push(page);
+        page += step;
+      }
+
+      if (!result.length || result[result.length - 1] !== maxIndex) {
+        result.push(maxIndex);
+      }
+
+      return result;
+    };
+
+    var buildDots = function () {
+      if (!dotsContainer) {
+        return;
+      }
+
+      pages = buildPages();
+
+      while (dotsContainer.firstChild) {
+        dotsContainer.removeChild(dotsContainer.firstChild);
+      }
+
+      dots = pages.map(function (page, dotIndex) {
+        var dot = document.createElement('button');
+
+        dot.type = 'button';
+        dot.className = 'reviews-slider__dot';
+        dot.setAttribute('aria-label', 'Review slide ' + (dotIndex + 1));
+        dot.addEventListener('click', function () {
+          index = page;
+          update();
+          start();
+        });
+
+        dotsContainer.appendChild(dot);
+
+        return dot;
+      });
+    };
+
+    var updateVisibleSlides = function () {
+      var visible = slidesPerView();
+
+      slides.forEach(function (slide, slideIndex) {
+        slide.classList.toggle('is-visible', slideIndex >= index && slideIndex < index + visible);
+      });
+    };
+
+    var updateDots = function () {
+      if (!dots.length) {
+        return;
+      }
+
+      var activePage = pages.reduce(function (closest, page) {
+        return Math.abs(page - index) < Math.abs(closest - index) ? page : closest;
+      }, pages[0]);
+
+      dots.forEach(function (dot, dotIndex) {
+        var isActive = pages[dotIndex] === activePage;
+
+        dot.classList.toggle('is-active', isActive);
+        dot.setAttribute('aria-current', isActive ? 'true' : 'false');
+      });
+    };
+
+    var updateButtons = function () {
+      var disabled = slides.length <= slidesPerView();
+
+      if (previous) {
+        previous.disabled = disabled;
+      }
+
+      if (next) {
+        next.disabled = disabled;
+      }
+    };
+
+    var update = function () {
+      updateVisibleSlides();
+      updateDots();
+      track.style.transform = 'translateX(-' + (index * (slideWidth + gap)) + 'px)';
+      updateButtons();
+    };
+
+    var layout = function () {
+      var visible = slidesPerView();
+      var trackStyle = window.getComputedStyle(track);
+      var width = viewportWidth();
+
+      gap = parseFloat(trackStyle.columnGap || trackStyle.gap) || 0;
+      slideWidth = Math.floor((width - gap * (visible - 1)) / visible);
+
+      slides.forEach(function (slide) {
+        slide.style.width = slideWidth + 'px';
+        slide.style.flexBasis = slideWidth + 'px';
+      });
+
+      index = Math.min(index, getMaxIndex());
+      buildDots();
+      applyEqualHeight();
+      update();
+    };
+
+    var go = function (direction) {
+      var maxIndex = getMaxIndex();
+
+      if (!maxIndex) {
+        index = 0;
+        update();
+        return;
+      }
+
+      index += direction * perStep;
+
+      if (index > maxIndex) {
+        index = 0;
+      }
+
+      if (index < 0) {
+        index = maxIndex;
+      }
+
+      update();
+    };
+
+    var stop = function () {
+      if (timer) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    };
+
+    var start = function () {
+      stop();
+
+      if (!autoplay || paused || slides.length <= slidesPerView()) {
+        return;
+      }
+
+      timer = window.setInterval(function () {
+        go(1);
+      }, speed);
+    };
+
+    if (previous) {
+      previous.addEventListener('click', function () {
+        go(-1);
+        start();
+      });
+    }
+
+    if (next) {
+      next.addEventListener('click', function () {
+        go(1);
+        start();
+      });
+    }
+
+    toggles.forEach(function (button) {
+      button.addEventListener('click', function () {
+        var card = button.closest('.review-card');
+
+        if (!card) {
+          return;
+        }
+
+        var expanded = !card.classList.contains('is-expanded');
+
+        card.classList.toggle('is-expanded', expanded);
+        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+        clearCardHeights();
+        layout();
+        start();
+      });
+    });
+
+    slider.addEventListener('mouseenter', function () {
+      paused = true;
+      stop();
+    });
+
+    slider.addEventListener('mouseleave', function () {
+      paused = false;
+      start();
+    });
+
+    slider.addEventListener('focusin', function () {
+      paused = true;
+      stop();
+    });
+
+    slider.addEventListener('focusout', function () {
+      if (!slider.contains(document.activeElement)) {
+        paused = false;
+        start();
+      }
+    });
+
+    window.addEventListener('resize', function () {
+      if (resizeFrame) {
+        window.cancelAnimationFrame(resizeFrame);
+      }
+
+      resizeFrame = window.requestAnimationFrame(function () {
+        clearCardHeights();
+        layout();
+        start();
+      });
+    });
+
+    cards.forEach(function (card) {
+      var image = card.querySelector('img');
+
+      if (image && !image.complete) {
+        image.addEventListener('load', function () {
+          layout();
+        }, { once: true });
+      }
+    });
+
+    layout();
+    start();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initReviewsSlider);

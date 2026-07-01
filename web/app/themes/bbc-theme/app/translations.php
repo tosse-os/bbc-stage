@@ -17,3 +17,22 @@ add_action('init', function () {
   pll_register_string('dashboard_copy', 'Kopieren', 'Dashboard');
   pll_register_string('dashboard_copied', 'Kopiert!', 'Dashboard');
 });
+
+add_action('init', function () {
+    if (! function_exists('pll_register_string')) {
+        return;
+    }
+
+    foreach (
+        [
+            'Customer Reviews',
+            'Voices of Innovation',
+            'Previous review',
+            'Next review',
+            'Read more',
+            'Show less',
+        ] as $string
+    ) {
+        pll_register_string($string, $string, 'Landing Page');
+    }
+});
