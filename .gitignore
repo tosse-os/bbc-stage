@@ -97,3 +97,5 @@ temp/
 # yarn.lock
 # composer.lock
 *:Zone.Identifier
+
+.osp-backups/
