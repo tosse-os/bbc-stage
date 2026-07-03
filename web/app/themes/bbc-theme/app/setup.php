@@ -240,6 +240,7 @@ require_once __DIR__ . '/acf-chart-image-validation.php';
 #require_once __DIR__ . '/sql-query-admin.php';//only debug cases
 
 require_once __DIR__ . '/export-landing.php';
+require_once __DIR__ . '/landing-translation.php';
 ##require_once __DIR__ . '/import-landing-admin.php';
 
 

@@ -31,6 +31,8 @@ add_action('init', function () {
             'Next review',
             'Read more',
             'Show less',
+            'Premium Content',
+            'Kostenlose Analysen sichern',
         ] as $string
     ) {
         pll_register_string($string, $string, 'Landing Page');

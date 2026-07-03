@@ -178,3 +178,41 @@
   z-index: 5;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
+
+.acf-tab-wrap .acf-tab-group li a,
+.acf-tab-group li a.acf-tab-button,
+.acf-tab-button {
+  border: 1px solid #d0e3e8 !important;
+  border-radius: 999px !important;
+  background: #eef6f8 !important;
+  color: #3f6b78 !important;
+  font-weight: 600 !important;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.acf-tab-wrap .acf-tab-group li.active a,
+.acf-tab-group li.active a.acf-tab-button,
+.acf-tab-group a.-active,
+.acf-tab-button.-active,
+.acf-tab-button.active,
+.bbc-acf-tab-active {
+  background: #3f879c !important;
+  border-color: #2f7081 !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 22px rgba(63, 135, 156, 0.28) !important;
+}
+
+.acf-tab-wrap .acf-tab-group li.active a::after,
+.acf-tab-group li.active a.acf-tab-button::after,
+.acf-tab-group a.-active::after,
+.acf-tab-button.-active::after,
+.acf-tab-button.active::after,
+.bbc-acf-tab-active::after {
+  content: "";
+  display: block;
+  height: 3px;
+  width: 22px;
+  margin: 5px auto -4px;
+  border-radius: 999px;
+  background: currentColor;
+}

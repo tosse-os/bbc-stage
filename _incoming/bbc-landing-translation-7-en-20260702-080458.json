@@ -1,0 +1,909 @@
+{
+    "schema": "bbc_landing_translation",
+    "version": 1,
+    "created_at_utc": "2026-07-02T08:04:58+00:00",
+    "source": {
+        "post_id": 7,
+        "language": "de",
+        "title": "Start",
+        "slug": "start",
+        "url": "https://dev.bbc.devel-web.de/"
+    },
+    "target": {
+        "post_id": 511,
+        "language": "en"
+    },
+    "sections": {
+        "hero": {
+            "hero_headline": {
+                "type": "html",
+                "translatable": true,
+                "source": "Struktur für Ihre <br/>Kapitalentscheidungen. <span class=\"block text-brand-primary mt-4 text-3xl mb-16\">Klar. Diszipliniert. Nachvollziehbar.</span>",
+                "target": ""
+            },
+            "hero_subline": {
+                "type": "html",
+                "translatable": true,
+                "source": "Finanzmärkte sind komplex – wir bringen Struktur. Bloombridge Capital analysiert global, szenariobasiert und risikobewusst. <span class=\"block mt-3 mb-8\">Treffen Sie Entscheidungen auf Basis klarer Analysen, statt auf Emotionen.</span>",
+                "target": ""
+            },
+            "hero_additional_text": {
+                "type": "html",
+                "translatable": true,
+                "source": "45 Börsenplätze · permanente Updates · tägliche Analysen",
+                "target": ""
+            },
+            "hero_cta_text": {
+                "type": "text",
+                "translatable": true,
+                "source": "Kostenlose Analysen sichern",
+                "target": ""
+            },
+            "hero_cta_link": {
+                "type": "link",
+                "translatable": true,
+                "items": {
+                    "title": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "Beispiel-Seite",
+                        "target": ""
+                    },
+                    "url": {
+                        "type": "url",
+                        "translatable": true,
+                        "source": "/subscribe-trial/",
+                        "target": ""
+                    },
+                    "target": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "",
+                        "target": ""
+                    }
+                }
+            }
+        },
+        "about": {
+            "about_section_headline": {
+                "type": "html",
+                "translatable": true,
+                "source": "Unser methodisches <span class=\"text-brand-primary\">Fundament</span>",
+                "target": ""
+            },
+            "about_intro": {
+                "type": "html",
+                "translatable": true,
+                "source": "Jede Entscheidung folgt einem mathematisch definierten Rahmen – für Ergebnisse ohne den Einfluss emotionaler Marktströmungen.",
+                "target": ""
+            },
+            "feature_1": {
+                "type": "mixed",
+                "translatable": true,
+                "items": {
+                    "": {
+                        "type": "mixed",
+                        "translatable": false,
+                        "source": null
+                    },
+                    "label": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "Daten-Integrität",
+                        "target": ""
+                    },
+                    "headline": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "Präzision in Echtzeit.",
+                        "target": ""
+                    },
+                    "text": {
+                        "type": "html",
+                        "translatable": true,
+                        "source": "Aggregation und Filterung globaler Marktdaten für maximale Validität und Sicherheit.",
+                        "target": ""
+                    }
+                }
+            },
+            "feature_2": {
+                "type": "mixed",
+                "translatable": true,
+                "items": {
+                    "": {
+                        "type": "mixed",
+                        "translatable": false,
+                        "source": null
+                    },
+                    "label": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "Strukturierte Signale",
+                        "target": ""
+                    },
+                    "headline": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "Vom Rauschen zur Relevanz.",
+                        "target": ""
+                    },
+                    "text": {
+                        "type": "html",
+                        "translatable": true,
+                        "source": "Einordnung in übergeordnete Marktszenarien für klare Tendenzen und Prognosen.",
+                        "target": ""
+                    }
+                }
+            },
+            "feature_3": {
+                "type": "mixed",
+                "translatable": true,
+                "items": {
+                    "": {
+                        "type": "mixed",
+                        "translatable": false,
+                        "source": null
+                    },
+                    "label": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "Fundierte Entscheidungen",
+                        "target": ""
+                    },
+                    "headline": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "Klarheit über Komplexität.",
+                        "target": ""
+                    },
+                    "text": {
+                        "type": "html",
+                        "translatable": true,
+                        "source": "Definition präziser Handlungsbereiche und dynamischer Risikomarken",
+                        "target": ""
+                    }
+                }
+            },
+            "feature_4": {
+                "type": "mixed",
+                "translatable": true,
+                "items": {
+                    "": {
+                        "type": "mixed",
+                        "translatable": false,
+                        "source": null
+                    },
+                    "label": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "Adaptive Strategie",
+                        "target": ""
+                    },
+                    "headline": {
+                        "type": "text",
+                        "translatable": true,
+                        "source": "Kontinuierliche Optimierung.",
+                        "target": ""
+                    },
+                    "text": {
+                        "type": "html",
+                        "translatable": true,
+                        "source": "Laufende Anpassung der Analysemodelle an strukturelle Marktveränderungen.",
+                        "target": ""
+                    }
+                }
+            }
+        },
+        "contact": {
+            "contact_headline": {
+                "type": "html",
+                "translatable": true,
+                "source": "Fragen oder Anliegen",
+                "target": ""
+            },
+            "contact_intro": {
+                "type": "html",
+                "translatable": true,
+                "source": "Sie haben Fragen zu unserem Angebot, benötigen Unterstützung oder möchten mit unserem Team sprechen? Schreiben Sie über das Formular – wir melden uns zeitnah bei Ihnen zurück.",
+                "target": ""
+            },
+            "contact_options": {
+                "type": "mixed",
+                "translatable": true,
+                "items": [
+                    {
+                        "type": "mixed",
+                        "translatable": true,
+                        "items": {
+                            "icon": {
+                                "type": "mixed",
+                                "translatable": false,
+                                "source": false
+                            },
+                            "title": {
+                                "type": "text",
+                                "translatable": true,
+                                "source": "Allgemeine Anfragen",
+                                "target": ""
+                            },
+                            "text": {
+                                "type": "html",
+                                "translatable": true,
+                                "source": "",
+                                "target": ""
+                            }
+                        }
+                    },
+                    {
+                        "type": "mixed",
+                        "translatable": true,
+                        "items": {
+                            "icon": {
+                                "type": "mixed",
+                                "translatable": false,
+                                "source": false
+                            },
+                            "title": {
+                                "type": "text",
+                                "translatable": true,
+                                "source": "Vertrieb & Zugang",
+                                "target": ""
+                            },
+                            "text": {
+                                "type": "html",
+                                "translatable": true,
+                                "source": "",
+                                "target": ""
+                            }
+                        }
+                    },
+                    {
+                        "type": "mixed",
+                        "translatable": true,
+                        "items": {
+                            "icon": {
+                                "type": "mixed",
+                                "translatable": false,
+                                "source": false
+                            },
+                            "title": {
+                                "type": "text",
+                                "translatable": true,
+                                "source": "Technischer Support",
+                                "target": ""
+                            },
+                            "text": {
+                                "type": "html",
+                                "translatable": true,
+                                "source": "",
+                                "target": ""
+                            }
+                        }
+                    }
+                ]
+            },
+            "contact_form_headline": {
+                "type": "text",
+                "translatable": false,
+                "source": null
+            },
+            "contact_form_success": {
+                "type": "text",
+                "translatable": false,
+                "source": null
+            },
+            "contact_form_email_placeholder": {
+                "type": "text",
+                "translatable": false,
+                "source": null
+            },
+            "contact_form_message_placeholder": {
+                "type": "text",
+                "translatable": false,
+                "source": null
+            },
+            "contact_form_button_text": {
+                "type": "text",
+                "translatable": false,
+                "source": null
+            }
+        },
+        "team": {
+            "team_headline": {
+                "type": "html",
+                "translatable": true,
+                "source": "Analysten mit <span class=\"text-brand-primary\">Strukturverständnis</span>",
+                "target": ""
+            },
+            "team_subheadline": {
+                "type": "html",
+                "translatable": true,
+                "source": "Hinter jeder Veröffentlichung steht ein klarer Analyseprozess: Marktbeobachtung, Szenario-Einordnung, quantitative Prüfung und Risikobewertung. \r\nSo entstehen Einschätzungen, die nachvollziehbar, konsistent und belastbar sind.",
+                "target": ""
+            },
+            "team_bottomline": {
+                "type": "html",
+                "translatable": true,
+                "source": "Keine Einzelmeinungen. Keine Ad-hoc-Thesen. Sondern klar zugeordnete Verantwortung im Analyseprozess.",
+                "target": ""
+            },
+            "team_members": {
+                "type": "mixed",
+                "translatable": true,
+                "items": [
+                    {
+                        "type": "mixed",
+                        "translatable": true,
+                        "items": {
+                            "image": {
+                                "type": "media",
+                                "translatable": false,
+                                "source": {
+                                    "ID": 201,
+                                    "id": 201,
+                                    "title": "markus-1.jpg",
+                                    "filename": "markus-1.jpg",
+                                    "filesize": 32334,
+                                    "url": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                    "link": "https://dev.bbc.devel-web.de/start/markus-1-jpg/",
+                                    "alt": "",
+                                    "author": "2",
+                                    "description": "",
+                                    "caption": "",
+                                    "name": "markus-1-jpg",
+                                    "status": "inherit",
+                                    "uploaded_to": 7,
+                                    "date": "2026-02-09 10:56:41",
+                                    "modified": "2026-03-24 12:23:13",
+                                    "menu_order": 0,
+                                    "mime_type": "image/jpeg",
+                                    "type": "image",
+                                    "subtype": "jpeg",
+                                    "icon": "https://dev.bbc.devel-web.de/wp/wp-includes/images/media/default.png",
+                                    "width": 400,
+                                    "height": 400,
+                                    "sizes": {
+                                        "thumbnail": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-150x150.jpg",
+                                        "thumbnail-width": 150,
+                                        "thumbnail-height": 150,
+                                        "medium": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-300x300.jpg",
+                                        "medium-width": 300,
+                                        "medium-height": 300,
+                                        "medium_large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "medium_large-width": 400,
+                                        "medium_large-height": 400,
+                                        "large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "large-width": 400,
+                                        "large-height": 400,
+                                        "1536x1536": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "1536x1536-width": 400,
+                                        "1536x1536-height": 400,
+                                        "2048x2048": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "2048x2048-width": 400,
+                                        "2048x2048-height": 400
+                                    }
+                                }
+                            },
+                            "name": {
+                                "type": "text",
+                                "translatable": true,
+                                "source": "Jennifer Morgan",
+                                "target": ""
+                            },
+                            "role": {
+                                "type": "mixed",
+                                "translatable": true,
+                                "source": "Risk & Scenario Analysis - Bewertet Chancen-Risiko-Profile und definiert klare Marken für Risiko, Szenarien und Handlungsräume.",
+                                "target": ""
+                            }
+                        }
+                    },
+                    {
+                        "type": "mixed",
+                        "translatable": true,
+                        "items": {
+                            "image": {
+                                "type": "media",
+                                "translatable": false,
+                                "source": {
+                                    "ID": 201,
+                                    "id": 201,
+                                    "title": "markus-1.jpg",
+                                    "filename": "markus-1.jpg",
+                                    "filesize": 32334,
+                                    "url": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                    "link": "https://dev.bbc.devel-web.de/start/markus-1-jpg/",
+                                    "alt": "",
+                                    "author": "2",
+                                    "description": "",
+                                    "caption": "",
+                                    "name": "markus-1-jpg",
+                                    "status": "inherit",
+                                    "uploaded_to": 7,
+                                    "date": "2026-02-09 10:56:41",
+                                    "modified": "2026-03-24 12:23:13",
+                                    "menu_order": 0,
+                                    "mime_type": "image/jpeg",
+                                    "type": "image",
+                                    "subtype": "jpeg",
+                                    "icon": "https://dev.bbc.devel-web.de/wp/wp-includes/images/media/default.png",
+                                    "width": 400,
+                                    "height": 400,
+                                    "sizes": {
+                                        "thumbnail": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-150x150.jpg",
+                                        "thumbnail-width": 150,
+                                        "thumbnail-height": 150,
+                                        "medium": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-300x300.jpg",
+                                        "medium-width": 300,
+                                        "medium-height": 300,
+                                        "medium_large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "medium_large-width": 400,
+                                        "medium_large-height": 400,
+                                        "large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "large-width": 400,
+                                        "large-height": 400,
+                                        "1536x1536": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "1536x1536-width": 400,
+                                        "1536x1536-height": 400,
+                                        "2048x2048": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "2048x2048-width": 400,
+                                        "2048x2048-height": 400
+                                    }
+                                }
+                            },
+                            "name": {
+                                "type": "text",
+                                "translatable": true,
+                                "source": "Dr. Robert Brecht",
+                                "target": ""
+                            },
+                            "role": {
+                                "type": "mixed",
+                                "translatable": true,
+                                "source": "Quantitative Research - Entwickelt regelbasierte Modelle zur Einordnung von Marktstruktur, Volatilität und Signalqualität.",
+                                "target": ""
+                            }
+                        }
+                    },
+                    {
+                        "type": "mixed",
+                        "translatable": true,
+                        "items": {
+                            "image": {
+                                "type": "media",
+                                "translatable": false,
+                                "source": {
+                                    "ID": 201,
+                                    "id": 201,
+                                    "title": "markus-1.jpg",
+                                    "filename": "markus-1.jpg",
+                                    "filesize": 32334,
+                                    "url": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                    "link": "https://dev.bbc.devel-web.de/start/markus-1-jpg/",
+                                    "alt": "",
+                                    "author": "2",
+                                    "description": "",
+                                    "caption": "",
+                                    "name": "markus-1-jpg",
+                                    "status": "inherit",
+                                    "uploaded_to": 7,
+                                    "date": "2026-02-09 10:56:41",
+                                    "modified": "2026-03-24 12:23:13",
+                                    "menu_order": 0,
+                                    "mime_type": "image/jpeg",
+                                    "type": "image",
+                                    "subtype": "jpeg",
+                                    "icon": "https://dev.bbc.devel-web.de/wp/wp-includes/images/media/default.png",
+                                    "width": 400,
+                                    "height": 400,
+                                    "sizes": {
+                                        "thumbnail": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-150x150.jpg",
+                                        "thumbnail-width": 150,
+                                        "thumbnail-height": 150,
+                                        "medium": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-300x300.jpg",
+                                        "medium-width": 300,
+                                        "medium-height": 300,
+                                        "medium_large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "medium_large-width": 400,
+                                        "medium_large-height": 400,
+                                        "large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "large-width": 400,
+                                        "large-height": 400,
+                                        "1536x1536": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "1536x1536-width": 400,
+                                        "1536x1536-height": 400,
+                                        "2048x2048": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "2048x2048-width": 400,
+                                        "2048x2048-height": 400
+                                    }
+                                }
+                            },
+                            "name": {
+                                "type": "text",
+                                "translatable": true,
+                                "source": "Miriam Scholz",
+                                "target": ""
+                            },
+                            "role": {
+                                "type": "mixed",
+                                "translatable": true,
+                                "source": "Lead Macro Strategy - Beobachtet globale Marktregime, Zinsumfelder und makroökonomische Einflussfaktoren.",
+                                "target": ""
+                            }
+                        }
+                    },
+                    {
+                        "type": "mixed",
+                        "translatable": true,
+                        "items": {
+                            "image": {
+                                "type": "media",
+                                "translatable": false,
+                                "source": {
+                                    "ID": 201,
+                                    "id": 201,
+                                    "title": "markus-1.jpg",
+                                    "filename": "markus-1.jpg",
+                                    "filesize": 32334,
+                                    "url": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                    "link": "https://dev.bbc.devel-web.de/start/markus-1-jpg/",
+                                    "alt": "",
+                                    "author": "2",
+                                    "description": "",
+                                    "caption": "",
+                                    "name": "markus-1-jpg",
+                                    "status": "inherit",
+                                    "uploaded_to": 7,
+                                    "date": "2026-02-09 10:56:41",
+                                    "modified": "2026-03-24 12:23:13",
+                                    "menu_order": 0,
+                                    "mime_type": "image/jpeg",
+                                    "type": "image",
+                                    "subtype": "jpeg",
+                                    "icon": "https://dev.bbc.devel-web.de/wp/wp-includes/images/media/default.png",
+                                    "width": 400,
+                                    "height": 400,
+                                    "sizes": {
+                                        "thumbnail": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-150x150.jpg",
+                                        "thumbnail-width": 150,
+                                        "thumbnail-height": 150,
+                                        "medium": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-300x300.jpg",
+                                        "medium-width": 300,
+                                        "medium-height": 300,
+                                        "medium_large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "medium_large-width": 400,
+                                        "medium_large-height": 400,
+                                        "large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "large-width": 400,
+                                        "large-height": 400,
+                                        "1536x1536": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "1536x1536-width": 400,
+                                        "1536x1536-height": 400,
+                                        "2048x2048": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "2048x2048-width": 400,
+                                        "2048x2048-height": 400
+                                    }
+                                }
+                            },
+                            "name": {
+                                "type": "text",
+                                "translatable": true,
+                                "source": "Peter Dehner",
+                                "target": ""
+                            },
+                            "role": {
+                                "type": "mixed",
+                                "translatable": true,
+                                "source": "Signal-Analyst",
+                                "target": ""
+                            }
+                        }
+                    },
+                    {
+                        "type": "mixed",
+                        "translatable": true,
+                        "items": {
+                            "image": {
+                                "type": "media",
+                                "translatable": false,
+                                "source": {
+                                    "ID": 201,
+                                    "id": 201,
+                                    "title": "markus-1.jpg",
+                                    "filename": "markus-1.jpg",
+                                    "filesize": 32334,
+                                    "url": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                    "link": "https://dev.bbc.devel-web.de/start/markus-1-jpg/",
+                                    "alt": "",
+                                    "author": "2",
+                                    "description": "",
+                                    "caption": "",
+                                    "name": "markus-1-jpg",
+                                    "status": "inherit",
+                                    "uploaded_to": 7,
+                                    "date": "2026-02-09 10:56:41",
+                                    "modified": "2026-03-24 12:23:13",
+                                    "menu_order": 0,
+                                    "mime_type": "image/jpeg",
+                                    "type": "image",
+                                    "subtype": "jpeg",
+                                    "icon": "https://dev.bbc.devel-web.de/wp/wp-includes/images/media/default.png",
+                                    "width": 400,
+                                    "height": 400,
+                                    "sizes": {
+                                        "thumbnail": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-150x150.jpg",
+                                        "thumbnail-width": 150,
+                                        "thumbnail-height": 150,
+                                        "medium": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1-300x300.jpg",
+                                        "medium-width": 300,
+                                        "medium-height": 300,
+                                        "medium_large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "medium_large-width": 400,
+                                        "medium_large-height": 400,
+                                        "large": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "large-width": 400,
+                                        "large-height": 400,
+                                        "1536x1536": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "1536x1536-width": 400,
+                                        "1536x1536-height": 400,
+                                        "2048x2048": "http://dev.bbc.devel-web.de/app/uploads/2026/02/markus-1.jpg",
+                                        "2048x2048-width": 400,
+                                        "2048x2048-height": 400
+                                    }
+                                }
+                            },
+                            "name": {
+                                "type": "text",
+                                "translatable": true,
+                                "source": "Rolf Deichmann",
+                                "target": ""
+                            },
+                            "role": {
+                                "type": "mixed",
+                                "translatable": true,
+                                "source": "Handelsanalyst",
+                                "target": ""
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "market_insights": {
+            "market_insights_headline": {
+                "type": "html",
+                "translatable": true,
+                "source": "Strukturierte Marktupdates – <span class=\"text-brand-primary\">täglich</span>",
+                "target": ""
+            },
+            "market_insights_subline": {
+                "type": "html",
+                "translatable": true,
+                "source": "Unsere Analysten veröffentlichen regelmäßig strukturierte Marktanalysen für internationale Märkte.<br />Jede Veröffentlichung folgt klar definierten Szenarien, transparent dokumentiert und kontinuierlich überprüft.",
+                "target": ""
+            },
+            "market_insights_additional_text": {
+                "type": "html",
+                "translatable": true,
+                "source": "<strong>Ihre Vorteile als Mitglied:</strong> tägliche Updates zu internationalen Märkten - szenariobasierte Einordnung statt Nachrichtenrauschen - klare Orientierung bei Volatilität, Struktur und Risiko - für private und institutionelle Investoren",
+                "target": ""
+            },
+            "market_insight_1_title": {
+                "type": "text",
+                "translatable": true,
+                "source": "Warum die Volatilität diese Woche wichtig ist",
+                "target": ""
+            },
+            "market_insight_1_link": {
+                "type": "link",
+                "translatable": true,
+                "source": "https://bbc.devel-web.de/wp/",
+                "target": ""
+            },
+            "market_insight_1_duration": {
+                "type": "text",
+                "translatable": true,
+                "source": "8:02",
+                "target": ""
+            },
+            "market_insight_2_title": {
+                "type": "text",
+                "translatable": true,
+                "source": "EUR/USD-Struktur in 60 Sekunden erklärt",
+                "target": ""
+            },
+            "market_insight_2_link": {
+                "type": "link",
+                "translatable": true,
+                "source": "https://bbc.devel-web.de/wp/",
+                "target": ""
+            },
+            "market_insight_2_duration": {
+                "type": "text",
+                "translatable": true,
+                "source": "Short",
+                "target": ""
+            },
+            "market_insight_3_title": {
+                "type": "text",
+                "translatable": true,
+                "source": "Marktupdate – Asiatische Session",
+                "target": ""
+            },
+            "market_insight_3_link": {
+                "type": "link",
+                "translatable": true,
+                "source": "https://bbc.devel-web.de/wp",
+                "target": ""
+            },
+            "market_insight_3_duration": {
+                "type": "text",
+                "translatable": true,
+                "source": "3:05",
+                "target": ""
+            }
+        }
+    },
+    "reviews": [
+        {
+            "source_post_id": 543,
+            "target_post_id": 551,
+            "menu_order": 0,
+            "source_title": "Dr Sandeep Sachdeva",
+            "fields": {
+                "reviewer_name": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Dr Sandeep Sachdeva, India",
+                    "target": ""
+                },
+                "reviewer_position": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "",
+                    "target": ""
+                },
+                "reviewer_company": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Laparoscopic Surgeon",
+                    "target": ""
+                },
+                "review_text": {
+                    "type": "html",
+                    "translatable": true,
+                    "source": "Ich bin in meiner Karriere vielen Mentoren begegnet, aber niemand reicht an das Team von Bloombridge Capital heran, wenn es um die Hingabe bei der Ausbildung ihrer Mitglieder in diesem Bereich geht. Es ist mir eine Ehre, von den Besten der Besten zu lernen.“ ",
+                    "target": ""
+                }
+            }
+        },
+        {
+            "source_post_id": 544,
+            "target_post_id": 552,
+            "menu_order": 0,
+            "source_title": "Jk Film Music Director, India",
+            "fields": {
+                "reviewer_name": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Jk Film Music Director, India",
+                    "target": ""
+                },
+                "reviewer_position": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "",
+                    "target": ""
+                },
+                "reviewer_company": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Jk Film Music Director, India",
+                    "target": ""
+                },
+                "review_text": {
+                    "type": "html",
+                    "translatable": true,
+                    "source": "Es ist mir eine echte Ehre, Mitglied der Trading-Community von Bloombridge Capital zu sein. Ihre großartigen Analysen ermöglichen es uns stets, fundierte Entscheidungen zu treffen, Trades präzise einzugehen und hervorragende Gewinne zu erzielen. Das Team trifft es einfach immer auf den Punkt. Vielen Dank für die außergewöhnliche und kontinuierliche Unterstützung zu jeder Zeit. Sie sind wirklich die besten Mentoren.“ <br />\r\n",
+                    "target": ""
+                }
+            }
+        },
+        {
+            "source_post_id": 547,
+            "target_post_id": 553,
+            "menu_order": 10,
+            "source_title": "Daniel Weber",
+            "fields": {
+                "reviewer_name": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Daniel Weber",
+                    "target": ""
+                },
+                "reviewer_position": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Aktiver Trader",
+                    "target": ""
+                },
+                "reviewer_company": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Stocks & Crypto",
+                    "target": ""
+                },
+                "review_text": {
+                    "type": "html",
+                    "translatable": true,
+                    "source": "Die Inhalte sparen mir viel Zeit bei der Marktvorbereitung. Ich bekomme einen schnellen Überblick über relevante Levels und mögliche Szenarien, ohne mich durch unnötig komplexe Analysen arbeiten zu müssen.",
+                    "target": ""
+                }
+            }
+        },
+        {
+            "source_post_id": 546,
+            "target_post_id": 554,
+            "menu_order": 20,
+            "source_title": "Sophie Hartmann",
+            "fields": {
+                "reviewer_name": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Sophie Hartmann",
+                    "target": ""
+                },
+                "reviewer_position": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Portfolio Managerin",
+                    "target": ""
+                },
+                "reviewer_company": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Independent",
+                    "target": ""
+                },
+                "review_text": {
+                    "type": "html",
+                    "translatable": true,
+                    "source": "Sehr professionell aufbereitete Analysen mit starkem Fokus auf Struktur und Risikobewusstsein. Besonders wertvoll finde ich die Kombination aus technischer Einschätzung und verständlicher Einordnung des Marktkontexts.",
+                    "target": ""
+                }
+            }
+        },
+        {
+            "source_post_id": 545,
+            "target_post_id": 555,
+            "menu_order": 30,
+            "source_title": "Tobias Neumann",
+            "fields": {
+                "reviewer_name": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Tobias Neumann",
+                    "target": ""
+                },
+                "reviewer_position": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Investor",
+                    "target": ""
+                },
+                "reviewer_company": {
+                    "type": "text",
+                    "translatable": true,
+                    "source": "Crypto & Equities",
+                    "target": ""
+                },
+                "review_text": {
+                    "type": "html",
+                    "translatable": true,
+                    "source": "Die Updates helfen mir, Märkte objektiver zu betrachten. Statt jedem kurzfristigen Move hinterherzulaufen, bekomme ich klare Zonen und Einschätzungen, an denen ich meine eigenen Entscheidungen ausrichten kann.",
+                    "target": ""
+                }
+            }
+        }
+    ]
+}

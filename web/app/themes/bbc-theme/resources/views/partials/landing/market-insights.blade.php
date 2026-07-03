@@ -73,7 +73,7 @@ $additional = $marketInsights['additional'];
                 <path d="M5 19H19V17H5V19ZM19 15L21 7L16 10L12 4L8 10L3 7L5 15H19Z"
                   fill="url(#goldGradient)" />
               </svg>
-              {{ pll__('Premium Content') }}
+              {{ function_exists('pll__') ? pll__('Premium Content') : __('Premium Content', 'sage') }}
             </span>
             @endif
 
@@ -115,7 +115,7 @@ $additional = $marketInsights['additional'];
 
       <a href="#"
         class="inline-flex items-center justify-center rounded-full bg-gradient-to-b from-[#5aaec4] to-[#3f879c] px-10 py-4 text-base font-semibold text-white shadow-[0_18px_50px_rgba(63,135,156,0.55)] transition-all duration-300 hover:from-[#3f879c] hover:to-[#35788b] hover:shadow-[0_22px_60px_rgba(63,135,156,0.6)]">
-        Kostenlose Analysen sichern
+        {{ function_exists('pll__') ? pll__('Kostenlose Analysen sichern') : __('Kostenlose Analysen sichern', 'sage') }}
       </a>
 
     </div>

@@ -35,13 +35,7 @@ class PageLanding extends Composer
                 'headline' => get_field('contact_headline'),
                 'intro' => get_field('contact_intro'),
                 'options' => get_field('contact_options') ?: [],
-                'form' => [
-                    'headline' => get_field('contact_form_headline'),
-                    'success' => get_field('contact_form_success'),
-                    'email_placeholder' => get_field('contact_form_email_placeholder'),
-                    'message_placeholder' => get_field('contact_form_message_placeholder'),
-                    'button_text' => get_field('contact_form_button_text'),
-                ],
+                'form' => $this->contactForm(),
             ],
 
             'team' => [
@@ -66,9 +60,96 @@ class PageLanding extends Composer
                     ];
                 }, range(1, 3))
             ],
+            'cta' => [
+                'headline_top' => get_field('cta_headline_top'),
+                'headline_main' => get_field('cta_headline_main'),
+                'subline' => get_field('cta_subline'),
+                'button_text' => get_field('cta_button_text'),
+                'button_link' => get_field('cta_button_link'),
+                'note' => get_field('cta_note'),
+            ],
 
             'reviews' => $this->reviews(),
         ];
+    }
+
+
+    private function contactForm(): array
+    {
+        $group = $this->fieldValue('contact_form', []);
+
+        if (! is_array($group)) {
+            $group = [];
+        }
+
+        return [
+            'headline' => $this->fieldValue([
+                'contact_form_headline',
+                'contact_form_title',
+                'contact_form_heading',
+                'form_headline',
+                'form_title',
+                'form_heading',
+            ], $this->arrayValue($group, ['headline', 'title', 'heading'])),
+            'success' => $this->fieldValue([
+                'contact_form_success',
+                'contact_form_success_message',
+                'form_success',
+                'form_success_message',
+            ], $this->arrayValue($group, ['success', 'success_message'])),
+            'email_placeholder' => $this->fieldValue([
+                'contact_form_email_placeholder',
+                'contact_form_email',
+                'form_email_placeholder',
+                'form_email',
+            ], $this->arrayValue($group, ['email_placeholder', 'email'])),
+            'message_placeholder' => $this->fieldValue([
+                'contact_form_message_placeholder',
+                'contact_form_message',
+                'form_message_placeholder',
+                'form_message',
+            ], $this->arrayValue($group, ['message_placeholder', 'message'])),
+            'button_text' => $this->fieldValue([
+                'contact_form_button_text',
+                'contact_form_button_label',
+                'contact_form_submit_text',
+                'contact_form_submit_label',
+                'form_button_text',
+                'form_button_label',
+                'form_submit_text',
+                'form_submit_label',
+            ], $this->arrayValue($group, ['button_text', 'button_label', 'submit_text', 'submit_label'])),
+        ];
+    }
+
+    private function fieldValue($fieldNames, $fallback = '')
+    {
+        $fieldNames = is_array($fieldNames) ? $fieldNames : [$fieldNames];
+
+        foreach ($fieldNames as $fieldName) {
+            if (! is_string($fieldName) || $fieldName === '' || ! function_exists('get_field')) {
+                continue;
+            }
+
+            $value = get_field($fieldName);
+
+            if ($value !== null && $value !== '') {
+                return $value;
+            }
+        }
+
+        return $fallback;
+    }
+
+    private function arrayValue(array $source, array $keys, $fallback = '')
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $source) && $source[$key] !== null && $source[$key] !== '') {
+                return $source[$key];
+            }
+        }
+
+        return $fallback;
     }
 
     private function reviews(): array
