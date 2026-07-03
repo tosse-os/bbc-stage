@@ -2,12 +2,18 @@
   id="siteHeader"
   class="fixed inset-x-0 top-0 z-50 backdrop-blur_off transition-[background-color] duration-300">
 
+  @php
+    $landingBaseUrl = function_exists('pll_home_url')
+      ? pll_home_url(function_exists('pll_current_language') ? pll_current_language('slug') : '')
+      : home_url('/');
+  @endphp
+
   <div class="container-content">
     <div class="flex h-16 items-center justify-between">
 
       {{-- Logo --}}
       <div class="flex items-center">
-        <a href="{{ home_url('/') }}#top">
+        <a href="{{ $landingBaseUrl }}#top">
           <img
             src="{{ Vite::asset('resources/images/landingpage/bridge-free.png') }}"
             alt="Bloombridge Capital"
@@ -17,11 +23,12 @@
 
       {{-- Desktop Navigation --}}
       <nav class="hidden flex-1 justify-center gap-8 text-base text-slate-300 lg:flex">
-        <a class="nav-link" href="{{ home_url('/') }}#top">{{ pll__('Start') }}</a>
-        <a class="nav-link" href="{{ home_url('/') }}#market-insights">{{ pll__('Insights') }}</a>
-        <a class="nav-link" href="{{ home_url('/') }}#about">{{ pll__('Kompetenz') }}</a>
-        <a class="nav-link" href="{{ home_url('/') }}#team">Team</a>
-        <a class="nav-link" href="{{ home_url('/') }}#contact">{{ pll__('Support') }}</a>
+        <a class="nav-link" href="{{ $landingBaseUrl }}#top">{{ pll__('Start') }}</a>
+        <a class="nav-link" href="{{ $landingBaseUrl }}#market-insights">{{ pll__('Insights') }}</a>
+        <a class="nav-link" href="{{ $landingBaseUrl }}#about">{{ pll__('Kompetenz') }}</a>
+        <a class="nav-link" href="{{ $landingBaseUrl }}#team">Team</a>
+        <a class="nav-link" href="{{ $landingBaseUrl }}#reviews">{{ pll__('Reviews') }}</a>
+        <a class="nav-link" href="{{ $landingBaseUrl }}#contact">{{ pll__('Support') }}</a>
       </nav>
 
       {{-- Right Side Actions --}}
@@ -99,11 +106,12 @@
 
   {{-- Mobile Navigation --}}
   <nav class="mt-10 flex flex-col gap-6 px-6 text-lg">
-    <a href="#top" class="mobile-link">{{ pll__('Start') }}</a>
-    <a href="#about" class="mobile-link">{{ pll__('Über uns') }}</a>
-    <a href="#contact" class="mobile-link">{{ pll__('Support') }}</a>
-    <a href="#team" class="mobile-link">Team</a>
-    <a href="#market-insights" class="mobile-link">{{ pll__('Insights') }}</a>
+    <a href="{{ $landingBaseUrl }}#top" class="mobile-link">{{ pll__('Start') }}</a>
+    <a href="{{ $landingBaseUrl }}#market-insights" class="mobile-link">{{ pll__('Insights') }}</a>
+    <a href="{{ $landingBaseUrl }}#about" class="mobile-link">{{ pll__('Kompetenz') }}</a>
+    <a href="{{ $landingBaseUrl }}#team" class="mobile-link">Team</a>
+    <a href="{{ $landingBaseUrl }}#reviews" class="mobile-link">{{ pll__('Reviews') }}</a>
+    <a href="{{ $landingBaseUrl }}#contact" class="mobile-link">{{ pll__('Support') }}</a>
   </nav>
 
   {{-- Login Mobile --}}

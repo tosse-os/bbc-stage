@@ -37,14 +37,19 @@ function smoothScrollTo(targetY, duration = 700) {
  * initSmoothScroll/initScrollToTop
  */
 function initSmoothScroll(duration = 700) {
-  const isHome = window.location.pathname === '/' || window.location.pathname === ''
+  function normalizePath(path) {
+    const normalized = path.replace(/\/+$/, '')
+    return normalized === '' ? '/' : normalized
+  }
+
+  const currentPath = normalizePath(window.location.pathname)
 
   document.querySelectorAll('a[href*="#"]').forEach(link => {
     link.addEventListener('click', e => {
-      if (!isHome) return
+      const url = new URL(link.href, window.location.href)
 
-      const url = new URL(link.href)
-      if (url.pathname !== '/' || !url.hash) return
+      if (url.origin !== window.location.origin || !url.hash) return
+      if (normalizePath(url.pathname) !== currentPath) return
 
       const id = url.hash.replace('#', '')
       if (!id) return

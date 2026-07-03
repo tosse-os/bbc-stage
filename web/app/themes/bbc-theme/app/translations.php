@@ -31,6 +31,7 @@ add_action('init', function () {
             'Next review',
             'Read more',
             'Show less',
+            'Reviews',
             'Premium Content',
             'Kostenlose Analysen sichern',
         ] as $string
