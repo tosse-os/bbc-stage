@@ -188,7 +188,7 @@ function dashboard_redirect_to_checkout_for_user($user, string $plan, string $su
 function dashboard_handle_start_checkout()
 {
   if (!is_user_logged_in()) {
-    wp_safe_redirect('/dashboard-login');
+    wp_safe_redirect(dashboard_login_url());
     exit;
   }
 
@@ -196,7 +196,7 @@ function dashboard_handle_start_checkout()
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_start_checkout')
   ) {
-    wp_safe_redirect(dashboard_settings_billing_url() . '&error=invalid_request');
+    wp_safe_redirect(dashboard_settings_billing_url(['error' => 'invalid_request']));
     exit;
   }
 
@@ -209,7 +209,7 @@ function dashboard_handle_start_checkout()
     dashboard_checkout_cancel_url()
   );
 
-  wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($error));
+  wp_safe_redirect(dashboard_settings_billing_url(['error' => $error]));
   exit;
 }
 
@@ -221,7 +221,7 @@ add_action('admin_post_dashboard_start_checkout', 'dashboard_handle_start_checko
 function dashboard_handle_open_billing_portal()
 {
   if (!is_user_logged_in()) {
-    wp_safe_redirect('/dashboard-login');
+    wp_safe_redirect(dashboard_login_url());
     exit;
   }
 
@@ -229,26 +229,26 @@ function dashboard_handle_open_billing_portal()
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_open_billing_portal')
   ) {
-    wp_safe_redirect(dashboard_settings_billing_url() . '&error=invalid_request');
+    wp_safe_redirect(dashboard_settings_billing_url(['error' => 'invalid_request']));
     exit;
   }
 
   if (!dashboard_stripe_boot()) {
-    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_sdk_missing');
+    wp_safe_redirect(dashboard_settings_billing_url(['error' => 'stripe_sdk_missing']));
     exit;
   }
 
   $configError = dashboard_stripe_portal_config_error();
 
   if ($configError !== '') {
-    wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($configError));
+    wp_safe_redirect(dashboard_settings_billing_url(['error' => $configError]));
     exit;
   }
 
   $customerId = trim((string) get_user_meta(get_current_user_id(), 'stripe_customer_id', true));
 
   if ($customerId === '') {
-    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_customer_missing');
+    wp_safe_redirect(dashboard_settings_billing_url(['error' => 'stripe_customer_missing']));
     exit;
   }
 
@@ -261,7 +261,7 @@ function dashboard_handle_open_billing_portal()
     wp_redirect($session->url);
     exit;
   } catch (\Throwable $e) {
-    wp_safe_redirect(dashboard_settings_billing_url() . '&error=stripe_portal_failed');
+    wp_safe_redirect(dashboard_settings_billing_url(['error' => 'stripe_portal_failed']));
     exit;
   }
 }
@@ -386,7 +386,7 @@ function dashboard_handle_register_and_checkout()
   }
 
   if (email_exists($email)) {
-    wp_safe_redirect('/dashboard-login?error=account_exists&plan=' . rawurlencode($plan));
+    wp_safe_redirect(dashboard_login_url(['error' => 'account_exists', 'plan' => $plan]));
     exit;
   }
 
@@ -428,10 +428,10 @@ function dashboard_handle_register_and_checkout()
   $error = dashboard_redirect_to_checkout_for_user(
     $user,
     $plan,
-    home_url('/dashboard?checkout=success'),
-    home_url('/dashboard-settings?tab=billing&stripe=cancel')
+    dashboard_url('dashboard', ['checkout' => 'success']),
+    dashboard_settings_billing_url(['stripe' => 'cancel'])
   );
 
-  wp_safe_redirect(dashboard_settings_billing_url() . '&error=' . rawurlencode($error));
+  wp_safe_redirect(dashboard_settings_billing_url(['error' => $error]));
   exit;
 }

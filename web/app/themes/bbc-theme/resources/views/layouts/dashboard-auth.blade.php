@@ -1,5 +1,5 @@
 <!doctype html>
-<html {!! get_language_attributes() !!}>
+<html {!! get_language_attributes() !!} data-dashboard-lang="{{ dashboard_lang() }}">
 
 <head>
   <meta charset="{{ get_bloginfo('charset') }}">

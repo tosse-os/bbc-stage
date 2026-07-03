@@ -44,12 +44,12 @@ function dashboard_handle_dashboard_gate()
   }
 
   if (!is_user_logged_in() && !$isLoginPage) {
-    wp_safe_redirect('/dashboard-login');
+    wp_safe_redirect(dashboard_login_url());
     exit;
   }
 
   if (is_user_logged_in() && $isLoginPage) {
-    wp_safe_redirect('/dashboard');
+    wp_safe_redirect(dashboard_url('dashboard'));
     exit;
   }
 
@@ -61,7 +61,7 @@ function dashboard_handle_dashboard_gate()
     !$isBillingPage &&
     !$isPaymentRequiredPage
   ) {
-    wp_safe_redirect('/dashboard-payment-required');
+    wp_safe_redirect(dashboard_url('dashboard-payment-required'));
     exit;
   }
 }

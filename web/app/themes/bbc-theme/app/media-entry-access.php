@@ -10,7 +10,7 @@ add_action('template_redirect', function () {
 
   if (get_post_type() === 'media_entry') {
     if (!can_view_media_entry(get_current_user_id())) {
-      wp_safe_redirect(home_url('/dashboard-payment-required'));
+      wp_safe_redirect(dashboard_url('dashboard-payment-required'));
       exit;
     }
   }

@@ -209,6 +209,8 @@ add_filter('the_content', function ($content) {
 /**
  * Dashboard
  */
+require_once __DIR__ . '/helper/dashboard.php';
+
 require_once __DIR__ . '/analysis.php';
 require_once __DIR__ . '/analysis-market-admin.php';
 require_once __DIR__ . '/analysis-market-import.php';
@@ -229,7 +231,6 @@ require_once __DIR__ . '/ajax.php';
 require_once __DIR__ . '/filters.php';
 require_once __DIR__ . '/translations.php';
 
-require_once __DIR__ . '/helper/dashboard.php';
 require_once __DIR__ . '/dashboard-admin.php';
 require_once __DIR__ . '/dashboard-subscription.php';
 require_once __DIR__ . '/stripe-checkout.php';
@@ -272,7 +273,7 @@ add_action('init', function () {
         $nonce = sanitize_text_field(wp_unslash($_GET['_wpnonce'] ?? ''));
 
         if (!$nonce || !wp_verify_nonce($nonce, 'dashboard_logout')) {
-            wp_safe_redirect('/dashboard-login?error=invalid_request');
+            wp_safe_redirect(dashboard_login_url(['error' => 'invalid_request']));
             exit;
         }
 
@@ -284,7 +285,7 @@ add_action('init', function () {
         // Cache & Session hart trennen
         nocache_headers();
 
-        wp_safe_redirect('/dashboard-login?logged_out=1');
+        wp_safe_redirect(dashboard_login_url(['logged_out' => '1']));
         exit;
     }
 });

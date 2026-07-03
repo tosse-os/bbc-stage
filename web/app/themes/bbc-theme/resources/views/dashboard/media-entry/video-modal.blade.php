@@ -11,6 +11,7 @@
 
       <button type="button"
         data-video-close
+        aria-label="{{ dashboard_t('media.close') }}"
         class="absolute top-3 right-3 z-20 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 transition text-white flex items-center justify-center">
         ✕
       </button>

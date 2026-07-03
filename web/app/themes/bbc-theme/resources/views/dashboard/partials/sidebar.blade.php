@@ -18,7 +18,7 @@ $avatar_url = $avatar_id
 </div>
 
 {{-- Language Selector (Sidebar) --}}
-@php($langs = pll_the_languages(['raw' => 1]))
+@php($langs = dashboard_languages())
 
 @if(!empty($langs))
 
@@ -33,7 +33,7 @@ $avatar_url = $avatar_id
       <a
         href="{{ $lang['url'] }}"
         class="flex-1 text-center px-3 py-1.5 transition
-          {{ $lang['current_lang']
+          {{ $lang['current']
             ? 'bg-brand-primary text-white'
             : 'text-[var(--text-secondary)] hover:bg-[var(--surface-card)] hover:text-[var(--text-primary)]' }}">
         {{ strtoupper($lang['slug']) }}
@@ -44,7 +44,7 @@ $avatar_url = $avatar_id
     {{-- COLLAPSED --}}
     <div class="sidebar-collapsed hidden">
       @foreach($langs as $lang)
-      @if(!$lang['current_lang'])
+      @if(!$lang['current'])
       <a
         href="{{ $lang['url'] }}"
         class="w-10 h-10 rounded-lg
@@ -63,7 +63,7 @@ $avatar_url = $avatar_id
   {{-- MOBILE (unter md) → immer nur andere Sprache --}}
   <div class="md:hidden">
     @foreach($langs as $lang)
-    @if(!$lang['current_lang'])
+    @if(!$lang['current'])
     <a
       href="{{ $lang['url'] }}"
       class="w-10 h-10 rounded-lg
@@ -87,13 +87,15 @@ $avatar_url = $avatar_id
 <button
   type="button"
   data-theme-toggle
+  data-label-light="{{ dashboard_t('nav.light_mode') }}"
+  data-label-dark="{{ dashboard_t('nav.dark_mode') }}"
   data-ajax="{{ admin_url('admin-ajax.php') }}"
   data-nonce="{{ wp_create_nonce('dashboard_theme_toggle') }}"
   class="md:mt-4 mx-auto flex items-center justify-center
          w-10 h-10 rounded-lg
          text-slate-300 hover:text-white
          hover:bg-slate-800/50 transition"
-  aria-label="Theme wechseln">
+  aria-label="{{ dashboard_t('nav.light_mode') }}">
 
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
     fill="none" stroke="currentColor" stroke-width="1.8"
@@ -112,7 +114,7 @@ $avatar_url = $avatar_id
   data-sidebar-toggle
   data-ajax="{{ admin_url('admin-ajax.php') }}"
   data-nonce="{{ wp_create_nonce('dashboard_sidebar_toggle') }}"
-  aria-label="Sidebar ein- oder ausklappen"
+  aria-label="{{ dashboard_t('settings.appearance.sidebar') }}"
   class="sidebar-toggle mx-auto my-3 flex items-center justify-center
          w-10 h-10 rounded-lg
          text-slate-300 hover:text-white
@@ -139,7 +141,7 @@ $avatar_url = $avatar_id
 {{-- Navigation --}}
 <nav class="flex-1 px-4 py-6 space-y-1 text-sm">
 
-  <a href="/dashboard"
+  <a href="{{ dashboard_url('dashboard') }}"
     class="nav-item flex items-center px-4 py-3 rounded-lg
   {{ dashboard_active('dashboard')
       ? 'bg-brand-primary/60 cursor-default'
@@ -147,10 +149,10 @@ $avatar_url = $avatar_id
     <span class="w-5 h-5">
       @include('dashboard.icons.overview')
     </span>
-    <span data-sidebar-label class="font-medium">Overview</span>
+    <span data-sidebar-label class="font-medium">{{ dashboard_t('nav.overview') }}</span>
   </a>
 
-  <a href="/dashboard-reports"
+  <a href="{{ dashboard_url('dashboard-reports') }}"
     class="nav-item flex items-center px-4 py-3 rounded-lg
   {{ dashboard_active('dashboard-reports')
       ? 'bg-brand-primary/60 cursor-default'
@@ -158,10 +160,10 @@ $avatar_url = $avatar_id
     <span class="w-5 h-5">
       @include('dashboard.icons.report')
     </span>
-    <span data-sidebar-label class="font-medium">Reports</span>
+    <span data-sidebar-label class="font-medium">{{ dashboard_t('nav.reports') }}</span>
   </a>
 
-  <a href="/dashboard-media"
+  <a href="{{ dashboard_url('dashboard-media') }}"
     class="nav-item flex items-center px-4 py-3 rounded-lg
   {{ dashboard_active('dashboard-media')
       ? 'bg-brand-primary/60 cursor-default'
@@ -171,10 +173,10 @@ $avatar_url = $avatar_id
       @include('dashboard.icons.media')
     </span>
 
-    <span data-sidebar-label class="font-medium">Podcasts</span>
+    <span data-sidebar-label class="font-medium">{{ dashboard_t('nav.media') }}</span>
   </a>
 
-  <a href="/dashboard-settings"
+  <a href="{{ dashboard_settings_url() }}"
     class="nav-item flex items-center px-4 py-3 rounded-lg
   {{ dashboard_active('dashboard-settings')
       ? 'bg-brand-primary/60 cursor-default'
@@ -182,7 +184,7 @@ $avatar_url = $avatar_id
     <span class="w-5 h-5">
       @include('dashboard.icons.settings')
     </span>
-    <span data-sidebar-label class="font-medium">Settings</span>
+    <span data-sidebar-label class="font-medium">{{ dashboard_t('nav.settings') }}</span>
   </a>
 
 </nav>
@@ -195,17 +197,17 @@ $avatar_url = $avatar_id
 
   <div class="flex items-center justify-around min-h-[68px]">
 
-    <a href="/dashboard"
+    <a href="{{ dashboard_url('dashboard') }}"
       class="flex flex-col items-center justify-center text-white text-xs">
       @include('dashboard.icons.overview')
     </a>
 
-    <a href="/dashboard-reports"
+    <a href="{{ dashboard_url('dashboard-reports') }}"
       class="flex flex-col items-center justify-center text-white text-xs">
       @include('dashboard.icons.report')
     </a>
 
-    <a href="/dashboard-media"
+    <a href="{{ dashboard_url('dashboard-media') }}"
       class="flex flex-col items-center justify-center text-white text-xs">
       @include('dashboard.icons.media')
     </a>
@@ -253,9 +255,9 @@ $avatar_url = $avatar_id
         <div class="text-white font-medium">
           {{ $user->display_name }}
         </div>
-        <a href="/dashboard-settings"
+        <a href="{{ dashboard_settings_url() }}"
           class="text-sm text-slate-300">
-          View profile
+          {{ dashboard_t('nav.view_profile') }}
         </a>
       </div>
 
@@ -264,20 +266,20 @@ $avatar_url = $avatar_id
     <div class="border-t border-white/10"></div>
 
     {{-- LANGUAGE --}}
-    @php($langs = pll_the_languages(['raw' => 1]))
+    @php($langs = dashboard_languages())
     @if(!empty($langs))
     <div class="flex items-center justify-between py-2">
 
       <div class="flex items-center gap-3 text-white">
         @include('dashboard.icons.language')
-        <span>DE/EN</span>
+        <span>{{ dashboard_t('nav.language') }}</span>
       </div>
 
       <div class="flex items-center gap-2">
         @foreach($langs as $lang)
         <a href="{{ $lang['url'] }}"
           class="px-3 py-1 rounded-lg text-sm
-           {{ $lang['current_lang']
+           {{ $lang['current']
              ? 'bg-white/20 text-white'
              : 'text-slate-300 hover:bg-white/10' }}">
           {{ strtoupper($lang['slug']) }}
@@ -297,12 +299,14 @@ $avatar_url = $avatar_id
       <div class="flex items-center gap-3 text-white">
         @include('dashboard.icons.theme')
         <span data-theme-label>
-          {{ $theme === 'dark' ? 'Light Mode' : 'Dark Mode' }}
+          {{ $theme === 'dark' ? dashboard_t('nav.light_mode') : dashboard_t('nav.dark_mode') }}
         </span>
       </div>
 
       <button type="button"
         data-theme-toggle
+        data-label-light="{{ dashboard_t('nav.light_mode') }}"
+        data-label-dark="{{ dashboard_t('nav.dark_mode') }}"
         data-ajax="{{ admin_url('admin-ajax.php') }}"
         data-nonce="{{ wp_create_nonce('dashboard_theme_toggle') }}"
         class="relative w-11 h-6 rounded-full transition
@@ -325,20 +329,20 @@ $avatar_url = $avatar_id
     <div class="border-t border-white/10"></div>
 
     {{-- SETTINGS --}}
-    <a href="/dashboard-settings"
+    <a href="{{ dashboard_settings_url() }}"
       class="flex items-center justify-between py-2 text-white hover:text-white/80 transition">
       <div class="flex items-center gap-3">
         @include('dashboard.icons.settings')
-        <span>Account Settings</span>
+        <span>{{ dashboard_t('nav.account_settings') }}</span>
       </div>
     </a>
 
     {{-- LOGOUT (ersetzt About) --}}
-    <a href="/?dashboard_logout=1"
+    <a href="{{ dashboard_logout_url() }}"
       class="flex items-center justify-between py-2 text-red-400 hover:text-red-300 transition">
       <div class="flex items-center gap-3">
         @include('dashboard.icons.logout')
-        <span>Logout</span>
+        <span>{{ dashboard_t('nav.logout') }}</span>
       </div>
     </a>
 
@@ -361,12 +365,12 @@ $avatar_url = $avatar_id
 {{-- Geändert: px-4 statt px-6 für bündige Icons --}}
 <div class="px-4 py-4 border-t border-slate-800 text-sm">
   {{-- Geändert: px-4 hinzugefügt für das Alignment innerhalb des Containers --}}
-  <a href="/?dashboard_logout=1"
+  <a href="{{ dashboard_logout_url() }}"
     class="nav-item flex items-center gap-3 text-slate-400 hover:text-white px-4">
     <span class="w-5 h-5">
       @include('dashboard.icons.logout')
     </span>
-    <span data-sidebar-label class="font-medium">Logout</span>
+    <span data-sidebar-label class="font-medium">{{ dashboard_t('nav.logout') }}</span>
   </a>
 </div>
 
@@ -375,7 +379,7 @@ $avatar_url = $avatar_id
 <div class=" md:block px-4 py-4 border-t border-slate-800">
   <div data-profile class="flex items-center gap-3">
     {{-- Geändert: px-2 statt p-2 zur feineren Abstimmung des Avatars auf der vertikalen Linie --}}
-    <a href="/dashboard-settings"
+    <a href="{{ dashboard_settings_url() }}"
       class="flex items-center gap-3 flex-1 hover:bg-slate-800/50 rounded-lg px-2 py-2 transition">
       <img
         data-avatar
@@ -387,7 +391,7 @@ $avatar_url = $avatar_id
           {{ $user->display_name }}
         </div>
         <div class="text-xs text-slate-400">
-          View profile
+          {{ dashboard_t('nav.view_profile') }}
         </div>
       </div>
     </a>

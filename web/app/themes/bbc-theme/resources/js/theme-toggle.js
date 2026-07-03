@@ -30,14 +30,14 @@ document.addEventListener('DOMContentLoaded', () => {
         thumb.classList.remove('left-1')
         thumb.classList.add('left-6')
       }
-      if (label) label.textContent = 'Light Mode'
+      if (label) label.textContent = btn.dataset.labelLight || 'Light Mode'
     } else {
       btn.classList.add('bg-white/20')
       if (thumb) {
         thumb.classList.remove('left-6')
         thumb.classList.add('left-1')
       }
-      if (label) label.textContent = 'Dark Mode'
+      if (label) label.textContent = btn.dataset.labelDark || 'Dark Mode'
     }
   }
 

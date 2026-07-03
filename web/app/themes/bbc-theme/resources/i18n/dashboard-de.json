@@ -1,0 +1,212 @@
+{
+  "meta": {
+    "version": 1,
+    "default_lang": "de",
+    "languages": [
+      "de",
+      "en"
+    ]
+  },
+  "nav": {
+    "overview": "Übersicht",
+    "reports": "Analysen",
+    "media": "Podcasts",
+    "settings": "Einstellungen",
+    "logout": "Abmelden",
+    "view_profile": "Profil ansehen",
+    "account_settings": "Kontoeinstellungen",
+    "language": "Sprache",
+    "light_mode": "Light Mode",
+    "dark_mode": "Dark Mode"
+  },
+  "common": {
+    "view": "Ansehen →",
+    "view_short": "Ansehen →",
+    "view_all": "Alle ansehen →",
+    "view_report": "Report ansehen →",
+    "view_analysis": "Analyse ansehen →",
+    "reset": "Zurücksetzen",
+    "apply": "Anwenden",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "update": "Aktualisieren",
+    "back": "Zurück",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "loading": "Lädt …",
+    "no_results": "Keine Ergebnisse gefunden.",
+    "date": "Datum",
+    "preview": "Vorschau",
+    "description": "Beschreibung",
+    "asset": "Asset",
+    "category": "Kategorie",
+    "search": "Suchen …",
+    "from": "Von",
+    "to": "Bis",
+    "status": "Status",
+    "pdf": "PDF"
+  },
+  "auth": {
+    "secure_account_access": "Sicherer Zugriff auf Ihren Account",
+    "create_account_intro": "Erstellen Sie Ihren Account",
+    "email_login_divider": "Oder mit E-Mail",
+    "email_address": "E-Mail Adresse",
+    "email_placeholder": "name@beispiel.de",
+    "password": "Passwort",
+    "forgot_password": "Passwort vergessen?",
+    "login": "Anmelden",
+    "no_account": "Noch kein Konto?",
+    "subscribe_page": "Zur Abo-Seite",
+    "back_to_home": "Zurück zur Startseite",
+    "create_account": "Account erstellen",
+    "name": "Name",
+    "your_name": "Ihr Name",
+    "already_registered": "Bereits registriert?",
+    "to_login": "Zum Login",
+    "reset_password_title": "Passwort zurücksetzen",
+    "reset_password_intro": "Geben Sie Ihre E-Mail-Adresse ein, um einen Link zum Zurücksetzen Ihres Passworts zu erhalten.",
+    "reset_password_button": "Passwort zurücksetzen",
+    "reset_success": "Falls ein Konto existiert, wurde eine E-Mail mit weiteren Anweisungen versendet.",
+    "back_to_login": "Zurück zum Login"
+  },
+  "overview": {
+    "latest_analyses": "Neueste Analysen",
+    "latest_podcasts": "Neueste Podcasts"
+  },
+  "reports": {
+    "title": "Analysen Übersicht",
+    "back_to_overview": "Übersicht",
+    "no_analyses": "Keine Analysen gefunden."
+  },
+  "filters": {
+    "filter": "Filter",
+    "show": "anzeigen",
+    "hide": "ausblenden",
+    "search_placeholder": "Suchen …",
+    "category": "Kategorie",
+    "all_categories": "Alle Kategorien",
+    "period": "Zeitraum",
+    "apply": "Anwenden",
+    "reset": "Zurücksetzen"
+  },
+  "media": {
+    "title": "Daily Podcasts",
+    "episode_new": "NEUE EPISODE",
+    "watch_video": "Video ansehen",
+    "play": "Abspielen",
+    "pause": "Pause",
+    "close": "Schließen",
+    "no_entries": "Keine Medien gefunden."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "tabs": {
+      "account": "Konto",
+      "security": "Sicherheit",
+      "appearance": "Darstellung",
+      "billing": "Abrechnung"
+    },
+    "account": {
+      "full_name": "Vollständiger Name",
+      "email": "E-Mail",
+      "username": "Benutzername",
+      "phone_number": "Telefonnummer",
+      "update_profile": "Profil aktualisieren",
+      "choose_photo": "Foto auswählen",
+      "upload_hint": "JPG, PNG oder WebP · max. 2 MB"
+    },
+    "password": {
+      "old_password": "Altes Passwort",
+      "new_password": "Neues Passwort",
+      "retype_password": "Passwort wiederholen",
+      "update_password": "Passwort aktualisieren"
+    },
+    "appearance": {
+      "theme": "Theme",
+      "theme_description": "Light oder Dark Mode",
+      "sidebar": "Sidebar",
+      "sidebar_description": "Eingeklappt oder ausgeklappt",
+      "light": "Light",
+      "dark": "Dark",
+      "expanded": "Ausgeklappt",
+      "collapsed": "Eingeklappt"
+    }
+  },
+  "billing": {
+    "current_subscription": "Aktuelles Abonnement",
+    "subscription_active": "Abonnement aktiv.",
+    "trial_active": "Testphase aktiv.",
+    "no_active_subscription": "Kein aktives Abonnement.",
+    "start_subscription": "Abo starten",
+    "manage_subscription": "Im Stripe Portal verwalten",
+    "payment_method": "Zahlungsmethode",
+    "payment_method_stripe": "Zahlungsdaten werden sicher über Stripe verwaltet.",
+    "payment_method_missing": "Noch keine Zahlungsmethode hinterlegt.",
+    "invoice_history": "Rechnungsverlauf",
+    "no_invoices": "Noch keine Rechnungen",
+    "invoices_available": "Rechnungen und Zahlungsbelege sind im Stripe Portal verfügbar.",
+    "portal_intro": "Um Abonnement, Zahlungsdaten oder Rechnungsdetails zu ändern, nutze bitte das sichere Stripe Portal.",
+    "portal_description": "Dort kannst du Zahlungsmethoden aktualisieren, Rechnungen einsehen und dein Abo verwalten.",
+    "premium_access": "Premium Analysen Zugang",
+    "price_monthly": "€29,99 / Monat",
+    "next_invoice": "Nächste Rechnung: :date",
+    "cancel_at_period_end": "Kündigung zum Periodenende vorgemerkt.",
+    "checkout_success": "Checkout abgeschlossen. Dein Abo-Status wird automatisch aktualisiert.",
+    "checkout_cancel": "Checkout wurde abgebrochen.",
+    "customer_id": "Customer ID:",
+    "subscription_id": "Subscription ID:",
+    "stripe_status": "Stripe Status",
+    "states": {
+      "trial": "Testphase",
+      "active": "Aktiv",
+      "payment_required": "Zahlung erforderlich",
+      "past_due": "Zahlung überfällig",
+      "canceled": "Gekündigt"
+    },
+    "amount": "Betrag",
+    "integration_pending": "Zahlungsintegration folgt."
+  },
+  "payment_required": {
+    "title": "Dein Testzeitraum ist abgelaufen",
+    "text": "Um weiterhin Zugriff auf alle Analysen zu erhalten, wähle bitte ein Abo-Modell und hinterlege deine Zahlungsdaten.",
+    "button": "Zahlung einrichten"
+  },
+  "messages": {
+    "account_updated": "Profil wurde aktualisiert.",
+    "password_updated": "Passwort wurde aktualisiert.",
+    "logged_out": "Sie wurden abgemeldet."
+  },
+  "errors": {
+    "invalid_request": "Die Anfrage war ungültig.",
+    "1": "Login fehlgeschlagen. Bitte prüfen Sie Ihre Daten.",
+    "login_failed": "Login fehlgeschlagen. Bitte prüfen Sie Ihre Daten.",
+    "too_many_attempts": "Zu viele Login-Versuche. Bitte versuchen Sie es später erneut.",
+    "account_exists": "Für diese E-Mail-Adresse existiert bereits ein Konto.",
+    "exists": "Für diese E-Mail-Adresse existiert bereits ein Konto.",
+    "weak_password": "Das Passwort muss mindestens 8 Zeichen lang sein.",
+    "invalid_email": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+    "email": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+    "create_failed": "Das Konto konnte nicht erstellt werden.",
+    "wrong_password": "Das aktuelle Passwort ist nicht korrekt.",
+    "password_mismatch": "Die neuen Passwörter stimmen nicht überein.",
+    "generic": "Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
+    "stripe_sdk_missing": "Das Stripe SDK fehlt. Bitte composer require stripe/stripe-php im Theme ausführen.",
+    "stripe_not_configured": "Stripe ist noch nicht vollständig konfiguriert.",
+    "stripe_secret_missing": "Der Stripe Secret Key fehlt.",
+    "stripe_price_basis_missing": "Die Stripe Price ID für das Basis-Abo fehlt.",
+    "stripe_price_pro_missing": "Die Stripe Price ID für das Pro-Abo fehlt.",
+    "stripe_trial_fee_missing": "Die Stripe Price ID für die Trial-Gebühr fehlt.",
+    "stripe_webhook_not_configured": "Das Stripe Webhook Secret fehlt.",
+    "stripe_customer_missing": "Kein Stripe-Kunde gefunden.",
+    "stripe_checkout_failed": "Stripe Checkout konnte nicht gestartet werden.",
+    "stripe_portal_failed": "Das Billing Portal konnte nicht geöffnet werden."
+  },
+  "js": {
+    "show": "anzeigen",
+    "hide": "ausblenden",
+    "light": "Light",
+    "dark": "Dark",
+    "expanded": "Ausgeklappt",
+    "collapsed": "Eingeklappt"
+  }
+}

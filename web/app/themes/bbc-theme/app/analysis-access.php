@@ -63,7 +63,7 @@ add_action('template_redirect', function () {
 
   if (is_singular('analysis')) {
     if (!can_view_analysis(get_current_user_id())) {
-      wp_redirect('/dashboard-payment-required');
+      wp_safe_redirect(dashboard_url('dashboard-payment-required'));
       exit;
     }
   }

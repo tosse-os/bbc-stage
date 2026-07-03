@@ -42,10 +42,10 @@ function dashboard_user_is_locked($user_id = null): bool
 
 function dashboard_billing_url(): string
 {
-  return home_url('/dashboard-settings') . '?tab=billing';
+  return dashboard_settings_billing_url();
 }
 
 function dashboard_payment_required_url(): string
 {
-  return home_url('/dashboard-payment-required');
+  return dashboard_url('dashboard-payment-required');
 }

@@ -3,7 +3,7 @@
   {{-- Header --}}
   <header class="mb-6 flex items-center justify-between">
     <h1 class="text-lg md-text-2xl font-semibold">
-      Analyses Overview
+      {{ dashboard_t('reports.title') }}
     </h1>
 
     @php
@@ -15,17 +15,17 @@
 
     <div class="inline-flex items-center gap-1 rounded-xl border border-brand-primary/30 bg-white/70 backdrop-blur p-1 shadow-sm">
 
-      <a href="{{ request()->fullUrlWithQuery(['view' => 'default']) }}"
+      <a href="{{ add_query_arg('lang', dashboard_lang(), request()->fullUrlWithQuery(['view' => 'default'])) }}"
         class="p-2 rounded-lg transition {{ $view === 'default' ? 'bg-brand-primary text-white' : 'text-brand-primary hover:bg-brand-primary/10' }}">
         @include('dashboard.icons.view-table')
       </a>
 
-      <a href="{{ request()->fullUrlWithQuery(['view' => 'grid']) }}"
+      <a href="{{ add_query_arg('lang', dashboard_lang(), request()->fullUrlWithQuery(['view' => 'grid'])) }}"
         class="p-2 rounded-lg transition {{ $view === 'grid' ? 'bg-brand-primary text-white' : 'text-brand-primary hover:bg-brand-primary/10' }}">
         @include('dashboard.icons.view-grid')
       </a>
 
-      <a href="{{ request()->fullUrlWithQuery(['view' => 'list']) }}"
+      <a href="{{ add_query_arg('lang', dashboard_lang(), request()->fullUrlWithQuery(['view' => 'list'])) }}"
         class="p-2 rounded-lg transition {{ $view === 'list' ? 'bg-brand-primary text-white' : 'text-brand-primary hover:bg-brand-primary/10' }}">
         @include('dashboard.icons.view-list')
       </a>
@@ -69,10 +69,10 @@
   <div class="bg-white rounded-xl shadow-sm overflow-hidden hidden md:block">
 
     <div class="grid grid-cols-[160px_140px_1fr_140px_160px] px-6 py-4 gap-4 border-b border-slate-100 text-sm font-medium text-slate-500 bg-slate-50/50">
-      <div>Asset</div>
-      <div>Preview</div>
-      <div>Description</div>
-      <div>Date</div>
+      <div>{{ dashboard_t('common.asset') }}</div>
+      <div>{{ dashboard_t('common.preview') }}</div>
+      <div>{{ dashboard_t('common.description') }}</div>
+      <div>{{ dashboard_t('common.date') }}</div>
       <div></div>
     </div>
 
@@ -93,7 +93,7 @@
       }
       @endphp
 
-      <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+      <a href="{{ get_permalink(get_the_ID()) }}"
         class="grid grid-cols-[160px_140px_1fr_140px_160px] px-6 py-5 gap-4 element-border-t first:border-t-0
                hover:bg-slate-50/80 transition-all duration-200 group cursor-pointer
                hover:-translate-y-0.5 hover:shadow-sm
@@ -122,7 +122,7 @@
         <div class="flex items-center justify-end">
           <span
             class="btn btn-primary btn-md">
-            View Analysis →
+            {{ dashboard_t('common.view_analysis') }}
           </span>
         </div>
 
@@ -151,7 +151,7 @@
     }
     @endphp
 
-    <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+    <a href="{{ get_permalink(get_the_ID()) }}"
       class="block bg-white rounded-xl shadow-sm p-4 space-y-3 group
              transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg
              focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
@@ -171,7 +171,7 @@
       <div class="flex items-center justify-between text-sm text-slate-500">
         <span>{{ date_i18n('d M, Y', strtotime(get_field('publish_date'))) }}</span>
         <span class="text-brand-primary font-medium transition-transform duration-200 group-hover:translate-x-1">
-          View →
+          {{ dashboard_t('common.view_short') }}
         </span>
       </div>
 
@@ -201,7 +201,7 @@
     }
     @endphp
 
-    <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+    <a href="{{ get_permalink(get_the_ID()) }}"
       class="block bg-white rounded-xl shadow-sm p-5 space-y-3 group
              transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg
              focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
@@ -223,7 +223,7 @@
       </div>
 
       <span class="inline-block text-sm text-brand-primary font-medium transition-transform duration-200 group-hover:translate-x-1">
-        View Report →
+        {{ dashboard_t('common.view_report') }}
       </span>
 
     </a>
@@ -250,7 +250,7 @@
     }
     @endphp
 
-    <a href="/analysis/{{ get_post_field('post_name', get_the_ID()) }}"
+    <a href="{{ get_permalink(get_the_ID()) }}"
       class="px-6 py-4 flex items-center justify-between group
              transition-all duration-200 hover:bg-slate-50
              focus:outline-none focus:ring-2 focus:ring-brand-primary/30">
@@ -265,7 +265,7 @@
       </div>
 
       <span class="text-sm text-brand-primary transition-transform duration-200 group-hover:translate-x-1">
-        View →
+        {{ dashboard_t('common.view_short') }}
       </span>
 
     </a>

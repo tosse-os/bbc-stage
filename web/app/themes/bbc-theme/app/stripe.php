@@ -6,7 +6,7 @@
 if (!function_exists('dashboard_settings_billing_url')) {
   function dashboard_settings_billing_url(): string
   {
-    return home_url('/dashboard-settings?tab=billing');
+    return dashboard_settings_url(['tab' => 'billing']);
   }
 }
 
@@ -15,7 +15,7 @@ if (!function_exists('dashboard_settings_billing_url')) {
  */
 function dashboard_checkout_success_url(): string
 {
-  return home_url('/dashboard-settings?tab=billing&stripe=success');
+  return dashboard_settings_url(['tab' => 'billing', 'stripe' => 'success']);
 }
 
 /**
@@ -23,7 +23,7 @@ function dashboard_checkout_success_url(): string
  */
 function dashboard_checkout_cancel_url(): string
 {
-  return home_url('/dashboard-settings?tab=billing&stripe=cancel');
+  return dashboard_settings_url(['tab' => 'billing', 'stripe' => 'cancel']);
 }
 
 /**
@@ -173,20 +173,7 @@ function dashboard_stripe_portal_config_error(): string
  */
 function dashboard_stripe_billing_error_message(string $error): string
 {
-  return match ($error) {
-    'invalid_request' => 'Die Anfrage war ungültig.',
-    'stripe_sdk_missing' => 'Das Stripe SDK fehlt. Bitte composer require stripe/stripe-php im Theme ausführen.',
-    'stripe_not_configured' => 'Stripe ist noch nicht vollständig konfiguriert.',
-    'stripe_secret_missing' => 'Der Stripe Secret Key fehlt.',
-    'stripe_price_basis_missing' => 'Die Stripe Price ID für das Basis-Abo fehlt.',
-    'stripe_price_pro_missing' => 'Die Stripe Price ID für das Pro-Abo fehlt.',
-    'stripe_trial_fee_missing' => 'Die Stripe Price ID für die Trial-Gebühr fehlt.',
-    'stripe_webhook_not_configured' => 'Das Stripe Webhook Secret fehlt.',
-    'stripe_customer_missing' => 'Kein Stripe-Kunde gefunden.',
-    'stripe_checkout_failed' => 'Stripe Checkout konnte nicht gestartet werden.',
-    'stripe_portal_failed' => 'Das Billing Portal konnte nicht geöffnet werden.',
-    default => 'Stripe Checkout konnte nicht gestartet werden.',
-  };
+  return dashboard_error_text($error, 'errors.stripe_checkout_failed');
 }
 
 /**
@@ -194,14 +181,9 @@ function dashboard_stripe_billing_error_message(string $error): string
  */
 function dashboard_stripe_subscription_state_label(string $state): string
 {
-  return match ($state) {
-    'trial' => 'Trial',
-    'active' => 'Active',
-    'payment_required' => 'Payment required',
-    'past_due' => 'Past due',
-    'canceled' => 'Canceled',
-    default => ucfirst(str_replace('_', ' ', $state)),
-  };
+  $label = dashboard_t('billing.states.' . $state);
+
+  return $label !== 'billing.states.' . $state ? $label : ucfirst(str_replace('_', ' ', $state));
 }
 
 /**

@@ -1,0 +1,12 @@
+{
+  "type": "osp-update",
+  "format_version": 1,
+  "description": "Dashboard i18n foundation with DE/EN JSON catalogs and lang parameter preservation",
+  "targets": [
+    {
+      "root": "theme",
+      "from": "theme-files/",
+      "to": ""
+    }
+  ]
+}

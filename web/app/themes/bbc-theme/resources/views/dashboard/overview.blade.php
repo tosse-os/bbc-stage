@@ -6,10 +6,10 @@
   <div>
 
     <header class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-semibold">Latest Analyses</h2>
-      <a href="/dashboard-reports"
+      <h2 class="text-xl font-semibold">{{ dashboard_t('overview.latest_analyses') }}</h2>
+      <a href="{{ dashboard_url('dashboard-reports') }}"
         class="text-sm text-brand-primary font-medium">
-        View all →
+        {{ dashboard_t('common.view_all') }}
       </a>
     </header>
 
@@ -46,7 +46,7 @@
       @endphp
 
       <a
-        href="/analysis/{{ get_post_field('post_name', $post_id) }}"
+        href="{{ get_permalink($post_id) }}"
         class="dashboard-card group rounded-xl p-5 flex items-center justify-between gap-4
          transition-[background-color,box-shadow,transform] duration-300 ease-in-out cursor-pointer
          hover:bg-slate-50/80 hover:-translate-y-0.5 hover:shadow-lg
@@ -69,7 +69,7 @@
         </div>
 
         <span class="text-sm btn btn-primary btn-sm whitespace-nowrap">
-          View →
+          {{ dashboard_t('common.view_short') }}
         </span>
 
       </a>
@@ -87,10 +87,10 @@
   <div>
 
     <header class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-semibold">Latest Podcasts</h2>
-      <a href="/dashboard-media"
+      <h2 class="text-xl font-semibold">{{ dashboard_t('overview.latest_podcasts') }}</h2>
+      <a href="{{ dashboard_url('dashboard-media') }}"
         class="text-sm text-brand-primary font-medium">
-        View all →
+        {{ dashboard_t('common.view_all') }}
       </a>
     </header>
 
@@ -125,8 +125,7 @@
       @endphp
 
       <a
-        <a
-        href="/dashboard-media"
+        href="{{ dashboard_url('dashboard-media') }}"
         class="dashboard-card group rounded-xl p-5 flex items-center gap-4
          transition-all duration-300 ease-in-out cursor-pointer
          hover:bg-slate-50/80 hover:-translate-y-0.5 hover:shadow-lg
@@ -146,7 +145,7 @@
 
         <span class="text-sm whitespace-nowrap
         btn btn-primary btn-sm">
-          View →
+          {{ dashboard_t('common.view_short') }}
         </span>
 
       </a>

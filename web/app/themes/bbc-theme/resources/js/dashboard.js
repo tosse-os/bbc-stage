@@ -89,7 +89,9 @@ function initSidebarLogic() {
 
     if (appearanceSidebarBtn) {
       appearanceSidebarBtn.dataset.current = collapsed ? 'collapsed' : 'expanded';
-      appearanceSidebarBtn.textContent = collapsed ? 'Collapsed' : 'Expanded';
+      appearanceSidebarBtn.textContent = collapsed
+        ? (appearanceSidebarBtn.dataset.labelCollapsed || 'Collapsed')
+        : (appearanceSidebarBtn.dataset.labelExpanded || 'Expanded');
     }
 
   }
@@ -151,7 +153,9 @@ function initThemeToggle() {
 
     html.dataset.theme = next;
     themeBtn.dataset.current = next;
-    themeBtn.textContent = next.charAt(0).toUpperCase() + next.slice(1);
+    themeBtn.textContent = next === 'dark'
+      ? (themeBtn.dataset.labelDark || 'Dark')
+      : (themeBtn.dataset.labelLight || 'Light');
 
     const form = new FormData();
     form.append('action', 'set_dashboard_theme');
@@ -190,7 +194,7 @@ function initMobileFilterPanel() {
     content.style.opacity = '0';
     content.style.overflow = 'hidden';
     if (icon) icon.classList.remove('rotate-180');
-    if (label) label.textContent = 'anzeigen';
+    if (label) label.textContent = label.dataset.labelShow || 'anzeigen';
   }
 
   function openPanel() {
@@ -198,7 +202,7 @@ function initMobileFilterPanel() {
     content.style.opacity = '1';
     content.style.overflow = 'hidden';
     if (icon) icon.classList.add('rotate-180');
-    if (label) label.textContent = 'ausblenden';
+    if (label) label.textContent = label.dataset.labelHide || 'ausblenden';
   }
 
   content.style.transition = 'max-height 300ms ease, opacity 300ms ease';

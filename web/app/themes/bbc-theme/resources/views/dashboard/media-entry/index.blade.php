@@ -2,7 +2,7 @@
 
   <header class="mb-8">
     <h1 class="text-xl md:text-2xl font-semibold text-white tracking-tight">
-      Daily Podcasts
+      {{ dashboard_t('media.title') }}
     </h1>
   </header>
 
@@ -54,7 +54,7 @@
             </h3>
             <div class="flex items-center gap-2 mt-1">
               <span class="text-[10px] font-bold text-brand-primary uppercase tracking-widest">
-                {{ get_field('episode_label') ?: 'EPISODE NEW' }}
+                {{ get_field('episode_label') ?: dashboard_t('media.episode_new') }}
               </span>
               <span class="text-slate-600">•</span>
               <span class="text-[10px] font-medium text-slate-400 uppercase tracking-widest">

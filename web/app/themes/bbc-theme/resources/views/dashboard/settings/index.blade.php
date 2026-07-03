@@ -14,7 +14,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 <section class="max-w-5xl mx-auto">
 
   <header class="mb-8">
-    <h1 class="text-2xl font-semibold">Settings</h1>
+    <h1 class="text-2xl font-semibold">{{ dashboard_t('settings.title') }}</h1>
   </header>
 
   <div class="bg-white/85 backdrop-blur rounded-2xl shadow-sm px-8 py-8">
@@ -22,55 +22,68 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     <div class="mb-8 flex gap-8 border-b">
 
       <a
-        href="/dashboard-settings"
+        href="{{ dashboard_settings_url() }}"
         class="pb-3 text-sm font-medium
         {{ $tab === 'account'
           ? 'text-brand-primary border-b-2 border-brand-primary'
           : 'text-slate-400 hover:text-slate-600' }}">
-        Account
+        {{ dashboard_t('settings.tabs.account') }}
       </a>
 
       <a
-        href="/dashboard-settings?tab=security"
+        href="{{ dashboard_settings_url(['tab' => 'security']) }}"
         class="pb-3 text-sm font-medium
         {{ $tab === 'security'
           ? 'text-brand-primary border-b-2 border-brand-primary'
           : 'text-slate-400 hover:text-slate-600' }}">
-        Security
+        {{ dashboard_t('settings.tabs.security') }}
       </a>
 
       <a
-        href="/dashboard-settings?tab=appearance"
+        href="{{ dashboard_settings_url(['tab' => 'appearance']) }}"
         class="pb-3 text-sm font-medium
         {{ $tab === 'appearance'
           ? 'text-brand-primary border-b-2 border-brand-primary'
           : 'text-slate-400 hover:text-slate-600' }}">
-        Appearance
+        {{ dashboard_t('settings.tabs.appearance') }}
       </a>
 
       <a
-        href="/dashboard-settings?tab=billing"
+        href="{{ dashboard_settings_billing_url() }}"
         class="pb-3 text-sm font-medium
   {{ $tab === 'billing'
     ? 'text-brand-primary border-b-2 border-brand-primary'
     : 'text-slate-400 hover:text-slate-600' }}">
-        Billing
+        {{ dashboard_t('settings.tabs.billing') }}
       </a>
 
     </div>
+
+    @if($tab !== 'billing' && request()->get('success'))
+    <div class="mb-6 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+      {{ $tab === 'security' ? dashboard_t('messages.password_updated') : dashboard_t('messages.account_updated') }}
+    </div>
+    @endif
+
+    @if($tab !== 'billing' && request()->get('error'))
+    <div class="mb-6 rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-700">
+      {{ dashboard_error_text((string) request()->get('error')) }}
+    </div>
+    @endif
 
     {{-- ACCOUNT TAB --}}
     @if ($tab === 'account')
 
     <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-10">
       <input type="hidden" name="action" value="dashboard_update_account">
+      <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
       @php wp_nonce_field('dashboard_update_account', '_wpnonce'); @endphp
 
       <div class="space-y-6">
 
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-            Full name
+            {{ dashboard_t('settings.account.full_name') }}
           </label>
           <input
             type="text"
@@ -81,7 +94,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-            Email
+            {{ dashboard_t('settings.account.email') }}
           </label>
           <input
             type="email"
@@ -92,7 +105,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-            Username
+            {{ dashboard_t('settings.account.username') }}
           </label>
           <input
             type="text"
@@ -103,7 +116,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-            Phone Number
+            {{ dashboard_t('settings.account.phone_number') }}
           </label>
           <input
             type="text"
@@ -117,7 +130,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
           <button
             type="submit"
             class="inline-flex items-center px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
-            Update Profile
+            {{ dashboard_t('settings.account.update_profile') }}
           </button>
         </div>
 
@@ -137,7 +150,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
           data-avatar-preview>
 
         <label class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 cursor-pointer text-sm">
-          Choose Photo
+          {{ dashboard_t('settings.account.choose_photo') }}
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -148,7 +161,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
         </label>
 
         <p class="text-xs text-slate-400">
-          JPG, PNG oder WebP · max. 2 MB
+          {{ dashboard_t('settings.account.upload_hint') }}
         </p>
       </div>
 
@@ -172,13 +185,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     $isActive = $subscriptionState === 'active';
     $isTrial = $subscriptionState === 'trial';
 
-    $stateText = match ($subscriptionState) {
-    'active' => 'Aktiv',
-    'trial' => 'Testphase',
-    'past_due' => 'Zahlung überfällig',
-    'canceled' => 'Gekündigt',
-    default => 'Zahlung erforderlich',
-    };
+    $stateText = dashboard_stripe_subscription_state_label($subscriptionState);
 
     $badgeClass = $isActive || $isTrial
     ? 'bg-emerald-400/20 text-emerald-200 border-emerald-300/20'
@@ -189,13 +196,13 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
       @if(request()->get('stripe') === 'success')
       <div class="mb-6 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-        Checkout abgeschlossen. Dein Abo-Status wird automatisch aktualisiert.
+        {{ dashboard_t('billing.checkout_success') }}
       </div>
       @endif
 
       @if(request()->get('stripe') === 'cancel')
       <div class="mb-6 rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-        Checkout wurde abgebrochen.
+        {{ dashboard_t('billing.checkout_cancel') }}
       </div>
       @endif
 
@@ -214,7 +221,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
               <div>
                 <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
-                  Aktuelles Abonnement
+                  {{ dashboard_t('billing.current_subscription') }}
                 </h2>
 
                 <span class="mt-3 inline-flex items-center rounded-lg border px-3 py-1 text-xs font-semibold {{ $badgeClass }}">
@@ -223,34 +230,34 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
                 <div class="mt-5">
                   <div class="text-lg font-semibold text-white">
-                    Premium Analysen Zugang
+                    {{ dashboard_t('billing.premium_access') }}
                   </div>
 
                   <div class="text-slate-300">
-                    €29,99 / Monat
+                    {{ dashboard_t('billing.price_monthly') }}
                   </div>
 
                   @if($currentPeriodEnd)
                   <div class="text-sm text-slate-400">
-                    Nächste Rechnung: {{ date_i18n('d.m.Y', $currentPeriodEnd) }}
+                    {{ dashboard_t('billing.next_invoice', '', ['date' => date_i18n('d.m.Y', $currentPeriodEnd)]) }}
                   </div>
                   @endif
 
                   @if($cancelAtPeriodEnd)
                   <div class="text-sm text-amber-300">
-                    Kündigung zum Periodenende vorgemerkt.
+                    {{ dashboard_t('billing.cancel_at_period_end') }}
                   </div>
                   @elseif($isActive)
                   <div class="text-sm text-slate-400">
-                    Abonnement aktiv.
+                    {{ dashboard_t('billing.subscription_active') }}
                   </div>
                   @elseif($isTrial)
                   <div class="text-sm text-slate-400">
-                    Testphase aktiv.
+                    {{ dashboard_t('billing.trial_active') }}
                   </div>
                   @else
                   <div class="text-sm text-slate-400">
-                    Kein aktives Abonnement.
+                    {{ dashboard_t('billing.no_active_subscription') }}
                   </div>
                   @endif
                 </div>
@@ -259,12 +266,13 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                   @if(!$isActive)
                   <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
                     <input type="hidden" name="action" value="dashboard_start_checkout">
+                    <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
                     @php wp_nonce_field('dashboard_start_checkout', '_wpnonce'); @endphp
 
                     <button
                       type="submit"
                       class="inline-flex items-center px-5 py-2.5 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
-                      Abo starten
+                      {{ dashboard_t('billing.start_subscription') }}
                     </button>
                   </form>
                   @endif
@@ -272,6 +280,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                   @if($stripeCustomerId)
                   <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
                     <input type="hidden" name="action" value="dashboard_open_billing_portal">
+                    <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
                     @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
 
                     <button
@@ -288,7 +297,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1z"></path>
                       </svg>
-                      Im Stripe Portal verwalten
+                      {{ dashboard_t('billing.manage_subscription') }}
                     </button>
                   </form>
                   @endif
@@ -298,14 +307,14 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
               <div class="text-xs text-slate-400 space-y-1 md:text-right">
                 @if($stripeCustomerId)
                 <div>
-                  <span class="text-slate-500">Customer ID:</span>
+                  <span class="text-slate-500">{{ dashboard_t('billing.customer_id') }}</span>
                   <span class="break-all">{{ $stripeCustomerId }}</span>
                 </div>
                 @endif
 
                 @if($stripeSubscriptionId)
                 <div>
-                  <span class="text-slate-500">Subscription ID:</span>
+                  <span class="text-slate-500">{{ dashboard_t('billing.subscription_id') }}</span>
                   <span class="break-all">{{ $stripeSubscriptionId }}</span>
                 </div>
                 @endif
@@ -318,14 +327,14 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
             <div class="flex items-center justify-between gap-6">
               <div>
                 <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
-                  Zahlungsmethode
+                  {{ dashboard_t('billing.payment_method') }}
                 </h2>
 
                 <p class="mt-4 text-slate-300">
                   @if($stripeCustomerId)
-                  Zahlungsdaten werden sicher über Stripe verwaltet.
+                  {{ dashboard_t('billing.payment_method_stripe') }}
                   @else
-                  Noch keine Zahlungsmethode hinterlegt.
+                  {{ dashboard_t('billing.payment_method_missing') }}
                   @endif
                 </p>
               </div>
@@ -333,12 +342,13 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
               @if($stripeCustomerId)
               <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
                 <input type="hidden" name="action" value="dashboard_open_billing_portal">
+                    <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
                 @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
 
                 <button
                   type="submit"
                   class="text-sm font-semibold text-brand-primary hover:text-white transition whitespace-nowrap">
-                  Im Stripe Portal verwalten
+                  {{ dashboard_t('billing.manage_subscription') }}
                 </button>
               </form>
               @endif
@@ -347,24 +357,24 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
           <div class="rounded-2xl border border-white/10 bg-slate-950/30 backdrop-blur-xl px-6 py-6 shadow-2xl">
             <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
-              Rechnungsverlauf
+              {{ dashboard_t('billing.invoice_history') }}
             </h2>
 
             <div class="mt-5 overflow-hidden rounded-xl border border-white/10">
               <table class="w-full text-sm">
                 <thead>
                   <tr class="border-b border-white/10 text-slate-300">
-                    <th class="px-4 py-3 text-left font-semibold">Datum</th>
-                    <th class="px-4 py-3 text-left font-semibold">Betrag</th>
-                    <th class="px-4 py-3 text-left font-semibold">Status</th>
-                    <th class="px-4 py-3 text-right font-semibold">PDF</th>
+                    <th class="px-4 py-3 text-left font-semibold">{{ dashboard_t('common.date') }}</th>
+                    <th class="px-4 py-3 text-left font-semibold">{{ dashboard_t('billing.amount') }}</th>
+                    <th class="px-4 py-3 text-left font-semibold">{{ dashboard_t('common.status') }}</th>
+                    <th class="px-4 py-3 text-right font-semibold">{{ dashboard_t('common.pdf') }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr class="text-slate-400">
                     <td class="px-4 py-4">—</td>
                     <td class="px-4 py-4">—</td>
-                    <td class="px-4 py-4">Noch keine Rechnungen</td>
+                    <td class="px-4 py-4">{{ dashboard_t('billing.no_invoices') }}</td>
                     <td class="px-4 py-4 text-right">—</td>
                   </tr>
                 </tbody>
@@ -372,7 +382,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
             </div>
 
             <p class="mt-4 text-xs text-slate-500">
-              Rechnungen und Zahlungsbelege sind im Stripe Portal verfügbar.
+              {{ dashboard_t('billing.invoices_available') }}
             </p>
           </div>
 
@@ -381,17 +391,17 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
         <aside class="lg:pt-8 px-2">
           <div class="max-w-sm text-white">
             <p class="text-base font-semibold leading-relaxed">
-              Um Abonnement, Zahlungsdaten oder Rechnungsdetails zu ändern, nutze bitte das sichere Stripe Portal.
+              {{ dashboard_t('billing.portal_intro') }}
             </p>
 
             <p class="mt-4 text-sm leading-relaxed text-slate-400">
-              Dort kannst du Zahlungsmethoden aktualisieren, Rechnungen einsehen und dein Abo verwalten.
+              {{ dashboard_t('billing.portal_description') }}
             </p>
 
             @if($stripeRawStatus)
             <div class="mt-8 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
               <div class="text-xs uppercase tracking-wide text-slate-500">
-                Stripe Status
+                {{ dashboard_t('billing.stripe_status') }}
               </div>
               <div class="mt-1 text-sm font-medium text-slate-300">
                 {{ $stripeRawStatus }}
@@ -413,11 +423,12 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="max-w-md space-y-6">
       @csrf
       <input type="hidden" name="action" value="dashboard_update_password">
+      <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
       @php wp_nonce_field('dashboard_update_password', '_wpnonce'); @endphp
 
       <div>
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-          Old Password
+          {{ dashboard_t('settings.password.old_password') }}
         </label>
         <input type="password" name="current_password"
           class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm">
@@ -425,7 +436,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
       <div>
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-          New Password
+          {{ dashboard_t('settings.password.new_password') }}
         </label>
         <input type="password" name="new_password"
           class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm">
@@ -433,7 +444,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
       <div>
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-          Retype Password
+          {{ dashboard_t('settings.password.retype_password') }}
         </label>
         <input type="password" name="new_password_confirm"
           class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm">
@@ -442,7 +453,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
       <div class="pt-4">
         <button type="submit"
           class="px-6 py-3 rounded-xl bg-brand-primary text-white text-sm font-semibold hover:bg-brand-primaryHover transition">
-          Update Password
+          {{ dashboard_t('settings.password.update_password') }}
         </button>
       </div>
 
@@ -458,36 +469,40 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
 
       <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-sm font-semibold">Theme</h3>
-          <p class="text-xs text-slate-500">Light oder Dark Mode</p>
+          <h3 class="text-sm font-semibold">{{ dashboard_t('settings.appearance.theme') }}</h3>
+          <p class="text-xs text-slate-500">{{ dashboard_t('settings.appearance.theme_description') }}</p>
         </div>
 
         <button
           type="button"
           data-appearance-theme
           data-current="{{ $currentTheme }}"
+          data-label-light="{{ dashboard_t('settings.appearance.light') }}"
+          data-label-dark="{{ dashboard_t('settings.appearance.dark') }}"
           data-ajax="{{ admin_url('admin-ajax.php') }}"
           data-nonce="{{ wp_create_nonce('dashboard_theme_toggle') }}"
           class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm">
-          {{ ucfirst($currentTheme) }}
+          {{ $currentTheme === 'dark' ? dashboard_t('settings.appearance.dark') : dashboard_t('settings.appearance.light') }}
         </button>
 
       </div>
 
       <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-sm font-semibold">Sidebar</h3>
-          <p class="text-xs text-slate-500">Collapsed oder Expanded</p>
+          <h3 class="text-sm font-semibold">{{ dashboard_t('settings.appearance.sidebar') }}</h3>
+          <p class="text-xs text-slate-500">{{ dashboard_t('settings.appearance.sidebar_description') }}</p>
         </div>
 
         <button
           type="button"
           data-appearance-sidebar
           data-current="{{ $sidebarCollapsed ? 'collapsed' : 'expanded' }}"
+          data-label-collapsed="{{ dashboard_t('settings.appearance.collapsed') }}"
+          data-label-expanded="{{ dashboard_t('settings.appearance.expanded') }}"
           data-ajax="{{ admin_url('admin-ajax.php') }}"
           data-nonce="{{ wp_create_nonce('dashboard_sidebar_toggle') }}"
           class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm">
-          {{ $sidebarCollapsed ? 'Collapsed' : 'Expanded' }}
+          {{ $sidebarCollapsed ? dashboard_t('settings.appearance.collapsed') : dashboard_t('settings.appearance.expanded') }}
         </button>
 
       </div>

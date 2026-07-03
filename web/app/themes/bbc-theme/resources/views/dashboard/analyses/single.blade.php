@@ -33,15 +33,15 @@
           <button
             type="button"
             data-copy="{{ $reportWkn }}"
-            data-label-copy="{{ pll__('Kopieren') }}"
-            data-label-success="{{ pll__('Kopiert!') }}"
+            data-label-copy="{{ dashboard_t('common.copy') }}"
+            data-label-success="{{ dashboard_t('common.copied') }}"
             class="copy-btn relative text-meta hover:text-strong transition">
 
             <span class="tooltip absolute -top-8 left-1/2 -translate-x-1/2
                         text-xs px-2 py-1 rounded
                         opacity-0 pointer-events-none
                         transition duration-200 whitespace-nowrap">
-              {{ pll__('Kopieren') }}
+              {{ dashboard_t('common.copy') }}
             </span>
 
             <svg data-icon="copy" xmlns="http://www.w3.org/2000/svg"
@@ -68,15 +68,15 @@
           <button
             type="button"
             data-copy="{{ $reportIsin }}"
-            data-label-copy="{{ pll__('Kopieren') }}"
-            data-label-success="{{ pll__('Kopiert!') }}"
+            data-label-copy="{{ dashboard_t('common.copy') }}"
+            data-label-success="{{ dashboard_t('common.copied') }}"
             class="copy-btn relative text-meta hover:text-strong transition">
 
             <span class="tooltip absolute -top-8 left-1/2 -translate-x-1/2
                         text-xs px-2 py-1 rounded
                         opacity-0 pointer-events-none
                         transition duration-200 whitespace-nowrap">
-              {{ pll__('Kopieren') }}
+              {{ dashboard_t('common.copy') }}
             </span>
 
             <svg data-icon="copy" xmlns="http://www.w3.org/2000/svg"
@@ -117,10 +117,10 @@
     </div>
 
     <a
-      href="/dashboard"
+      href="{{ dashboard_url('dashboard') }}"
       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg
              btn-secondary transition text-sm whitespace-nowrap">
-      ← {{ pll__('Übersicht') }}
+      ← {{ dashboard_t('reports.back_to_overview') }}
     </a>
 
   </header>

@@ -41,7 +41,7 @@ function dashboard_login_redirect_url(string $error, string $plan = ''): string
     $args['plan'] = $plan;
   }
 
-  return add_query_arg($args, home_url('/dashboard-login'));
+  return dashboard_login_url($args);
 }
 
 add_action('user_register', function ($user_id) {
@@ -101,7 +101,7 @@ add_action('admin_post_nopriv_dashboard_login', function () {
     exit;
   }
 
-  wp_safe_redirect('/dashboard');
+  wp_safe_redirect(dashboard_url('dashboard'));
   exit;
 });
 
@@ -111,7 +111,7 @@ add_action('admin_post_nopriv_dashboard_register', function () {
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register')
   ) {
-    wp_safe_redirect('/dashboard-register?error=invalid_request');
+    wp_safe_redirect(dashboard_register_url(['error' => 'invalid_request']));
     exit;
   }
 
@@ -120,24 +120,24 @@ add_action('admin_post_nopriv_dashboard_register', function () {
   $name = sanitize_text_field($_POST['name'] ?? '');
 
   if (strlen($password) < 8) {
-    wp_safe_redirect('/dashboard-register?error=weak_password');
+    wp_safe_redirect(dashboard_register_url(['error' => 'weak_password']));
     exit;
   }
 
   if (!is_email($email)) {
-    wp_safe_redirect('/dashboard-register?error=email');
+    wp_safe_redirect(dashboard_register_url(['error' => 'email']));
     exit;
   }
 
   if (email_exists($email)) {
-    wp_safe_redirect('/dashboard-register?error=exists');
+    wp_safe_redirect(dashboard_register_url(['error' => 'exists']));
     exit;
   }
 
   $user_id = wp_create_user($email, $password, $email);
 
   if (is_wp_error($user_id)) {
-    wp_safe_redirect('/dashboard-register?error=create_failed');
+    wp_safe_redirect(dashboard_register_url(['error' => 'create_failed']));
     exit;
   }
 
@@ -156,19 +156,19 @@ add_action('admin_post_nopriv_dashboard_register', function () {
     exit;
   }
 
-  wp_safe_redirect('/dashboard');
+  wp_safe_redirect(dashboard_url('dashboard'));
   exit;
 });
 
 add_action('wp_logout', function () {
-  wp_safe_redirect('/dashboard-login');
+  wp_safe_redirect(dashboard_login_url());
   exit;
 });
 
 add_action('admin_post_dashboard_update_account', function () {
 
   if (!is_user_logged_in()) {
-    wp_safe_redirect('/dashboard-login');
+    wp_safe_redirect(dashboard_login_url());
     exit;
   }
 
@@ -176,7 +176,7 @@ add_action('admin_post_dashboard_update_account', function () {
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_update_account')
   ) {
-    wp_safe_redirect('/dashboard-settings?tab=account&error=invalid_request');
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'account', 'error' => 'invalid_request']));
     exit;
   }
 
@@ -194,14 +194,14 @@ add_action('admin_post_dashboard_update_account', function () {
 
   update_user_meta($user->ID, 'phone_number', $phone);
 
-  wp_safe_redirect('/dashboard-settings?tab=account&success=1');
+  wp_safe_redirect(dashboard_settings_url(['tab' => 'account', 'success' => '1']));
   exit;
 });
 
 add_action('admin_post_dashboard_update_password', function () {
 
   if (!is_user_logged_in()) {
-    wp_safe_redirect('/dashboard-login');
+    wp_safe_redirect(dashboard_login_url());
     exit;
   }
 
@@ -209,7 +209,7 @@ add_action('admin_post_dashboard_update_password', function () {
     !isset($_POST['_wpnonce']) ||
     !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_update_password')
   ) {
-    wp_safe_redirect('/dashboard-settings?tab=password&error=invalid_request');
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'error' => 'invalid_request']));
     exit;
   }
 
@@ -220,23 +220,23 @@ add_action('admin_post_dashboard_update_password', function () {
   $confirm = $_POST['new_password_confirm'] ?? '';
 
   if (!wp_check_password($current, $user->user_pass, $user->ID)) {
-    wp_safe_redirect('/dashboard-settings?tab=password&error=wrong_password');
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'error' => 'wrong_password']));
     exit;
   }
 
   if ($new === '' || $new !== $confirm) {
-    wp_safe_redirect('/dashboard-settings?tab=password&error=mismatch');
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'error' => 'password_mismatch']));
     exit;
   }
 
   if (strlen($new) < 8) {
-    wp_safe_redirect('/dashboard-settings?tab=password&error=weak_password');
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'error' => 'weak_password']));
     exit;
   }
 
   wp_set_password($new, $user->ID);
   wp_set_auth_cookie($user->ID);
 
-  wp_safe_redirect('/dashboard-settings?tab=password&success=1');
+  wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'success' => '1']));
   exit;
 });
