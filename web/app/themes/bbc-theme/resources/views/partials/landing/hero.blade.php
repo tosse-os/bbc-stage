@@ -23,8 +23,8 @@
 
           <div class="reveal-text mt-10">
             <a
-              href="{{ $hero['cta_link']['url'] }}"
-              target="{{ $hero['cta_link']['target'] ?: '_self' }}"
+              href="{{ esc_url($subscribeTrialUrl) }}"
+              target="_self"
               class="inline-flex items-center rounded-xl bg-brand-primary px-6 py-3 text-base font-medium text-white transition hover:bg-brand-primaryHover" data-reveal-delay="300">
               {!! $hero['cta_text'] !!}
             </a>

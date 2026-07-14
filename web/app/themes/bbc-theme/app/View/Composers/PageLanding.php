@@ -12,6 +12,8 @@ class PageLanding extends Composer
 
     public function with()
     {
+        $subscribeTrialUrl = $this->subscribeTrialUrl();
+
         return [
             'hero' => [
                 'headline' => get_field('hero_headline'),
@@ -70,7 +72,42 @@ class PageLanding extends Composer
             ],
 
             'reviews' => $this->reviews(),
+            'subscribeTrialUrl' => $subscribeTrialUrl,
         ];
+    }
+
+
+    private function subscribeTrialUrl(): string
+    {
+        $currentLanguage = function_exists('pll_current_language')
+            ? (string) pll_current_language('slug')
+            : '';
+
+        foreach (['subscribe-trial', 'trial'] as $slug) {
+            $page = get_page_by_path($slug);
+
+            if (! $page) {
+                continue;
+            }
+
+            $pageId = (int) $page->ID;
+
+            if ($currentLanguage !== '' && function_exists('pll_get_post')) {
+                $translatedPageId = pll_get_post($pageId, $currentLanguage);
+
+                if ($translatedPageId) {
+                    $pageId = (int) $translatedPageId;
+                }
+            }
+
+            $url = get_permalink($pageId);
+
+            if (is_string($url) && $url !== '') {
+                return $url;
+            }
+        }
+
+        return home_url('/subscribe-trial/');
     }
 
 

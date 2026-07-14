@@ -36,8 +36,8 @@ $buttonText = $getCtaValue(['button_text'], 'Kostenlose Analysen sichern');
 $buttonLink = $getCtaValue(['button_link'], '/subscribe-trial');
 $note = $getCtaValue(['note'], 'Kein Risiko · 7 Tage kostenlos · jederzeit kündbar');
 
-$buttonUrl = is_array($buttonLink) ? ($buttonLink['url'] ?? '/subscribe-trial') : (string) $buttonLink;
-$buttonTarget = is_array($buttonLink) ? ($buttonLink['target'] ?: '_self') : '_self';
+$buttonUrl = $subscribeTrialUrl;
+$buttonTarget = '_self';
 
 $allowedHeadlineHtml = [
     'br' => [],
