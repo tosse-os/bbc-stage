@@ -9,7 +9,7 @@
 
   <div class="mt-4 flex items-end gap-2">
     <div class="text-4xl font-semibold text-brand-primary">
-      €39
+      {!! pll__('39 €') !!}
     </div>
     <div class="pb-1 text-sm text-slate-300">
       / {!! pll__('Monat') !!}

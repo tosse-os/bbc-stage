@@ -111,6 +111,46 @@ $trialMessages = [
 'stripe_checkout_failed' => pll__('Stripe Checkout konnte nicht gestartet werden. Bitte versuchen Sie es erneut.'),
 'user_missing' => pll__('Der Benutzer konnte nicht ermittelt werden. Bitte melden Sie sich erneut an.'),
 ];
+
+$currentLanguage = function_exists('pll_current_language') ? pll_current_language('slug') : 'de';
+
+$translatedPageUrl = static function (array $slugs, string $fallback) use ($currentLanguage): string {
+    foreach ($slugs as $slug) {
+        $page = get_page_by_path($slug);
+
+        if (! $page) {
+            continue;
+        }
+
+        $pageId = (int) $page->ID;
+
+        if (function_exists('pll_get_post')) {
+            $translatedId = pll_get_post($pageId, $currentLanguage);
+
+            if ($translatedId) {
+                $pageId = (int) $translatedId;
+            }
+        }
+
+        $permalink = get_permalink($pageId);
+
+        if ($permalink) {
+            return $permalink;
+        }
+    }
+
+    return home_url($fallback);
+};
+
+$dashboardLoginUrl = add_query_arg(
+    [
+        'plan' => $defaultPlanKey,
+        'lang' => $currentLanguage,
+    ],
+    home_url('/dashboard-login/')
+);
+$termsUrl = $translatedPageUrl(['agb', 'terms', 'terms-and-conditions'], '/agb/');
+$privacyUrl = $translatedPageUrl(['datenschutz', 'privacy-policy', 'privacy'], '/datenschutz/');
 @endphp
 
 {{-- Conversion - Hauptbereich mit Background, Inhalt und Footer --}}
@@ -158,7 +198,7 @@ $trialMessages = [
 
           @if(in_array($trialError, ['exists', 'account_exists'], true))
           <div class="mt-3">
-            <a href="/dashboard-login?plan={{ $defaultPlanKey }}" class="font-semibold text-brand-primary hover:text-white">
+            <a href="{{ esc_url($dashboardLoginUrl) }}" class="font-semibold text-brand-primary hover:text-white">
               {!! pll__('Jetzt einloggen') !!}
             </a>
           </div>
@@ -290,7 +330,7 @@ $trialMessages = [
                 name="email"
                 required
                 autocomplete="email"
-                placeholder="name@beispiel.de"
+                placeholder="{!! esc_attr(pll__('name@beispiel.de')) !!}"
                 class="w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
             </div>
 
@@ -317,7 +357,7 @@ $trialMessages = [
                   type="text"
                   name="first_name"
                   autocomplete="given-name"
-                  placeholder="Max"
+                  placeholder="{!! esc_attr(pll__('Max')) !!}"
                   class="w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
               </div>
 
@@ -329,7 +369,7 @@ $trialMessages = [
                   type="text"
                   name="last_name"
                   autocomplete="family-name"
-                  placeholder="Mustermann"
+                  placeholder="{!! esc_attr(pll__('Mustermann')) !!}"
                   class="w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20">
               </div>
             </div>
@@ -391,9 +431,9 @@ $trialMessages = [
                   class="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950 text-brand-primary focus:ring-brand-primary">
                 <span>
                   {!! pll__('Ich stimme den') !!}
-                  <a href="/agb/" class="text-brand-primary hover:text-white">{!! pll__('AGB') !!}</a>
+                  <a href="{{ esc_url($termsUrl) }}" class="text-brand-primary hover:text-white">{!! pll__('AGB') !!}</a>
                   {!! pll__('und der') !!}
-                  <a href="/datenschutz/" class="text-brand-primary hover:text-white">{!! pll__('Datenschutzerklärung') !!}</a>
+                  <a href="{{ esc_url($privacyUrl) }}" class="text-brand-primary hover:text-white">{!! pll__('Datenschutzerklärung') !!}</a>
                   {!! pll__('zu.') !!}
                 </span>
               </label>

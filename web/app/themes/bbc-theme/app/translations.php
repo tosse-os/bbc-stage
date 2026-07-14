@@ -1,30 +1,28 @@
 <?php
 
 /**
- * Registriert Footer- und Dashboard-Texte für Polylang.
+ * Registriert Theme-Texte für Polylang.
  */
-add_action('init', function () {
-
-  /* Footer */
-  pll_register_string('footer_follow', 'Follow Us', 'Footer');
-  pll_register_string('footer_about', 'About', 'Footer');
-  pll_register_string('footer_services', 'Services', 'Footer');
-  pll_register_string('footer_contact', 'Contact', 'Footer');
-  pll_register_string('footer_privacy', 'Privacy policy', 'Footer');
-  pll_register_string('footer_imprint', 'Imprint', 'Footer');
-
-  /* Dashboard */
-  pll_register_string('dashboard_copy', 'Kopieren', 'Dashboard');
-  pll_register_string('dashboard_copied', 'Kopiert!', 'Dashboard');
-});
-
 add_action('init', function () {
     if (! function_exists('pll_register_string')) {
         return;
     }
 
-    foreach (
-        [
+    $groups = [
+        'Footer' => [
+            'Folge uns',
+            'Bloombridge Capital. Alle Rechte vorbehalten.',
+            'About',
+            'Services',
+            'Contact',
+            'Privacy policy',
+            'Imprint',
+        ],
+        'Dashboard' => [
+            'Kopieren',
+            'Kopiert!',
+        ],
+        'Landing Page' => [
             'Customer Reviews',
             'Voices of Innovation',
             'Previous review',
@@ -34,8 +32,121 @@ add_action('init', function () {
             'Reviews',
             'Premium Content',
             'Kostenlose Analysen sichern',
-        ] as $string
-    ) {
-        pll_register_string($string, $string, 'Landing Page');
+        ],
+        'Subscribe Trial' => [
+        'Zum Kennenlernen',
+        'Testzugang',
+        '14 Tage Premium-Zugang',
+        'Teste, bevor du Geld verlierst.',
+        'Prüfen Sie unsere Analysen, Setups und Einschätzungen, bevor Sie ein volles Abo abschließen.',
+        '14 Tage testen',
+        'Ihr Premium-Testzugang',
+        'Testphase',
+        'einmalig',
+        '14 Tage Zugriff auf alle Premium-Analysen – inklusive sofortiger Freischaltung.',
+        'Nach 14 Tagen',
+        'Monat',
+        'jederzeit kündbar',
+        'Das reguläre Abo beginnt automatisch nach Ablauf des Testzeitraums, sofern Sie nicht vorher kündigen.',
+        'Jetzt Testzugang freischalten',
+        '14 Tage Premium-Zugang für einmalig 4,99 €',
+        'Aktuelle Marktanalysen',
+        'Einblick in Denkweise & Setups',
+        'Konkrete Setups & Entscheidungs-Zonen',
+        'Zugriff auf das Dashboard',
+        'Empfohlen',
+        'Basis',
+        'pro Monat',
+        'Treffen Sie bessere Entscheidungen am Markt.',
+        'Klare Analysen, nachvollziehbare Szenarien und konkrete Zonen, an denen Entscheidungen getroffen werden.',
+        'Basis starten',
+        'Ihr Basis-Zugang',
+        'Monatlicher Zugriff auf Premium-Analysen, Marktupdates und das Dashboard.',
+        'Monatliches Abo',
+        'Das Basis-Abo läuft monatlich und ist jederzeit kündbar.',
+        '49,99 € / Monat · jederzeit kündbar',
+        'Tägliche Marktanalysen',
+        'Krypto, Aktien & weitere Märkte',
+        'Klare Szenarien',
+        'Konkrete Preis- und Entscheidungszonen',
+        'Maximaler Vorsprung',
+        'Pro',
+        'Seien Sie früher dran als der Markt.',
+        'Alle Basis-Inhalte plus priorisierte Updates, exklusive Setups und zusätzliche Informationen über Märkte.',
+        'Pro freischalten',
+        'Ihr Pro-Zugang',
+        'Erweiterter Premium-Zugang mit priorisierten Updates, exklusiven Setups und Pro-Inhalten.',
+        'Monatliches Pro-Abo',
+        'Das Pro-Abo läuft monatlich und ist jederzeit kündbar.',
+        '79,99 € / Monat · jederzeit kündbar',
+        'Alles aus dem Basis-Paket',
+        'Schnellere & priorisierte Updates',
+        'Exklusive Setups & Marktlevels',
+        'Zusätzliche Pro-Informationen',
+        'Die Anfrage war ungültig. Bitte versuchen Sie es erneut.',
+        'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+        'Das Passwort muss mindestens 8 Zeichen lang sein.',
+        'Diese E-Mail ist bereits registriert. Bitte melden Sie sich an. Danach können Sie Ihr Abo im Billing-Bereich starten.',
+        'Bitte akzeptieren Sie die AGB und die Datenschutzerklärung.',
+        'Der Account konnte nicht erstellt werden. Bitte versuchen Sie es erneut.',
+        'Stripe ist technisch noch nicht vollständig eingerichtet.',
+        'Stripe ist noch nicht vollständig konfiguriert.',
+        'Der Stripe Secret Key fehlt.',
+        'Die Stripe Price ID für das Basis-Abo fehlt.',
+        'Die Stripe Price ID für das Pro-Abo fehlt.',
+        'Die Stripe Price ID für die Trial-Gebühr fehlt.',
+        'Stripe Checkout konnte nicht gestartet werden. Bitte versuchen Sie es erneut.',
+        'Der Benutzer konnte nicht ermittelt werden. Bitte melden Sie sich erneut an.',
+        'Premium-Analysen 14 Tage testen',
+        'für 14 Tage Zugang',
+        'danach 49,99 € / Monat',
+        'In 2 Minuten freigeschaltet',
+        'Sichere Zahlung über Stripe',
+        'Sofortiger Zugriff',
+        'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
+        'Jetzt einloggen',
+        'Premium-Zugang starten',
+        'Zugangsdaten anlegen. Sicher bezahlen. Direkt starten.',
+        'E-Mail-Adresse',
+        'name@beispiel.de',
+        'Passwort',
+        'Mindestens 8 Zeichen',
+        'Vorname',
+        'Max',
+        'Nachname',
+        'Mustermann',
+        'Sicher',
+        'DSGVO-konform',
+        'Kündbar',
+        'Jederzeit möglich',
+        'Stripe',
+        'Sichere Zahlung',
+        'Ich stimme den',
+        'AGB',
+        'und der',
+        'Datenschutzerklärung',
+        'zu.',
+        'Sofortige Freischaltung · jederzeit kündbar · DSGVO-konform',
+        'Sichere Zahlung & sofortiger Zugang',
+        'Zahlungsdaten werden ausschließlich über Stripe verarbeitet. Ihr Zugang wird nach erfolgreicher Zahlung automatisch freigeschaltet.',
+        '7 Tage gratis',
+        'Komplettzugang',
+        '39 €',
+        'danach 59 € pro Monat',
+        'Echtzeit Marktanalysen',
+        'Strukturierte Handelssignale',
+        'Aktien, Krypto & Forex',
+        '45 Börsenplätze weltweit',
+        'Tägliche Updates & Alerts',
+        'Jederzeit kündbar. Keine Gebühren während des Testzeitraums.',
+        'Impressum',
+        'Datenschutz',
+        ],
+    ];
+
+    foreach ($groups as $group => $strings) {
+        foreach (array_unique($strings) as $string) {
+            pll_register_string($group . '_' . md5($string), $string, $group);
+        }
     }
 });
