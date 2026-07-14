@@ -6,72 +6,97 @@
 
   <div class="relative container-content">
 
-    <div class="mb-16 text-center">
-      <h2 class="reveal-text text-3xl lg:text-4xl font-semibold tracking-tight text-brand-primaryFontDark">
-        Dedicated <span class="text-brand-primary">Expert</span> Consultants
-      </h2>
-      <p class="reveal-text mt-4 mx-auto max-w-xl text-sm lg:text-base text-slate-600">
-        Meet our team of experienced professionals ready to support your financial journey
-      </p>
-    </div>
-
     @php
-    $team = [
-    ['name' => 'Jennifer', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
-    ['name' => 'Sarah', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
-    ['name' => 'Markus', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
-    ['name' => 'Thomas', 'role' => 'Manager', 'image' => 'team/markus.jpg'],
-    ['name' => 'Michael', 'role' => 'Senior Consultant', 'image' => 'team/markus.jpg'],
-    ];
+    $headline = $team['headline'];
+    $subheadline = $team['subheadline'];
+    $bottomline = $team['bottomline'];
+    $members = $team['members'];
     @endphp
 
-    {{--
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-14 mb-14">
-    --}}
+    <div class="mb-16 text-center">
+      @if($headline)
+      <h2 class="reveal-text text-3xl lg:text-4xl font-semibold tracking-tight text-brand-primaryFontDark">
+        {!! $headline !!}
+      </h2>
+      @endif
+
+      @if($subheadline)
+      <p class="reveal-text mt-4 mx-auto max-w-xl text-sm lg:text-base text-slate-600">
+        {!! $subheadline !!}
+      </p>
+      @endif
+    </div>
+
+    @if(!empty($members))
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-14 mb-14">
-      @foreach (array_slice($team, 0, 3) as $member)
+      @foreach (array_slice($members, 0, 3) as $member)
+      @if(!empty($member))
       <div class="reveal-media text-center group">
         <div class="team-photo-wrapper">
+          @if(!empty($member['image']))
           <img
-            src="{{ Vite::asset('resources/images/landingpage/' . $member['image']) }}"
-            alt="{{ $member['name'] }}"
+            src="{{ $member['image']['url'] }}"
+            alt="{{ $member['image']['alt'] ?? $member['name'] }}"
             class="team-photo">
+          @endif
         </div>
 
+        @if(!empty($member['name']))
         <p class="mt-4 text-lg font-semibold text-brand-primaryFontDark">
           {{ $member['name'] }}
         </p>
+        @endif
+
+        @if(!empty($member['role']))
         <p class="mt-0.5 text-sm text-slate-500">
           {{ $member['role'] }}
         </p>
+        @endif
       </div>
+      @endif
       @endforeach
     </div>
 
-    {{--
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-10 lg:gap-14 max-w-3xl mx-auto">
-    --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 max-w-3xl mx-auto">
-      @foreach (array_slice($team, 3, 2) as $member)
+      @foreach (array_slice($members, 3, 2) as $member)
+      @if(!empty($member))
       <div class="reveal-media text-center group">
         <div class="team-photo-wrapper">
+          @if(!empty($member['image']))
           <img
-            src="{{ Vite::asset('resources/images/landingpage/' . $member['image']) }}"
-            alt="{{ $member['name'] }}"
+            src="{{ $member['image']['url'] }}"
+            alt="{{ $member['image']['alt'] ?? $member['name'] }}"
             class="team-photo">
+          @endif
         </div>
 
+        @if(!empty($member['name']))
         <p class="mt-4 text-lg font-semibold text-brand-primaryFontDark">
           {{ $member['name'] }}
         </p>
+        @endif
+
+        @if(!empty($member['role']))
         <p class="mt-0.5 text-sm text-slate-500">
           {{ $member['role'] }}
         </p>
-
+        @endif
       </div>
-
+      @endif
       @endforeach
     </div>
+
+    @endif
+
+    @if($bottomline)
+    <!-- <div class="mt-12 mb-4 text-center">
+      <p class="reveal-text mx-auto max-w-xl text-sm lg:text-base text-slate-600">
+        {!! $bottomline !!}
+      </p>
+    </div> -->
+    @endif
+
 
   </div>
 </section>

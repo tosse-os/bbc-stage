@@ -7,11 +7,9 @@ $platformIcons = [
 'shorts' => Vite::asset('resources/images/landingpage/platforms/shorts.svg'),
 ];
 
-$headline = get_field('market_insights_headline') ?: 'Market Insights – live from our analysts';
-$subline = get_field('market_insights_subline') ?: 'Meet our team of experienced professionals ready to support your financial journey';
-
-$normalizedHeadline = str_replace(['–', '—'], '-', $headline);
-$headlineParts = explode(' - ', $normalizedHeadline, 2);
+$headline = $marketInsights['headline'];
+$subline = $marketInsights['subline'];
+$additional = $marketInsights['additional'];
 @endphp
 
 <section
@@ -28,33 +26,28 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
 
     {{-- Headline --}}
     <h2 class="text-4xl font-semibold tracking-tight text-slate-900">
-      @if(count($headlineParts) === 2)
-      {{ $headlineParts[0] }}
-      <span class="text-brand-primary">– {{ $headlineParts[1] }}</span>
-      @else
-      {{ $headline }}
-      @endif
+      {!! $headline !!}
     </h2>
 
     {{-- Subline --}}
     <p class="mt-4 text-lg text-slate-600">
-      {{ $subline }}
+      {!! $subline !!}
     </p>
 
     {{-- Cards --}}
     <div class="mt-16 grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
-      @for ($i = 1; $i <= 3; $i++)
-        @php
-        $image=get_field("market_insight_{$i}_image");
-        $title=get_field("market_insight_{$i}_title");
-        $link=get_field("market_insight_{$i}_link");
-        $duration=get_field("market_insight_{$i}_duration");
-        $platform=get_field("market_insight_{$i}_platform");
-        $isPremium=get_field("market_insight_{$i}_premium");
-        @endphp
+      @foreach ($marketInsights['items'] as $item)
+      @php
+      $image = $item['image'];
+      $title = $item['title'];
+      $link = $item['link'];
+      $duration = $item['duration'];
+      $platform = $item['platform'];
+      $isPremium = $item['premium'];
+      @endphp
 
-        @if ($image && $link)
-        <div class="reveal-media">
+      @if ($image && $link)
+      <div class="reveal-media">
         <a
           href="{{ $link }}"
           target="_blank"
@@ -80,7 +73,7 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
                 <path d="M5 19H19V17H5V19ZM19 15L21 7L16 10L12 4L8 10L3 7L5 15H19Z"
                   fill="url(#goldGradient)" />
               </svg>
-              {{ pll__('Premium Content') }}
+              {{ function_exists('pll__') ? pll__('Premium Content') : __('Premium Content', 'sage') }}
             </span>
             @endif
 
@@ -108,14 +101,24 @@ $headlineParts = explode(' - ', $normalizedHeadline, 2);
           </div>
 
         </a>
+      </div>
+      @endif
+      @endforeach
     </div>
-    @endif
-    @endfor
-  </div>
 
-  <div class="mt-16 text-sm text-brand-primary">
-    Independent market analysis. Updated daily.
-  </div>
+    <div class="mt-16 text-sm text-brand-primary">
+      {!! $additional !!}
+    </div>
+
+    {{-- CTA --}}
+    <div class="mt-14 flex flex-col items-center gap-4">
+
+      <a href="#"
+        class="inline-flex items-center justify-center rounded-full bg-gradient-to-b from-[#5aaec4] to-[#3f879c] px-10 py-4 text-base font-semibold text-white shadow-[0_18px_50px_rgba(63,135,156,0.55)] transition-all duration-300 hover:from-[#3f879c] hover:to-[#35788b] hover:shadow-[0_22px_60px_rgba(63,135,156,0.6)]">
+        {{ function_exists('pll__') ? pll__('Kostenlose Analysen sichern') : __('Kostenlose Analysen sichern', 'sage') }}
+      </a>
+
+    </div>
 
   </div>
 </section>

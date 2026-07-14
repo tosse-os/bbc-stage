@@ -6,10 +6,10 @@
   <div>
 
     <header class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-semibold">Latest Analyses</h2>
-      <a href="/dashboard-reports"
+      <h2 class="text-xl font-semibold">{{ dashboard_t('overview.latest_analyses') }}</h2>
+      <a href="{{ dashboard_url('dashboard-reports') }}"
         class="text-sm text-brand-primary font-medium">
-        View all →
+        {{ dashboard_t('common.view_all') }}
       </a>
     </header>
 
@@ -45,16 +45,21 @@
       $publish_date = get_post_meta($post_id, 'publish_date', true);
       @endphp
 
-      <div class="dashboard-card rounded-xl p-5 flex items-center justify-between">
+      <a
+        href="{{ get_permalink($post_id) }}"
+        class="dashboard-card group rounded-xl p-5 flex items-center justify-between gap-4
+         transition-[background-color,box-shadow,transform] duration-300 ease-in-out cursor-pointer
+         hover:bg-slate-50/80 hover:-translate-y-0.5 hover:shadow-lg
+         focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4 min-w-0">
           @if($image_url)
           <img src="{{ $image_url }}"
-            class="w-16 h-16 object-cover rounded-lg">
+            class="w-16 h-16 object-cover rounded-lg flex-shrink-0">
           @endif
 
-          <div>
-            <div class="break-all line-clamp-2 font-medium text-heading">
+          <div class="min-w-0">
+            <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors duration-300 ease-in-out">
               {{ get_the_title() }}
             </div>
             <div class="text-sm text-meta">
@@ -63,12 +68,12 @@
           </div>
         </div>
 
-        <a href="/analysis/{{ get_post_field('post_name', $post_id) }}"
-          class="text-sm text-brand-primary">
-          View →
-        </a>
+        <span class="text-sm btn btn-primary btn-sm whitespace-nowrap">
+          {{ dashboard_t('common.view_short') }}
+        </span>
 
-      </div>
+      </a>
+
       @endwhile
       @php wp_reset_postdata(); @endphp
     </div>
@@ -82,10 +87,10 @@
   <div>
 
     <header class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-semibold">Latest Podcasts</h2>
-      <a href="/dashboard-media"
+      <h2 class="text-xl font-semibold">{{ dashboard_t('overview.latest_podcasts') }}</h2>
+      <a href="{{ dashboard_url('dashboard-media') }}"
         class="text-sm text-brand-primary font-medium">
-        View all →
+        {{ dashboard_t('common.view_all') }}
       </a>
     </header>
 
@@ -119,13 +124,18 @@
       : get_theme_file_uri('resources/images/dashboard/default-cover.jpg');
       @endphp
 
-      <div class="dashboard-card rounded-xl p-5 flex items-center gap-4">
+      <a
+        href="{{ dashboard_url('dashboard-media') }}"
+        class="dashboard-card group rounded-xl p-5 flex items-center gap-4
+         transition-all duration-300 ease-in-out cursor-pointer
+         hover:bg-slate-50/80 hover:-translate-y-0.5 hover:shadow-lg
+         focus:outline-none focus:ring-2 focus:ring-brand-primary/40">
 
         <img src="{{ $coverUrl }}"
-          class="w-16 h-16 object-cover rounded-lg">
+          class="w-16 h-16 object-cover rounded-lg flex-shrink-0">
 
-        <div class="flex-1">
-          <div class="break-all line-clamp-2 font-medium text-heading">
+        <div class="flex-1 min-w-0">
+          <div class="break-all line-clamp-2 font-medium text-heading group-hover:text-brand-primary transition-colors">
             {{ get_the_title() }}
           </div>
           <div class="text-sm text-meta">
@@ -133,12 +143,12 @@
           </div>
         </div>
 
-        <a href="/dashboard-media"
-          class="text-sm text-brand-primary">
-          View →
-        </a>
+        <span class="text-sm whitespace-nowrap
+        btn btn-primary btn-sm">
+          {{ dashboard_t('common.view_short') }}
+        </span>
 
-      </div>
+      </a>
 
       @endwhile
       @php wp_reset_postdata(); @endphp

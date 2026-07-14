@@ -14,43 +14,45 @@ Template Name: Dashboard Register
       {{--
         <h1 class="text-xl font-semibold text-white tracking-tight">Willkommen zurück</h1>
         --}}
-      <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">Erstellen Ihren Account</p>
+      <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">{{ dashboard_t('auth.create_account_intro') }}</p>
     </div>
 
     <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="space-y-6">
+      @php wp_nonce_field('dashboard_register', '_wpnonce'); @endphp
       @csrf
       <input type="hidden" name="action" value="dashboard_register">
+      <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
 
       {{-- Name --}}
       <div>
         <label class="block text-xs font-semibold mb-1.5 text-slate-300 uppercase tracking-wider">
-          Name
+          {{ dashboard_t('auth.name') }}
         </label>
         <input
           type="text"
           name="name"
           required
-          placeholder="Ihr Name"
+          placeholder="{{ dashboard_t('auth.your_name') }}"
           class="dashboard-input w-full rounded-lg bg-white/10 border border-white/10 px-4 py-3 text-white placeholder-slate-500 transition-all">
       </div>
 
       {{-- E-Mail --}}
       <div>
         <label class="block text-xs font-semibold mb-1.5 text-slate-300 uppercase tracking-wider">
-          E-Mail Adresse
+          {{ dashboard_t('auth.email_address') }}
         </label>
         <input
           type="email"
           name="email"
           required
-          placeholder="name@beispiel.de"
+          placeholder="{{ dashboard_t('auth.email_placeholder') }}"
           class="dashboard-input w-full">
       </div>
 
       {{-- Passwort --}}
       <div>
         <label class="block text-xs font-semibold mb-1.5 text-slate-300 uppercase tracking-wider">
-          Passwort
+          {{ dashboard_t('auth.password') }}
         </label>
 
         <div class="relative">
@@ -58,7 +60,7 @@ Template Name: Dashboard Register
             type="password"
             name="password"
             required
-            placeholder="Passwort"
+            placeholder="{{ dashboard_t('auth.password') }}"
             class="dashboard-input password-input w-full ">
 
           <button
@@ -72,14 +74,14 @@ Template Name: Dashboard Register
       <button
         type="submit"
         class="w-full py-3.5 rounded-lg bg-brand-primary hover:bg-brand-primaryHover transition-all shadow-lg shadow-brand-primary/20 font-semibold text-white uppercase tracking-wide">
-        Account erstellen
+        {{ dashboard_t('auth.create_account') }}
       </button>
     </form>
 
     <p class="mt-10 text-sm text-center text-slate-400">
-      Bereits registriert?
-      <a href="/dashboard-login" class="text-brand-primary font-semibold hover:underline">
-        Zum Login
+      {{ dashboard_t('auth.already_registered') }}
+      <a href="{{ dashboard_login_url() }}" class="text-brand-primary font-semibold hover:underline">
+        {{ dashboard_t('auth.to_login') }}
       </a>
     </p>
 

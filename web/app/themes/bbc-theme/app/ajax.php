@@ -77,6 +77,22 @@ add_action('wp_ajax_nopriv_contact_form_submit', __NAMESPACE__ . '\\contact_form
 
 function contact_form_submit()
 {
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'contact_form')
+  ) {
+    wp_send_json_error();
+  }
+
+  $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+  $key = 'contact_form_' . md5($ip);
+
+  if (get_transient($key)) {
+    wp_send_json_error(['message' => 'Rate limit']);
+  }
+
+  set_transient($key, 1, 60);
+
   $email = trim($_POST['email'] ?? '');
   $message = trim($_POST['message'] ?? '');
 

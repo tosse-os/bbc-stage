@@ -43,3 +43,28 @@ add_action('save_post_analysis', function ($post_id) {
     update_post_meta($post_id, 'report_market_name', $market->name);
   }
 });
+
+add_action('pre_get_posts', function ($query) {
+
+  if (is_admin() || !$query->is_main_query()) {
+    return;
+  }
+
+  if ($query->get('post_type') !== 'analysis') {
+    return;
+  }
+
+  if (!can_view_analysis(get_current_user_id())) {
+    $query->set('post__in', [0]);
+  }
+});
+
+add_action('template_redirect', function () {
+
+  if (is_singular('analysis')) {
+    if (!can_view_analysis(get_current_user_id())) {
+      wp_safe_redirect(dashboard_url('dashboard-payment-required'));
+      exit;
+    }
+  }
+});

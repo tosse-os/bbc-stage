@@ -4,16 +4,26 @@ Template Name: Dashboard Login
 @extends('layouts.dashboard-auth')
 
 @section('content')
+
+@php
+$checkoutPlan = request()->get('plan');
+$checkoutPlan = in_array($checkoutPlan, ['trial', 'basis', 'pro'], true) ? $checkoutPlan : '';
+$loginError = request()->get('error');
+
+@endphp
+
 <section class="relative w-full max-w-md mx-auto px-4">
   <div class="backdrop-blur-xl bg-white/[0.03] border border-white/10 rounded-2xl px-8 py-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 overflow-hidden relative">
 
     {{-- 1. Logo & Welcome Message --}}
     <div class="flex flex-col items-center mb-10">
-      <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-13 mb-5 drop-shadow-md">
+      <a href="{{ home_url('/') }}" aria-label="{{ dashboard_t('auth.back_to_home') }}" class="inline-flex items-center justify-center transition duration-300 hover:opacity-80">
+        <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-13 mb-5 drop-shadow-md">
+      </a>
       {{--
-        <h1 class="text-xl font-semibold text-white tracking-tight">Willkommen zurück</h1>
-        --}}
-      <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">Sicherer Zugriff auf Ihren Account</p>
+    <h1 class="text-xl font-semibold text-white tracking-tight">Willkommen zurück</h1>
+    --}}
+      <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">{{ dashboard_t('auth.secure_account_access') }}</p>
     </div>
 
     {{-- 2. Social Logins (Neu für maximale Conversion) --}}
@@ -32,7 +42,7 @@ Template Name: Dashboard Login
 
       {{-- Text: Ohne Hintergrund, perfekt zentriert --}}
       <div class="text-[10px] uppercase tracking-[0.2em] font-medium text-slate-400 whitespace-nowrap">
-        Oder mit E-Mail
+        {{ dashboard_t('auth.email_login_divider') }}
       </div>
 
       {{-- Rechter Strich: Fadet von weiß/10 zu transparent --}}
@@ -41,19 +51,25 @@ Template Name: Dashboard Login
 
     {{-- 3. Login Form (Optimiert nach Bild 15) --}}
     <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" class="space-y-6">
+      @php wp_nonce_field('dashboard_login', '_wpnonce'); @endphp
       @csrf
       <input type="hidden" name="action" value="dashboard_login">
+      <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
+
+      @if($checkoutPlan !== '')
+      <input type="hidden" name="checkout_plan" value="{{ $checkoutPlan }}">
+      @endif
 
       <div>
-        <label class="block text-xs font-semibold mb-1.5 text-slate-300 uppercase tracking-wider">E-Mail Adresse</label>
-        <input type="email" name="email" required placeholder="name@beispiel.de"
+        <label class="block text-xs font-semibold mb-1.5 text-slate-300 uppercase tracking-wider">{{ dashboard_t('auth.email_address') }}</label>
+        <input type="email" name="email" required placeholder="{{ dashboard_t('auth.email_placeholder') }}"
           class="dashboard-input w-full">
       </div>
 
       <div>
         <div class="flex items-center justify-between mb-1.5">
-          <label class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Passwort</label>
-          <a href="/dashboard-password" class="text-xs text-brand-primary hover:text-brand-primaryHover transition">Passwort vergessen?</a>
+          <label class="text-xs font-semibold text-slate-300 uppercase tracking-wider">{{ dashboard_t('auth.password') }}</label>
+          <a href="{{ dashboard_password_url() }}" class="text-xs text-brand-primary hover:text-brand-primaryHover transition">{{ dashboard_t('auth.forgot_password') }}</a>
         </div>
 
         <div class="relative">
@@ -67,19 +83,28 @@ Template Name: Dashboard Login
 
       <button type="submit"
         class="w-full py-3.5 rounded-lg bg-brand-primary hover:bg-brand-primaryHover duration-300 transition-all shadow-lg shadow-brand-primary/20 font-semibold text-white uppercase tracking-wide">
-        Anmelden
+        {{ dashboard_t('auth.login') }}
       </button>
     </form>
 
-    @if(request()->get('error'))
+    @if($loginError)
     <div class="mt-4 p-3 rounded bg-red-500/10 border border-red-500/20">
-      <p class="text-xs text-red-400 text-center">Login fehlgeschlagen. Bitte prüfen Sie Ihre Daten.</p>
+      <p class="text-xs text-red-400 text-center">
+        {{ dashboard_error_text((string) $loginError, 'errors.login_failed') }}
+      </p>
     </div>
     @endif
 
-    <p class="mt-10 text-sm text-center text-slate-400">
-      Noch kein Konto? <a href="/dashboard-register" class="text-brand-primary font-semibold hover:underline">Kostenlos registrieren</a>
-    </p>
+    <div class="mt-10 text-sm text-center text-slate-400 space-y-3">
+      <p>
+        {{ dashboard_t('auth.no_account') }}
+        <a href="{{ add_query_arg(array_filter(['plan' => $checkoutPlan, 'lang' => dashboard_lang()]), home_url('/subscribe-trial')) }}" class="text-brand-primary font-semibold hover:underline">{{ dashboard_t('auth.subscribe_page') }}</a>
+      </p>
+
+      <a href="{{ home_url('/') }}" class="inline-flex items-center justify-center text-xs uppercase tracking-[0.18em] text-slate-500 hover:text-brand-primary transition duration-300">
+        {{ dashboard_t('auth.back_to_home') }}
+      </a>
+    </div>
 
   </div>
 </section>

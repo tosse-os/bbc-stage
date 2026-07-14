@@ -13,7 +13,7 @@
 
   <div class="flex-1">
     <span class="text-[10px] font-bold text-slate-300 uppercase tracking-tighter">
-      Video ansehen
+      {{ dashboard_t('media.watch_video') }}
     </span>
     <div class="h-1 w-full bg-slate-700 rounded-full mt-1 overflow-hidden">
       <div class="bg-brand-primary h-full w-1/3 opacity-50"></div>
@@ -23,7 +23,7 @@
   <button
     class="video-trigger text-[10px] font-bold text-brand-primary hover:text-white transition uppercase"
     data-video="{{ esc_url($videoUrl) }}">
-    Abspielen
+    {{ dashboard_t('media.play') }}
   </button>
 
 </div>

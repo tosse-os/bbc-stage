@@ -1,14 +1,14 @@
 <!doctype html>
 @php
-$theme = 'light';
+$theme = 'dark';
 
 if (is_user_logged_in()) {
 $stored = get_user_meta(get_current_user_id(), USER_META_THEME, true);
-$theme = $stored === 'dark' ? 'dark' : 'light';
+$theme = $stored === 'light' ? 'light' : 'dark';
 }
 @endphp
 
-<html {!! get_language_attributes() !!} data-theme="{{ $theme }}">
+<html {!! get_language_attributes() !!} data-theme="{{ $theme }}" data-dashboard-lang="{{ dashboard_lang() }}">
 
 <head>
   <meta charset="{{ get_bloginfo('charset') }}">
@@ -63,6 +63,7 @@ $collapsed = is_user_logged_in()
 
         <button id="videoClose"
           type="button"
+          aria-label="{{ dashboard_t('media.close') }}"
           class="absolute top-3 right-3 z-20 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 transition text-white flex items-center justify-center">
           ✕
         </button>

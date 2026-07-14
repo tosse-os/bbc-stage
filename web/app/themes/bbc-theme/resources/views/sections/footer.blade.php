@@ -20,7 +20,7 @@
           </div>
 
           <div class="text-sm text-slate-500">
-            Follow Us
+            {{ pll__('Folge uns') }}
           </div>
 
           <div class="mt-5 flex gap-4">
@@ -39,7 +39,7 @@
           </div>
 
           <div class="mt-12 text-xs text-slate-500">
-            © {{ date('Y') }} Bloombridge Capital. All Rights Reserved
+            © {{ date('Y') }} {{ pll__('Bloombridge Capital. Alle Rechte vorbehalten.') }}
           </div>
         </div>
 

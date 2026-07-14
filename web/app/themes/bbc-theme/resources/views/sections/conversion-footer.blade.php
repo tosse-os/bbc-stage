@@ -6,8 +6,8 @@
     </div>
 
     <div class="flex gap-6">
-      <a href="/imprint" class="transition hover:text-brand-primary">Imprint</a>
-      <a href="/privacy-policy" class="transition hover:text-brand-primary">Privacy</a>
+      <a href="{{ home_url('/imprint') }}" class="transition hover:text-brand-primary">Imprint</a>
+      <a href="{{ home_url('/privacy-policy') }}" class="transition hover:text-brand-primary">Privacy</a>
     </div>
 
   </div>

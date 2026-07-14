@@ -35,6 +35,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
     id="analysis-filters"
     data-filter-panel
     class="bg-white/10 backdrop-blur-md border border-brand-primary/30 rounded-b-2xl md:rounded-2xl shadow-sm overflow-visible md:overflow-visible transition-all">
+    <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
 
     {{-- HEADER: Nur mobil sichtbar, extrem flach --}}
     <div class="flex items-center justify-between px-3 py-1.5 md:hidden cursor-pointer" data-filter-toggle>
@@ -44,11 +45,11 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
             <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 00.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
         </div>
-        <span class="text-[10px] font-bold uppercase tracking-widest text-brand-primary/80">Filter</span>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-brand-primary/80">{{ dashboard_t('filters.filter') }}</span>
         @if($hasActiveFilters)<span class="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse"></span>@endif
       </div>
       <div class="flex items-center gap-1 text-[10px] font-bold uppercase text-brand-primary/60">
-        <span data-filter-label>anzeigen</span>
+        <span data-filter-label data-label-show="{{ dashboard_t('filters.show') }}" data-label-hide="{{ dashboard_t('filters.hide') }}">{{ dashboard_t('filters.show') }}</span>
         <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 transition-transform" data-filter-icon fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -63,8 +64,8 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
                transition-all duration-300">
       {{-- Asset Suche --}}
       <div class="relative flex-1 md:min-w-[250px]">
-        <label class="block text-[9px] font-bold text-slate-400 mb-0.5 uppercase tracking-wider">Asset</label>
-        <input type="text" id="asset-search" autocomplete="off" placeholder="Suchen..."
+        <label class="block text-[9px] font-bold text-slate-400 mb-0.5 uppercase tracking-wider">{{ dashboard_t('common.asset') }}</label>
+        <input type="text" id="asset-search" autocomplete="off" placeholder="{{ dashboard_t('filters.search_placeholder') }}"
           class="w-full rounded-lg border border-brand-primary/20 bg-white/50 px-3 py-1.5 text-sm focus:ring-2 focus:ring-brand-primary/30 outline-none"
           value="{{ $currentAsset && isset($assetNameBySlug[$currentAsset]) ? $assetNameBySlug[$currentAsset] : '' }}">
         <input type="hidden" name="asset" id="asset-slug" value="{{ $currentAsset }}">
@@ -73,9 +74,9 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
       {{-- Kategorie --}}
       <div class="w-full md:w-[200px]">
-        <label class="block text-[9px] font-bold text-slate-400 mb-0.5 uppercase tracking-wider">Kategorie</label>
+        <label class="block text-[9px] font-bold text-slate-400 mb-0.5 uppercase tracking-wider">{{ dashboard_t('filters.category') }}</label>
         <select name="market" class="w-full rounded-lg border border-brand-primary/20 bg-white/50 px-3 py-1.5 text-sm outline-none" @disabled($currentAsset)>
-          <option value="">Alle Kategorien</option>
+          <option value="">{{ dashboard_t('filters.all_categories') }}</option>
           @foreach ($topMarkets as $market)
           <option value="{{ $market->slug }}" @selected($currentMarket===$market->slug)>{!! html_entity_decode($market->name) !!}</option>
           @endforeach
@@ -85,7 +86,7 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
       {{-- Zeitraum --}}
       <div class="w-full md:w-[235px]">
         <label class="block text-[9px] font-bold text-slate-400 mb-0.5 uppercase tracking-wider">
-          Zeitraum
+          {{ dashboard_t('filters.period') }}
         </label>
 
         <div class="flex items-center gap-2 rounded-lg border border-brand-primary/20 bg-white/50 px-3 py-1.5">
@@ -111,12 +112,12 @@ $hasActiveFilters = $currentAsset || $currentMarket || $dateFrom || $dateTo;
 
       {{-- Buttons --}}
       <div class="flex items-center gap-2 pt-1 md:pt-0">
-        <a href="/dashboard" class="flex items-center justify-center h-8 w-8 rounded-lg bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition" title="Reset">
+        <a href="{{ dashboard_url('dashboard-reports') }}" class="flex items-center justify-center h-8 w-8 rounded-lg bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition" title="{{ dashboard_t('filters.reset') }}">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </a>
-        <button type="submit" class="flex-1 md:hidden bg-brand-primary text-white py-1.5 rounded-lg text-[10px] font-bold uppercase">Anwenden</button>
+        <button type="submit" class="flex-1 md:hidden bg-brand-primary text-white py-1.5 rounded-lg text-[10px] font-bold uppercase">{{ dashboard_t('filters.apply') }}</button>
       </div>
     </div>
   </form>

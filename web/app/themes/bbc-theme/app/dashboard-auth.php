@@ -1,17 +1,48 @@
 <?php
 
-/**
- * User-Meta Konstanten
- */
-
 const USER_META_TRIAL_START = 'trial_started_at';
 const USER_META_TRIAL_END   = 'trial_ends_at';
 const USER_META_SUB_STATUS  = 'subscription_status';
 const USER_META_THEME       = 'dashboard_theme';
 
-/**
- * Initialisiert Trial beim Registrieren
- */
+function dashboard_user_should_use_wp_admin($user): bool
+{
+  if (!$user || is_wp_error($user)) {
+    return false;
+  }
+
+  $roles = (array) $user->roles;
+
+  if (in_array('subscriber', $roles, true) || in_array('abonnent', $roles, true)) {
+    return false;
+  }
+
+  return !empty($roles);
+}
+
+function dashboard_login_plan_from_post(): string
+{
+  if (function_exists('dashboard_checkout_optional_plan_from_value')) {
+    return dashboard_checkout_optional_plan_from_value($_POST['checkout_plan'] ?? '');
+  }
+
+  $plan = sanitize_key($_POST['checkout_plan'] ?? '');
+
+  return in_array($plan, ['trial', 'basis', 'pro'], true) ? $plan : '';
+}
+
+function dashboard_login_redirect_url(string $error, string $plan = ''): string
+{
+  $args = [
+    'error' => $error,
+  ];
+
+  if ($plan !== '') {
+    $args['plan'] = $plan;
+  }
+
+  return dashboard_login_url($args);
+}
 
 add_action('user_register', function ($user_id) {
   $now = current_time('timestamp');
@@ -19,71 +50,133 @@ add_action('user_register', function ($user_id) {
   update_user_meta($user_id, USER_META_TRIAL_START, $now);
   update_user_meta($user_id, USER_META_TRIAL_END, strtotime('+5 days', $now));
   update_user_meta($user_id, USER_META_SUB_STATUS, 'trial');
-  update_user_meta($user_id, USER_META_THEME, 'light');
+  update_user_meta($user_id, USER_META_THEME, 'dark');
 });
 
-/**
- * Dashboard Login
- */
-
 add_action('admin_post_nopriv_dashboard_login', function () {
+  $checkoutPlan = dashboard_login_plan_from_post();
+
+  $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+  $key = 'login_attempts_' . md5($ip);
+  $attempts = (int) get_transient($key);
+
+  if ($attempts >= 5) {
+    wp_safe_redirect(dashboard_login_redirect_url('too_many_attempts', $checkoutPlan));
+    exit;
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_login')
+  ) {
+    wp_safe_redirect(dashboard_login_redirect_url('invalid_request', $checkoutPlan));
+    exit;
+  }
 
   $creds = [
-    'user_login'    => sanitize_email($_POST['email']),
-    'user_password' => $_POST['password'],
+    'user_login'    => sanitize_email($_POST['email'] ?? ''),
+    'user_password' => $_POST['password'] ?? '',
     'remember'      => true,
   ];
 
   $user = wp_signon($creds, false);
 
   if (is_wp_error($user)) {
-    wp_redirect('/dashboard-login?error=1');
+    set_transient($key, $attempts + 1, 15 * MINUTE_IN_SECONDS);
+    wp_safe_redirect(dashboard_login_redirect_url('1', $checkoutPlan));
     exit;
   }
 
-  wp_redirect('/dashboard');
+  delete_transient($key);
+
+  if (dashboard_user_should_use_wp_admin($user)) {
+    wp_safe_redirect(admin_url());
+    exit;
+  }
+
+  if ($checkoutPlan !== '') {
+    update_user_meta($user->ID, 'dashboard_selected_plan', $checkoutPlan);
+
+    wp_safe_redirect(dashboard_settings_billing_url());
+    exit;
+  }
+
+  wp_safe_redirect(dashboard_url('dashboard'));
   exit;
 });
 
-/**
- * Dashboard Registrierung
- */
-
 add_action('admin_post_nopriv_dashboard_register', function () {
 
-  $user_id = wp_create_user(
-    sanitize_email($_POST['email']),
-    $_POST['password'],
-    sanitize_email($_POST['email'])
-  );
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_register')
+  ) {
+    wp_safe_redirect(dashboard_register_url(['error' => 'invalid_request']));
+    exit;
+  }
+
+  $email = sanitize_email($_POST['email'] ?? '');
+  $password = $_POST['password'] ?? '';
+  $name = sanitize_text_field($_POST['name'] ?? '');
+
+  if (strlen($password) < 8) {
+    wp_safe_redirect(dashboard_register_url(['error' => 'weak_password']));
+    exit;
+  }
+
+  if (!is_email($email)) {
+    wp_safe_redirect(dashboard_register_url(['error' => 'email']));
+    exit;
+  }
+
+  if (email_exists($email)) {
+    wp_safe_redirect(dashboard_register_url(['error' => 'exists']));
+    exit;
+  }
+
+  $user_id = wp_create_user($email, $password, $email);
+
+  if (is_wp_error($user_id)) {
+    wp_safe_redirect(dashboard_register_url(['error' => 'create_failed']));
+    exit;
+  }
 
   wp_update_user([
     'ID' => $user_id,
-    'display_name' => sanitize_text_field($_POST['name']),
+    'display_name' => $name,
   ]);
 
   wp_set_current_user($user_id);
   wp_set_auth_cookie($user_id);
 
-  wp_redirect('/dashboard');
+  $user = get_user_by('id', $user_id);
+
+  if (dashboard_user_should_use_wp_admin($user)) {
+    wp_safe_redirect(admin_url());
+    exit;
+  }
+
+  wp_safe_redirect(dashboard_url('dashboard'));
   exit;
 });
-
-/**
- * Erzwingt sauberen Logout-Redirect
- */
 
 add_action('wp_logout', function () {
-  wp_redirect('/dashboard-login');
+  wp_safe_redirect(dashboard_login_url());
   exit;
 });
-
-
 
 add_action('admin_post_dashboard_update_account', function () {
 
   if (!is_user_logged_in()) {
-    wp_redirect('/dashboard-login');
+    wp_safe_redirect(dashboard_login_url());
+    exit;
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_update_account')
+  ) {
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'account', 'error' => 'invalid_request']));
     exit;
   }
 
@@ -101,14 +194,22 @@ add_action('admin_post_dashboard_update_account', function () {
 
   update_user_meta($user->ID, 'phone_number', $phone);
 
-  wp_redirect('/dashboard-settings?tab=account&success=1');
+  wp_safe_redirect(dashboard_settings_url(['tab' => 'account', 'success' => '1']));
   exit;
 });
 
 add_action('admin_post_dashboard_update_password', function () {
 
   if (!is_user_logged_in()) {
-    wp_redirect('/dashboard-login');
+    wp_safe_redirect(dashboard_login_url());
+    exit;
+  }
+
+  if (
+    !isset($_POST['_wpnonce']) ||
+    !wp_verify_nonce($_POST['_wpnonce'], 'dashboard_update_password')
+  ) {
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'error' => 'invalid_request']));
     exit;
   }
 
@@ -119,18 +220,23 @@ add_action('admin_post_dashboard_update_password', function () {
   $confirm = $_POST['new_password_confirm'] ?? '';
 
   if (!wp_check_password($current, $user->user_pass, $user->ID)) {
-    wp_redirect('/dashboard-settings?tab=password&error=wrong_password');
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'error' => 'wrong_password']));
     exit;
   }
 
   if ($new === '' || $new !== $confirm) {
-    wp_redirect('/dashboard-settings?tab=password&error=mismatch');
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'error' => 'password_mismatch']));
+    exit;
+  }
+
+  if (strlen($new) < 8) {
+    wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'error' => 'weak_password']));
     exit;
   }
 
   wp_set_password($new, $user->ID);
   wp_set_auth_cookie($user->ID);
 
-  wp_redirect('/dashboard-settings?tab=password&success=1');
+  wp_safe_redirect(dashboard_settings_url(['tab' => 'security', 'success' => '1']));
   exit;
 });

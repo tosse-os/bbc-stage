@@ -4,7 +4,7 @@ $avatar_id = get_user_meta($user->ID, 'dashboard_avatar_id', true);
 $avatar_url = $avatar_id
 ? wp_get_attachment_image_url($avatar_id, 'thumbnail')
 : get_avatar_url($user->ID);
-$langs = pll_the_languages(['raw' => 1]);
+$langs = dashboard_languages();
 @endphp
 
 {{-- MOBILE BOTTOM BAR --}}
@@ -12,15 +12,15 @@ $langs = pll_the_languages(['raw' => 1]);
 
   <div class="flex items-center justify-around min-h-[68px]">
 
-    <a href="/dashboard" class="flex flex-col items-center justify-center text-white text-xs">
+    <a href="{{ dashboard_url('dashboard') }}" class="flex flex-col items-center justify-center text-white text-xs">
       @include('dashboard.icons.overview')
     </a>
 
-    <a href="/dashboard-reports" class="flex flex-col items-center justify-center text-white text-xs">
+    <a href="{{ dashboard_url('dashboard-reports') }}" class="flex flex-col items-center justify-center text-white text-xs">
       @include('dashboard.icons.report')
     </a>
 
-    <a href="/dashboard-media" class="flex flex-col items-center justify-center text-white text-xs">
+    <a href="{{ dashboard_url('dashboard-media') }}" class="flex flex-col items-center justify-center text-white text-xs">
       @include('dashboard.icons.media')
     </a>
 
@@ -56,7 +56,7 @@ $langs = pll_the_languages(['raw' => 1]);
       <img src="{{ $avatar_url }}" class="w-12 h-12 rounded-full object-cover">
       <div>
         <div class="text-white font-medium">{{ $user->display_name }}</div>
-        <a href="/dashboard-settings" class="text-sm text-slate-300">View profile</a>
+        <a href="{{ dashboard_settings_url() }}" class="text-sm text-slate-300">{{ dashboard_t('nav.view_profile') }}</a>
       </div>
     </div>
 
@@ -64,12 +64,12 @@ $langs = pll_the_languages(['raw' => 1]);
 
     @if(!empty($langs))
     <div class="flex items-center justify-between py-2">
-      <span class="text-white">DE/EN</span>
+      <span class="text-white">{{ dashboard_t('nav.language') }}</span>
       <div class="flex gap-2">
         @foreach($langs as $lang)
         <a href="{{ $lang['url'] }}"
           class="px-3 py-1 rounded-lg text-sm
-               {{ $lang['current_lang']
+               {{ $lang['current']
                  ? 'bg-white/20 text-white'
                  : 'text-slate-300 hover:bg-white/10' }}">
           {{ strtoupper($lang['slug']) }}
@@ -81,9 +81,11 @@ $langs = pll_the_languages(['raw' => 1]);
     @endif
 
     <div class="flex items-center justify-between py-2">
-      <span class="text-white">Dark Mode</span>
+      <span class="text-white">{{ dashboard_t('nav.dark_mode') }}</span>
       <button type="button"
         data-theme-toggle
+        data-label-light="{{ dashboard_t('nav.light_mode') }}"
+        data-label-dark="{{ dashboard_t('nav.dark_mode') }}"
         data-ajax="{{ admin_url('admin-ajax.php') }}"
         data-nonce="{{ wp_create_nonce('dashboard_theme_toggle') }}"
         class="relative w-11 h-6 bg-white/20 rounded-full">
@@ -93,12 +95,12 @@ $langs = pll_the_languages(['raw' => 1]);
 
     <div class="border-t border-white/10"></div>
 
-    <a href="/dashboard-settings" class="block py-2 text-white">
-      Account Settings
+    <a href="{{ dashboard_settings_url() }}" class="block py-2 text-white">
+      {{ dashboard_t('nav.account_settings') }}
     </a>
 
-    <a href="/?dashboard_logout=1" class="block py-2 text-red-400">
-      Logout
+    <a href="{{ dashboard_logout_url() }}" class="block py-2 text-red-400">
+      {{ dashboard_t('nav.logout') }}
     </a>
 
     <div class="border-t border-white/10"></div>
