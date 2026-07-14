@@ -31,3 +31,5 @@ wp-cli.local.yml
 .history
 .vscode
 _incoming
+!web/app/plugins/polylang-string-importer/
+!web/app/plugins/polylang-string-importer/**
