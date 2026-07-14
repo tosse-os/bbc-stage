@@ -76,40 +76,60 @@ class PageLanding extends Composer
 
     private function contactForm(): array
     {
+        $fields = $this->allFields();
         $group = $this->fieldValue('contact_form', []);
+
+        if (! is_array($group)) {
+            $group = $this->arrayValueDeep($fields, [
+                'contact_form',
+                'contact_form_fields',
+                'contact_form_settings',
+                'form',
+                'form_fields',
+                'form_settings',
+            ], []);
+        }
 
         if (! is_array($group)) {
             $group = [];
         }
 
         return [
-            'headline' => $this->fieldValue([
+            'headline' => $this->formValue([
                 'contact_form_headline',
                 'contact_form_title',
                 'contact_form_heading',
                 'form_headline',
                 'form_title',
                 'form_heading',
-            ], $this->arrayValue($group, ['headline', 'title', 'heading'])),
-            'success' => $this->fieldValue([
+            ], ['headline', 'title', 'heading', 'form_heading'], $group, $fields),
+            'success' => $this->formValue([
                 'contact_form_success',
                 'contact_form_success_message',
                 'form_success',
                 'form_success_message',
-            ], $this->arrayValue($group, ['success', 'success_message'])),
-            'email_placeholder' => $this->fieldValue([
+                'success_message',
+            ], ['success', 'success_message'], $group, $fields),
+            'email_placeholder' => $this->formValue([
                 'contact_form_email_placeholder',
                 'contact_form_email',
                 'form_email_placeholder',
                 'form_email',
-            ], $this->arrayValue($group, ['email_placeholder', 'email'])),
-            'message_placeholder' => $this->fieldValue([
+                'email_placeholder',
+            ], ['email_placeholder', 'email'], $group, $fields),
+            'subject_placeholder' => $this->formValue([
+                'contact_form_subject_placeholder',
+                'form_subject_placeholder',
+                'subject_placeholder',
+            ], ['subject_placeholder', 'subject'], $group, $fields),
+            'message_placeholder' => $this->formValue([
                 'contact_form_message_placeholder',
                 'contact_form_message',
                 'form_message_placeholder',
                 'form_message',
-            ], $this->arrayValue($group, ['message_placeholder', 'message'])),
-            'button_text' => $this->fieldValue([
+                'message_placeholder',
+            ], ['message_placeholder', 'message'], $group, $fields),
+            'button_text' => $this->formValue([
                 'contact_form_button_text',
                 'contact_form_button_label',
                 'contact_form_submit_text',
@@ -118,8 +138,38 @@ class PageLanding extends Composer
                 'form_button_label',
                 'form_submit_text',
                 'form_submit_label',
-            ], $this->arrayValue($group, ['button_text', 'button_label', 'submit_text', 'submit_label'])),
+                'submit_label',
+            ], ['button_text', 'button_label', 'submit_text', 'submit_label'], $group, $fields),
         ];
+    }
+
+    private function formValue(array $fieldNames, array $groupKeys, array $group, array $fields)
+    {
+        $value = $this->fieldValue($fieldNames, null);
+
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+
+        $value = $this->arrayValueDeep($group, array_merge($fieldNames, $groupKeys), null);
+
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+
+        return $this->arrayValueDeep($fields, $fieldNames, '');
+    }
+
+    private function allFields(): array
+    {
+        if (! function_exists('get_fields')) {
+            return [];
+        }
+
+        $postId = function_exists('get_the_ID') ? (int) get_the_ID() : 0;
+        $fields = $postId > 0 ? get_fields($postId) : get_fields();
+
+        return is_array($fields) ? $fields : [];
     }
 
     private function fieldValue($fieldNames, $fallback = '')
@@ -146,6 +196,29 @@ class PageLanding extends Composer
         foreach ($keys as $key) {
             if (array_key_exists($key, $source) && $source[$key] !== null && $source[$key] !== '') {
                 return $source[$key];
+            }
+        }
+
+        return $fallback;
+    }
+
+    private function arrayValueDeep(array $source, array $keys, $fallback = '')
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $source) && $source[$key] !== null && $source[$key] !== '') {
+                return $source[$key];
+            }
+        }
+
+        foreach ($source as $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
+            $match = $this->arrayValueDeep($value, $keys, null);
+
+            if ($match !== null && $match !== '') {
+                return $match;
             }
         }
 
