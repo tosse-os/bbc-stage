@@ -20,7 +20,7 @@
           </div>
 
           <div class="text-sm text-slate-500">
-            {{ pll__('Follow us') }}
+            {{ pll__('Follow Us') }}
           </div>
 
           <div class="mt-5 flex gap-4">

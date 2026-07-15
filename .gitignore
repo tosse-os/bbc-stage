@@ -33,3 +33,4 @@ wp-cli.local.yml
 _incoming
 !web/app/plugins/polylang-string-importer/
 !web/app/plugins/polylang-string-importer/**
+tools
