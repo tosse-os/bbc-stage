@@ -71,7 +71,7 @@
             <div
               id="contactSuccess"
               class="overflow-hidden max-h-0 opacity-0 transition-all duration-600 ease-out text-base text-green-700">
-              {{ $contact['form']['success'] ?: 'Vielen Dank für Ihre Nachricht. Wir melden uns schnellstmöglich zurück.' }}
+              {{ $contact['form']['success'] ?: pll__('Vielen Dank für Ihre Nachricht. Wir melden uns schnellstmöglich zurück.') }}
             </div>
             <div class="sr-only" aria-hidden="true">
               <label for="contactCompany">Company</label>

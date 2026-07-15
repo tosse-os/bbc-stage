@@ -18,6 +18,12 @@ add_action('init', function () {
 
     pll_register_string('dashboard_copy', 'Kopieren', 'Dashboard');
     pll_register_string('dashboard_copied', 'Kopiert!', 'Dashboard');
+
+    pll_register_string(
+        'contact_success_message',
+        'Vielen Dank für Ihre Nachricht. Wir melden uns schnellstmöglich zurück.',
+        'Landing Page'
+    );
 });
 
 add_action('init', function () {
