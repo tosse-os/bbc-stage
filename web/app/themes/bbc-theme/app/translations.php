@@ -6,8 +6,9 @@
 add_action('init', function () {
 
   /* Footer */
-  pll_register_string('footer_follow', 'Follow Us', 'Footer');
+  pll_register_string('footer_copyright', 'Bloombridge Capital. All rights reserved.', 'Footer');
   pll_register_string('footer_about', 'About', 'Footer');
+  pll_register_string('footer_follow', 'Follow Us', 'Footer');
   pll_register_string('footer_services', 'Services', 'Footer');
   pll_register_string('footer_contact', 'Contact', 'Footer');
   pll_register_string('footer_privacy', 'Privacy policy', 'Footer');
