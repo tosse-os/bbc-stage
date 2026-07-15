@@ -16,25 +16,25 @@ $loginError = request()->get('error');
   <div class="backdrop-blur-xl bg-white/[0.03] border border-white/10 rounded-2xl px-8 py-10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10 overflow-hidden relative">
 
     {{-- 1. Logo & Welcome Message --}}
-    <div class="flex flex-col items-center mb-10">
+    <div class="flex flex-col items-center mb-2">
       <a href="{{ home_url('/') }}" aria-label="{{ dashboard_t('auth.back_to_home') }}" class="inline-flex items-center justify-center transition duration-300 hover:opacity-80">
         <img src="{{ get_theme_file_uri('resources/images/dashboard/bloombridge-capital-logo-v2.png') }}" class="h-13 mb-5 drop-shadow-md">
       </a>
       {{--
     <h1 class="text-xl font-semibold text-white tracking-tight">Willkommen zurück</h1>
     --}}
-      <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">{{ dashboard_t('auth.secure_account_access') }}</p>
+      <!-- <p class="text-slate-400 text-sm mt-1 uppercase uppercase-tracking-[-0.1]">{{ dashboard_t('auth.secure_account_access') }}</p> -->
     </div>
 
     {{-- 2. Social Logins (Neu für maximale Conversion) --}}
-    <div class="grid grid-cols-2 gap-3 mb-8">
+    <!-- <div class="grid grid-cols-2 gap-3 mb-8">
       <button class="flex items-center justify-center gap-2 py-2.5 border border-white/20 rounded-lg bg-white/5 duration-300 hover:bg-white/10 transition text-sm font-medium">
         @include('dashboard.icons.google') Google
       </button>
       <button class="flex items-center justify-center gap-2 py-2.5 border border-white/20 rounded-lg bg-white/5 duration-300 hover:bg-white/10 transition text-sm font-medium">
         @include('dashboard.icons.apple') Apple
       </button>
-    </div>
+    </div> -->
 
     <div class="relative mb-8 flex items-center gap-4">
       {{-- Linker Strich: Fadet von transparent zu weiß/10 --}}
@@ -42,7 +42,8 @@ $loginError = request()->get('error');
 
       {{-- Text: Ohne Hintergrund, perfekt zentriert --}}
       <div class="text-[10px] uppercase tracking-[0.2em] font-medium text-slate-400 whitespace-nowrap">
-        {{ dashboard_t('auth.email_login_divider') }}
+        <!-- {{ dashboard_t('auth.email_login_divider') }} -->
+          Login
       </div>
 
       {{-- Rechter Strich: Fadet von weiß/10 zu transparent --}}

@@ -19,6 +19,9 @@ Prüfen:
 find web/app/plugins/polylang-string-importer -maxdepth 3 -type f -print
 
 
+
+git status --short
+
 git add -A
 
 git status --short
@@ -27,3 +30,6 @@ git diff --cached
 
 git commit -m "Fix footer translations and update project documentation"
 git push origin main
+
+
+.release-tools/pull-and-build-upload.sh
