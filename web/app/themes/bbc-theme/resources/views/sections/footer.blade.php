@@ -39,7 +39,7 @@
           </div>
 
           <div class="mt-12 text-xs text-slate-500">
-            © {{ date('Y') }} {{ pll__('Bloombridge Capital. Alle Rechte vorbehalten.') }}
+            © {{ date('Y') }} {{ pll__('Bloombridge Capital. All rights reserved.') }}
           </div>
         </div>
 
