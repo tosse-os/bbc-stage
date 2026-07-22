@@ -181,6 +181,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     $cancelAtPeriodEnd = get_user_meta($user->ID, 'stripe_cancel_at_period_end', true) === '1';
     $billingErrorCode = trim((string) request()->get('error', ''));
     $billingErrorMessage = $billingErrorCode !== '' ? dashboard_stripe_billing_error_message($billingErrorCode) : '';
+    $subscriptionPriceLabel = dashboard_stripe_user_price_label($user->ID);
 
     $isActive = $subscriptionState === 'active';
     $isTrial = $subscriptionState === 'trial';
@@ -234,7 +235,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                   </div>
 
                   <div class="text-slate-300">
-                    {{ dashboard_t('billing.price_monthly') }}
+                    {{ $subscriptionPriceLabel !== '' ? $subscriptionPriceLabel : dashboard_t('billing.price_monthly') }}
                   </div>
 
                   @if($currentPeriodEnd)
@@ -278,7 +279,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                   @endif
 
                   @if($stripeCustomerId)
-                  <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+                  <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" target="_blank">
                     <input type="hidden" name="action" value="dashboard_open_billing_portal">
                     <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
                     @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
@@ -304,21 +305,6 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                 </div>
               </div>
 
-              <div class="text-xs text-slate-400 space-y-1 md:text-right">
-                @if($stripeCustomerId)
-                <div>
-                  <span class="text-slate-500">{{ dashboard_t('billing.customer_id') }}</span>
-                  <span class="break-all">{{ $stripeCustomerId }}</span>
-                </div>
-                @endif
-
-                @if($stripeSubscriptionId)
-                <div>
-                  <span class="text-slate-500">{{ dashboard_t('billing.subscription_id') }}</span>
-                  <span class="break-all">{{ $stripeSubscriptionId }}</span>
-                </div>
-                @endif
-              </div>
 
             </div>
           </div>
@@ -340,7 +326,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
               </div>
 
               @if($stripeCustomerId)
-              <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
+              <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}" target="_blank">
                 <input type="hidden" name="action" value="dashboard_open_billing_portal">
                     <input type="hidden" name="lang" value="{{ dashboard_lang() }}">
                 @php wp_nonce_field('dashboard_open_billing_portal', '_wpnonce'); @endphp
@@ -355,37 +341,6 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
             </div>
           </div>
 
-          <div class="rounded-2xl border border-white/10 bg-slate-950/30 backdrop-blur-xl px-6 py-6 shadow-2xl">
-            <h2 class="text-lg font-semibold uppercase tracking-wide text-white">
-              {{ dashboard_t('billing.invoice_history') }}
-            </h2>
-
-            <div class="mt-5 overflow-hidden rounded-xl border border-white/10">
-              <table class="w-full text-sm">
-                <thead>
-                  <tr class="border-b border-white/10 text-slate-300">
-                    <th class="px-4 py-3 text-left font-semibold">{{ dashboard_t('common.date') }}</th>
-                    <th class="px-4 py-3 text-left font-semibold">{{ dashboard_t('billing.amount') }}</th>
-                    <th class="px-4 py-3 text-left font-semibold">{{ dashboard_t('common.status') }}</th>
-                    <th class="px-4 py-3 text-right font-semibold">{{ dashboard_t('common.pdf') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr class="text-slate-400">
-                    <td class="px-4 py-4">—</td>
-                    <td class="px-4 py-4">—</td>
-                    <td class="px-4 py-4">{{ dashboard_t('billing.no_invoices') }}</td>
-                    <td class="px-4 py-4 text-right">—</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <p class="mt-4 text-xs text-slate-500">
-              {{ dashboard_t('billing.invoices_available') }}
-            </p>
-          </div>
-
         </div>
 
         <aside class="lg:pt-8 px-2">
@@ -398,16 +353,6 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
               {{ dashboard_t('billing.portal_description') }}
             </p>
 
-            @if($stripeRawStatus)
-            <div class="mt-8 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-              <div class="text-xs uppercase tracking-wide text-slate-500">
-                {{ dashboard_t('billing.stripe_status') }}
-              </div>
-              <div class="mt-1 text-sm font-medium text-slate-300">
-                {{ $stripeRawStatus }}
-              </div>
-            </div>
-            @endif
           </div>
         </aside>
 

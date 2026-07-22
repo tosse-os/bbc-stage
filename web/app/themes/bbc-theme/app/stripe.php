@@ -187,6 +187,102 @@ function dashboard_stripe_subscription_state_label(string $state): string
 }
 
 /**
+ * Speichert den bei Vertragsabschluss gebundenen Stripe-Preis als User-Meta.
+ */
+function dashboard_stripe_sync_subscription_price(int $userId, $subscription): void
+{
+  if ($userId <= 0 || !is_object($subscription)) {
+    return;
+  }
+
+  $items = $subscription->items->data ?? [];
+  $item = is_array($items) ? ($items[0] ?? null) : null;
+  $price = is_object($item) ? ($item->price ?? null) : null;
+
+  if (!is_object($price)) {
+    return;
+  }
+
+  $priceId = trim((string) ($price->id ?? ''));
+  $productId = is_string($price->product ?? null)
+    ? trim((string) $price->product)
+    : trim((string) ($price->product->id ?? ''));
+  $unitAmount = isset($price->unit_amount) ? (int) $price->unit_amount : 0;
+  $currency = strtolower(trim((string) ($price->currency ?? '')));
+  $interval = trim((string) ($price->recurring->interval ?? ''));
+  $intervalCount = isset($price->recurring->interval_count)
+    ? max(1, (int) $price->recurring->interval_count)
+    : 1;
+
+  if ($priceId !== '') {
+    update_user_meta($userId, 'stripe_price_id', $priceId);
+  }
+
+  if ($productId !== '') {
+    update_user_meta($userId, 'stripe_product_id', $productId);
+  }
+
+  if ($unitAmount > 0) {
+    update_user_meta($userId, 'stripe_recurring_amount', $unitAmount);
+  }
+
+  if ($currency !== '') {
+    update_user_meta($userId, 'stripe_currency', $currency);
+  }
+
+  if ($interval !== '') {
+    update_user_meta($userId, 'stripe_interval', $interval);
+    update_user_meta($userId, 'stripe_interval_count', $intervalCount);
+  }
+}
+
+/**
+ * Formatiert den am Benutzer gespeicherten Stripe-Abopreis.
+ */
+function dashboard_stripe_user_price_label(int $userId): string
+{
+  $amount = (int) get_user_meta($userId, 'stripe_recurring_amount', true);
+  $currency = strtolower(trim((string) get_user_meta($userId, 'stripe_currency', true)));
+  $interval = trim((string) get_user_meta($userId, 'stripe_interval', true));
+  $intervalCount = max(1, (int) get_user_meta($userId, 'stripe_interval_count', true));
+
+  if ($amount <= 0 || $currency === '' || $interval === '') {
+    return '';
+  }
+
+  $language = function_exists('dashboard_lang') ? dashboard_lang() : 'de';
+  $number = number_format($amount / 100, 2, $language === 'de' ? ',' : '.', $language === 'de' ? '.' : ',');
+  $currencyLabel = match ($currency) {
+    'eur' => $language === 'de' ? '€' : '€',
+    'usd' => '$',
+    'gbp' => '£',
+    default => strtoupper($currency),
+  };
+
+  $intervalLabel = match ($interval) {
+    'day' => $language === 'de' ? 'Tag' : 'day',
+    'week' => $language === 'de' ? 'Woche' : 'week',
+    'year' => $language === 'de' ? 'Jahr' : 'year',
+    default => $language === 'de' ? 'Monat' : 'month',
+  };
+
+  if ($intervalCount > 1) {
+    $intervalLabel = $language === 'de'
+      ? $intervalCount . ' ' . match ($interval) {
+        'day' => 'Tage',
+        'week' => 'Wochen',
+        'year' => 'Jahre',
+        default => 'Monate',
+      }
+      : $intervalCount . ' ' . $intervalLabel . 's';
+  }
+
+  return $language === 'de'
+    ? $number . ' ' . $currencyLabel . ' / ' . $intervalLabel
+    : $currencyLabel . $number . ' / ' . $intervalLabel;
+}
+
+/**
  * Extrahiert eine WordPress-User-ID aus Stripe-Metadaten.
  */
 function dashboard_stripe_extract_wp_user_id($object): int
@@ -438,6 +534,8 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
     'stripe_cancel_at_period_end',
     !empty($subscription->cancel_at_period_end) ? '1' : '0'
   );
+
+  dashboard_stripe_sync_subscription_price($userId, $subscription);
 
   if (in_array($status, ['active', 'trialing'], true)) {
     dashboard_set_subscription_state($userId, 'active');
