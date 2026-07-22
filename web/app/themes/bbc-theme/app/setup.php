@@ -232,6 +232,7 @@ require_once __DIR__ . '/filters.php';
 require_once __DIR__ . '/translations.php';
 
 require_once __DIR__ . '/dashboard-admin.php';
+require_once __DIR__ . '/dashboard-subscribers-admin.php';
 require_once __DIR__ . '/dashboard-subscription.php';
 require_once __DIR__ . '/stripe-checkout.php';
 require_once __DIR__ . '/stripe-webhook.php';
