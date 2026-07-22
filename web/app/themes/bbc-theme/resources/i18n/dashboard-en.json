@@ -1,0 +1,214 @@
+{
+  "meta": {
+    "version": 1,
+    "default_lang": "de",
+    "languages": [
+      "de",
+      "en"
+    ]
+  },
+  "nav": {
+    "overview": "Overview",
+    "reports": "Reports",
+    "media": "Podcasts",
+    "settings": "Settings",
+    "logout": "Logout",
+    "view_profile": "View profile",
+    "account_settings": "Account Settings",
+    "language": "Language",
+    "light_mode": "Light Mode",
+    "dark_mode": "Dark Mode"
+  },
+  "common": {
+    "view": "View →",
+    "view_short": "View →",
+    "view_all": "View all →",
+    "view_report": "View Report →",
+    "view_analysis": "View Analysis →",
+    "reset": "Reset",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "save": "Save",
+    "update": "Update",
+    "back": "Back",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "loading": "Loading …",
+    "no_results": "No results found.",
+    "date": "Date",
+    "preview": "Preview",
+    "description": "Description",
+    "asset": "Asset",
+    "category": "Category",
+    "search": "Search …",
+    "from": "From",
+    "to": "To",
+    "status": "Status",
+    "pdf": "PDF"
+  },
+  "auth": {
+    "secure_account_access": "Secure access to your account",
+    "create_account_intro": "Create your account",
+    "email_login_divider": "Or with email",
+    "email_address": "Email address",
+    "email_placeholder": "name@example.com",
+    "password": "Password",
+    "forgot_password": "Forgot password?",
+    "login": "Login",
+    "no_account": "No account yet?",
+    "subscribe_page": "Go to subscription page",
+    "back_to_home": "Back to homepage",
+    "create_account": "Create account",
+    "name": "Name",
+    "your_name": "Your name",
+    "already_registered": "Already registered?",
+    "to_login": "Go to login",
+    "reset_password_title": "Reset password",
+    "reset_password_intro": "Enter your email address to receive a password reset link.",
+    "reset_password_button": "Reset password",
+    "reset_success": "If an account exists, an email with further instructions has been sent.",
+    "back_to_login": "Back to login"
+  },
+  "overview": {
+    "latest_analyses": "Latest Analyses",
+    "latest_podcasts": "Latest Podcasts"
+  },
+  "reports": {
+    "title": "Analyses Overview",
+    "back_to_overview": "Overview",
+    "no_analyses": "No analyses found."
+  },
+  "filters": {
+    "filter": "Filter",
+    "show": "show",
+    "hide": "hide",
+    "search_placeholder": "Search …",
+    "category": "Category",
+    "all_categories": "All categories",
+    "period": "Period",
+    "apply": "Apply",
+    "reset": "Reset"
+  },
+  "media": {
+    "title": "Daily Podcasts",
+    "episode_new": "EPISODE NEW",
+    "watch_video": "Watch video",
+    "play": "Play",
+    "pause": "Pause",
+    "close": "Close",
+    "no_entries": "No media entries found."
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "account": "Account",
+      "security": "Security",
+      "appearance": "Appearance",
+      "billing": "Billing"
+    },
+    "account": {
+      "full_name": "Full name",
+      "email": "Email",
+      "username": "Username",
+      "phone_number": "Phone Number",
+      "update_profile": "Update Profile",
+      "choose_photo": "Choose Photo",
+      "upload_hint": "JPG, PNG or WebP · max. 2 MB"
+    },
+    "password": {
+      "old_password": "Old Password",
+      "new_password": "New Password",
+      "retype_password": "Retype Password",
+      "update_password": "Update Password"
+    },
+    "appearance": {
+      "theme": "Theme",
+      "theme_description": "Light or Dark Mode",
+      "sidebar": "Sidebar",
+      "sidebar_description": "Collapsed or Expanded",
+      "light": "Light",
+      "dark": "Dark",
+      "expanded": "Expanded",
+      "collapsed": "Collapsed"
+    }
+  },
+  "billing": {
+    "current_subscription": "Current subscription",
+    "subscription_active": "Subscription active.",
+    "trial_active": "Trial active.",
+    "no_active_subscription": "No active subscription.",
+    "start_subscription": "Start subscription",
+    "manage_subscription": "Manage in Stripe Portal",
+    "payment_method": "Payment method",
+    "payment_method_stripe": "Payment details are securely managed by Stripe.",
+    "payment_method_missing": "No payment method added yet.",
+    "invoice_history": "Invoice history",
+    "no_invoices": "No invoices yet",
+    "invoices_available": "Invoices and payment receipts are available in the Stripe Portal.",
+    "portal_intro": "To change your subscription, payment details or invoice information, please use the secure Stripe Portal.",
+    "portal_description": "There you can update payment methods, view invoices and manage your subscription.",
+    "premium_access": "Premium Analyses Access",
+    "price_monthly": "€29.99 / month",
+    "next_invoice": "Next invoice: :date",
+    "cancel_at_period_end": "Cancellation at period end is scheduled.",
+    "checkout_success": "Checkout completed. Your subscription status will be updated automatically.",
+    "checkout_cancel": "Checkout was cancelled.",
+    "customer_id": "Customer ID:",
+    "subscription_id": "Subscription ID:",
+    "stripe_status": "Stripe Status",
+    "states": {
+      "trial": "Trial",
+      "active": "Active",
+      "payment_required": "Payment required",
+      "past_due": "Past due",
+      "canceled": "Canceled"
+    },
+    "amount": "Amount",
+    "integration_pending": "Payment integration will follow.",
+    "trial_price_period": ":price for :days days",
+    "trial_price_after": "Then :price"
+  },
+  "payment_required": {
+    "title": "Your trial period has expired",
+    "text": "To keep access to all analyses, please choose a subscription plan and add your payment details.",
+    "button": "Set up payment"
+  },
+  "messages": {
+    "account_updated": "Profile updated successfully.",
+    "password_updated": "Password updated successfully.",
+    "logged_out": "You have been logged out."
+  },
+  "errors": {
+    "invalid_request": "The request was invalid.",
+    "1": "Login failed. Please check your details.",
+    "login_failed": "Login failed. Please check your details.",
+    "too_many_attempts": "Too many login attempts. Please try again later.",
+    "account_exists": "An account already exists for this email address.",
+    "exists": "An account already exists for this email address.",
+    "weak_password": "The password must be at least 8 characters long.",
+    "invalid_email": "Please enter a valid email address.",
+    "email": "Please enter a valid email address.",
+    "create_failed": "The account could not be created.",
+    "wrong_password": "The current password is not correct.",
+    "password_mismatch": "The new passwords do not match.",
+    "generic": "An error occurred. Please try again.",
+    "stripe_sdk_missing": "The Stripe SDK is missing. Please run composer require stripe/stripe-php in the theme.",
+    "stripe_not_configured": "Stripe is not fully configured yet.",
+    "stripe_secret_missing": "The Stripe Secret Key is missing.",
+    "stripe_price_basis_missing": "The Stripe Price ID for the Basic subscription is missing.",
+    "stripe_price_pro_missing": "The Stripe Price ID for the Pro subscription is missing.",
+    "stripe_trial_fee_missing": "The Stripe Price ID for the trial fee is missing.",
+    "stripe_webhook_not_configured": "The Stripe Webhook Secret is missing.",
+    "stripe_customer_missing": "No Stripe customer found.",
+    "stripe_checkout_failed": "Stripe Checkout could not be started.",
+    "stripe_portal_failed": "The Billing Portal could not be opened."
+  },
+  "js": {
+    "show": "show",
+    "hide": "hide",
+    "light": "Light",
+    "dark": "Dark",
+    "expanded": "Expanded",
+    "collapsed": "Collapsed"
+  }
+}

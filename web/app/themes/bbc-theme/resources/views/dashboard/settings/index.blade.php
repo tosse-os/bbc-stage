@@ -182,9 +182,12 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
     $billingErrorCode = trim((string) request()->get('error', ''));
     $billingErrorMessage = $billingErrorCode !== '' ? dashboard_stripe_billing_error_message($billingErrorCode) : '';
     $subscriptionPriceLabel = dashboard_stripe_user_price_label($user->ID);
+    $trialFeeLabel = dashboard_stripe_user_trial_fee_label($user->ID);
+    $trialDays = max(1, (int) get_user_meta($user->ID, 'stripe_trial_days', true));
 
-    $isActive = $subscriptionState === 'active';
-    $isTrial = $subscriptionState === 'trial';
+    $isTrial = $stripeRawStatus === 'trialing' || $subscriptionState === 'trial';
+    $isActive = $subscriptionState === 'active' && !$isTrial;
+    $hasSubscription = trim((string) $stripeSubscriptionId) !== '';
 
     $stateText = dashboard_stripe_subscription_state_label($subscriptionState);
 
@@ -234,9 +237,18 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                     {{ dashboard_t('billing.premium_access') }}
                   </div>
 
+                  @if($isTrial && $trialFeeLabel !== '')
+                  <div class="text-slate-300">
+                    {{ dashboard_t('billing.trial_price_period', '', ['price' => $trialFeeLabel, 'days' => $trialDays]) }}
+                  </div>
+                  <div class="text-sm text-slate-400">
+                    {{ dashboard_t('billing.trial_price_after', '', ['price' => $subscriptionPriceLabel !== '' ? $subscriptionPriceLabel : dashboard_t('billing.price_monthly')]) }}
+                  </div>
+                  @else
                   <div class="text-slate-300">
                     {{ $subscriptionPriceLabel !== '' ? $subscriptionPriceLabel : dashboard_t('billing.price_monthly') }}
                   </div>
+                  @endif
 
                   @if($currentPeriodEnd)
                   <div class="text-sm text-slate-400">
@@ -264,7 +276,7 @@ $sidebarCollapsed = get_user_meta($user->ID, 'dashboard_sidebar_collapsed', true
                 </div>
 
                 <div class="mt-6 flex flex-wrap gap-3">
-                  @if(!$isActive)
+                  @if(!$hasSubscription)
                   <form method="post" action="{{ esc_url(admin_url('admin-post.php')) }}">
                     <input type="hidden" name="action" value="dashboard_start_checkout">
                     <input type="hidden" name="lang" value="{{ dashboard_lang() }}">

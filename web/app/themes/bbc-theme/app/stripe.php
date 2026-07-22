@@ -237,6 +237,108 @@ function dashboard_stripe_sync_subscription_price(int $userId, $subscription): v
 }
 
 /**
+ * Speichert den beim Trial-Checkout verwendeten einmaligen Stripe-Preis als User-Meta.
+ */
+function dashboard_stripe_sync_trial_fee_price(int $userId, string $priceId, int $trialDays): void
+{
+  $priceId = trim($priceId);
+
+  if ($userId <= 0 || $priceId === '' || $trialDays <= 0 || !dashboard_stripe_boot()) {
+    return;
+  }
+
+  try {
+    $price = \Stripe\Price::retrieve($priceId);
+  } catch (\Throwable $e) {
+    return;
+  }
+
+  $amount = isset($price->unit_amount) ? (int) $price->unit_amount : 0;
+  $currency = strtolower(trim((string) ($price->currency ?? '')));
+
+  if ($amount <= 0 || $currency === '') {
+    return;
+  }
+
+  update_user_meta($userId, 'stripe_trial_fee_price_id', $priceId);
+  update_user_meta($userId, 'stripe_trial_fee_amount', $amount);
+  update_user_meta($userId, 'stripe_trial_fee_currency', $currency);
+  update_user_meta($userId, 'stripe_trial_days', $trialDays);
+}
+
+/**
+ * Übernimmt Trial-Daten aus Stripe-Metadaten in den lokalen Preis-Snapshot.
+ */
+function dashboard_stripe_sync_trial_fee_from_metadata(int $userId, $object): void
+{
+  if ($userId <= 0 || !is_object($object) || !isset($object->metadata) || !is_object($object->metadata)) {
+    return;
+  }
+
+  $plan = trim((string) ($object->metadata->dashboard_plan ?? ''));
+  $priceId = trim((string) ($object->metadata->trial_fee_price_id ?? ''));
+  $trialDays = (int) ($object->metadata->trial_period_days ?? 0);
+
+  if ($plan !== 'trial' || $priceId === '' || $trialDays <= 0) {
+    return;
+  }
+
+  dashboard_stripe_sync_trial_fee_price($userId, $priceId, $trialDays);
+}
+
+/**
+ * Formatiert einen einmaligen Stripe-Betrag ohne Abrechnungsintervall.
+ */
+function dashboard_stripe_format_amount(int $amount, string $currency): string
+{
+  $currency = strtolower(trim($currency));
+
+  if ($amount <= 0 || $currency === '') {
+    return '';
+  }
+
+  $language = function_exists('dashboard_lang') ? dashboard_lang() : 'de';
+  $number = number_format($amount / 100, 2, $language === 'de' ? ',' : '.', $language === 'de' ? '.' : ',');
+  $currencyLabel = match ($currency) {
+    'eur' => '€',
+    'usd' => '$',
+    'gbp' => '£',
+    default => strtoupper($currency),
+  };
+
+  return $language === 'de'
+    ? $number . ' ' . $currencyLabel
+    : $currencyLabel . $number;
+}
+
+/**
+ * Formatiert die beim Trial-Abschluss gespeicherte einmalige Gebühr.
+ */
+function dashboard_stripe_user_trial_fee_label(int $userId): string
+{
+  $amount = (int) get_user_meta($userId, 'stripe_trial_fee_amount', true);
+  $currency = (string) get_user_meta($userId, 'stripe_trial_fee_currency', true);
+
+  if ($amount <= 0 || trim($currency) === '') {
+    $selectedPlan = trim((string) get_user_meta($userId, 'dashboard_selected_plan', true));
+
+    if ($selectedPlan === 'trial' && function_exists('dashboard_checkout_price_config')) {
+      $config = dashboard_checkout_price_config('trial');
+      dashboard_stripe_sync_trial_fee_price(
+        $userId,
+        (string) ($config['trial_fee_price_id'] ?? ''),
+        (int) ($config['trial_period_days'] ?? 0)
+      );
+
+      $amount = (int) get_user_meta($userId, 'stripe_trial_fee_amount', true);
+      $currency = (string) get_user_meta($userId, 'stripe_trial_fee_currency', true);
+    }
+  }
+
+  return dashboard_stripe_format_amount($amount, $currency);
+}
+
+/**
  * Formatiert den am Benutzer gespeicherten Stripe-Abopreis.
  */
 function dashboard_stripe_user_price_label(int $userId): string
@@ -536,6 +638,7 @@ function dashboard_stripe_sync_subscription(int $userId, $subscription): void
   );
 
   dashboard_stripe_sync_subscription_price($userId, $subscription);
+  dashboard_stripe_sync_trial_fee_from_metadata($userId, $subscription);
 
   if (in_array($status, ['active', 'trialing'], true)) {
     dashboard_set_subscription_state($userId, 'active');

@@ -107,6 +107,8 @@ function dashboard_handle_stripe_checkout_completed($session): void
     return;
   }
 
+  dashboard_stripe_sync_trial_fee_from_metadata($user->ID, $session);
+
   $customerId = trim((string) ($session->customer ?? ''));
 
   if ($customerId !== '') {

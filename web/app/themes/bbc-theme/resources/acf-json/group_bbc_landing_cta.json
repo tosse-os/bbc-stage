@@ -1,0 +1,189 @@
+{
+  "key": "group_bbc_landing_cta",
+  "title": "Landing Page – 5. CTA Section",
+  "fields": [
+    {
+      "key": "field_bbc_cta_tab_content",
+      "label": "Content",
+      "name": "",
+      "aria-label": "",
+      "type": "tab",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "placement": "top",
+      "endpoint": 0
+    },
+    {
+      "key": "field_bbc_cta_headline_top",
+      "label": "Headline oben",
+      "name": "cta_headline_top",
+      "aria-label": "",
+      "type": "text",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "Handeln Sie nicht schneller.",
+      "maxlength": "",
+      "placeholder": "",
+      "prepend": "",
+      "append": ""
+    },
+    {
+      "key": "field_bbc_cta_headline_main",
+      "label": "Headline Haupttext",
+      "name": "cta_headline_main",
+      "aria-label": "",
+      "type": "text",
+      "instructions": "HTML wie bei der Hero-Überschrift möglich, z. B. &lt;br&gt; und &lt;span class=&quot;text-brand-primary&quot;&gt;Text&lt;/span&gt;.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "<span class=\"drop-shadow-[0_2px_4px_rgba(0,0,0,0.18)]\">Handeln Sie</span> <span class=\"text-brand-primary\">strukturierter.</span>",
+      "maxlength": "",
+      "placeholder": "",
+      "prepend": "",
+      "append": ""
+    },
+    {
+      "key": "field_bbc_cta_subline",
+      "label": "Subline",
+      "name": "cta_subline",
+      "aria-label": "",
+      "type": "textarea",
+      "instructions": "Erlaubt sind Zeilenumbrüche, &lt;br&gt;, &lt;strong&gt;, &lt;em&gt; und &lt;span&gt;.",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "Märkte werden sich weiter bewegen.\nDie Frage ist nicht ob, sondern <strong>wie vorbereitet</strong> Sie sind.",
+      "maxlength": "",
+      "rows": 3,
+      "placeholder": "",
+      "new_lines": ""
+    },
+    {
+      "key": "field_bbc_cta_tab_cta",
+      "label": "CTA",
+      "name": "",
+      "aria-label": "",
+      "type": "tab",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "placement": "top",
+      "endpoint": 0
+    },
+    {
+      "key": "field_bbc_cta_button_text",
+      "label": "Button Text",
+      "name": "cta_button_text",
+      "aria-label": "",
+      "type": "text",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "50",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "Kostenlose Analysen sichern",
+      "maxlength": "",
+      "placeholder": "",
+      "prepend": "",
+      "append": ""
+    },
+    {
+      "key": "field_bbc_cta_button_link",
+      "label": "Button Link",
+      "name": "cta_button_link",
+      "aria-label": "",
+      "type": "link",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "50",
+        "class": "",
+        "id": ""
+      },
+      "return_format": "array"
+    },
+    {
+      "key": "field_bbc_cta_note",
+      "label": "Hinweis unter Button",
+      "name": "cta_note",
+      "aria-label": "",
+      "type": "text",
+      "instructions": "",
+      "required": 0,
+      "conditional_logic": 0,
+      "wrapper": {
+        "width": "",
+        "class": "",
+        "id": ""
+      },
+      "default_value": "Kein Risiko · 7 Tage kostenlos · jederzeit kündbar",
+      "maxlength": "",
+      "placeholder": "",
+      "prepend": "",
+      "append": ""
+    }
+  ],
+  "location": [
+    [
+      {
+        "param": "page_template",
+        "operator": "==",
+        "value": "views/page-landing.blade.php"
+      }
+    ],
+    [
+      {
+        "param": "post",
+        "operator": "==",
+        "value": "7"
+      }
+    ],
+    [
+      {
+        "param": "post",
+        "operator": "==",
+        "value": "511"
+      }
+    ]
+  ],
+  "menu_order": 50,
+  "position": "normal",
+  "style": "default",
+  "label_placement": "top",
+  "instruction_placement": "label",
+  "hide_on_screen": "",
+  "active": true,
+  "description": "",
+  "show_in_rest": 0,
+  "modified": 1790000007
+}

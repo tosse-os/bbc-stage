@@ -135,6 +135,11 @@ function dashboard_checkout_subscription_data_for_plan(string $plan, int $userId
     ],
   ];
 
+  if ($plan === 'trial') {
+    $data['metadata']['trial_fee_price_id'] = (string) ($config['trial_fee_price_id'] ?? '');
+    $data['metadata']['trial_period_days'] = (string) ((int) ($config['trial_period_days'] ?? 0));
+  }
+
   if (($config['trial_period_days'] ?? 0) > 0) {
     $data['trial_period_days'] = (int) $config['trial_period_days'];
   }
@@ -161,6 +166,14 @@ function dashboard_redirect_to_checkout_for_user($user, string $plan, string $su
   try {
     $customer = dashboard_get_or_create_stripe_customer($user);
 
+    if ($plan === 'trial') {
+      dashboard_stripe_sync_trial_fee_price(
+        (int) $user->ID,
+        (string) ($config['trial_fee_price_id'] ?? ''),
+        (int) ($config['trial_period_days'] ?? 0)
+      );
+    }
+
     $session = \Stripe\Checkout\Session::create([
       'mode' => 'subscription',
       'customer' => $customer->id,
@@ -171,6 +184,8 @@ function dashboard_redirect_to_checkout_for_user($user, string $plan, string $su
       'metadata' => [
         'wp_user_id' => (string) $user->ID,
         'dashboard_plan' => $plan,
+        'trial_fee_price_id' => $plan === 'trial' ? (string) ($config['trial_fee_price_id'] ?? '') : '',
+        'trial_period_days' => $plan === 'trial' ? (string) ((int) ($config['trial_period_days'] ?? 0)) : '0',
       ],
       'subscription_data' => dashboard_checkout_subscription_data_for_plan($plan, (int) $user->ID),
       'allow_promotion_codes' => true,
