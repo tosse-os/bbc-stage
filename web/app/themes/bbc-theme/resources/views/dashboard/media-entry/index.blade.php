@@ -1,7 +1,7 @@
-<section class="max-w-7xl">
+<section class="media-entry-page max-w-7xl">
 
   <header class="mb-8">
-    <h1 class="text-xl md:text-2xl font-semibold text-white tracking-tight">
+    <h1 class="media-entry-title text-xl md:text-2xl font-semibold text-white tracking-tight">
       {{ dashboard_t('media.title') }}
     </h1>
   </header>
@@ -31,17 +31,17 @@
     @endphp
 
     {{-- Glassmorphism Card --}}
-    <div class="player-wrapper relative group p-[1px] rounded-3xl transition-all duration-500 hover:scale-[1.01]">
+    <div class="player-wrapper media-entry-card-shell relative group p-[1px] rounded-3xl transition-all duration-500 hover:scale-[1.01]">
       {{-- Glow Effekt --}}
-      <div class="player-glow absolute inset-0 rounded-3xl bg-gradient-to-br from-white/10 to-transparent opacity-30"></div>
+      <div class="player-glow media-entry-card-glow absolute inset-0 rounded-3xl bg-gradient-to-br from-white/10 to-transparent opacity-30"></div>
 
-      <div class="player-card relative bg-slate-900/60 backdrop-blur-xl rounded-[23px] p-5 border border-white/5 shadow-2xl flex flex-col md:flex-row items-stretch gap-6">
+      <div class="player-card media-entry-card relative bg-slate-900/60 backdrop-blur-xl rounded-[23px] p-5 border border-white/5 shadow-2xl flex flex-col md:flex-row items-stretch gap-6">
 
         {{-- Cover: Die Klasse items-stretch am Parent und h-full hier sorgt für den bündigen Abschluss --}}
         <div class="relative w-full md:w-36 flex-shrink-0">
           <img src="{{ $coverUrl }}"
             alt="{{ $image['alt'] ?? $cleanTitle }}"
-            class="w-full h-full min-h-[115px] object-cover rounded-2xl shadow-lg border border-white/5">
+            class="media-entry-cover w-full h-full min-h-[115px] object-cover rounded-2xl shadow-lg border border-white/5">
         </div>
 
         {{-- Content Bereich --}}
@@ -49,15 +49,15 @@
 
           {{-- Text Sektion --}}
           <div class="mb-3">
-            <h3 class="font-bold text-base md:text-lg text-white group-hover:text-brand-primary transition-colors leading-tight line-clamp-1">
+            <h3 class="media-entry-card-title font-bold text-base md:text-lg text-white group-hover:text-brand-primary transition-colors leading-tight line-clamp-1">
               {!! $cleanTitle !!}
             </h3>
             <div class="flex items-center gap-2 mt-1">
               <span class="text-[10px] font-bold text-brand-primary uppercase tracking-widest">
                 {{ get_field('episode_label') ?: dashboard_t('media.episode_new') }}
               </span>
-              <span class="text-slate-600">•</span>
-              <span class="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+              <span class="media-entry-meta-separator text-slate-600">•</span>
+              <span class="media-entry-date text-[10px] font-medium text-slate-400 uppercase tracking-widest">
                 {{ get_the_date('d. F Y') }}
               </span>
             </div>
